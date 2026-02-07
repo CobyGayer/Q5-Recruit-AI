@@ -1,0 +1,146 @@
+export type CoachStatus = "pending" | "approved" | "rejected";
+export type ProcessingStatus =
+  | "pending"
+  | "processing"
+  | "processed"
+  | "needs_review"
+  | "insufficient"
+  | "failed";
+export type ClubLevel =
+  | "mls_next"
+  | "ecnl"
+  | "ga"
+  | "regional"
+  | "other"
+  | "unknown";
+export type ConfidenceLevel = "high" | "medium" | "low";
+export type PriorityTier = "critical" | "high" | "medium" | "low";
+export type FlagType = "interested" | "not_a_fit";
+
+export interface Program {
+  id: string;
+  name: string;
+  institution: string;
+  division: string | null;
+  conference: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Coach {
+  id: string;
+  program_id: string | null;
+  full_name: string;
+  email: string;
+  role: "coach" | "admin";
+  status: CoachStatus;
+  api_key: string | null;
+  onboarding_completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProgramConfig {
+  id: string;
+  coach_id: string;
+  // Section A: Minimum Thresholds
+  min_gpa: number | null;
+  min_sat: number | null;
+  min_act: number | null;
+  min_height_by_position: Record<string, number>;
+  accepted_grad_years: number[];
+  accepted_positions: string[];
+  // Section B: Priority Weights
+  weight_academic: PriorityTier;
+  weight_competition: PriorityTier;
+  weight_physical: PriorityTier;
+  weight_position_fit: PriorityTier;
+  weight_grad_year: PriorityTier;
+  weight_completeness: PriorityTier;
+  // Section C: Roster Context
+  high_need_positions: Array<{ position: string; rank: number }>;
+  priority_grad_years: Array<{ year: number; rank: number }>;
+  roster_spots: Record<string, number>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IngestedEmail {
+  id: string;
+  coach_id: string;
+  recruit_id: string | null;
+  sender_email: string | null;
+  sender_name: string | null;
+  subject: string | null;
+  body_plain: string | null;
+  body_html: string | null;
+  received_at: string | null;
+  attachments: string[];
+  processing_status: ProcessingStatus;
+  extracted_data: Record<string, unknown> | null;
+  extraction_error: string | null;
+  created_at: string;
+}
+
+export interface Recruit {
+  id: string;
+  coach_id: string;
+  email: string | null;
+  full_name: string | null;
+  phone: string | null;
+  graduation_year: number | null;
+  current_school: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  positions: string[];
+  preferred_foot: string | null;
+  height_inches: number | null;
+  weight_lbs: number | null;
+  gpa: number | null;
+  sat_score: number | null;
+  act_score: number | null;
+  club_team: string | null;
+  club_level: ClubLevel;
+  high_school_team: string | null;
+  video_url: string | null;
+  extraction_confidence: Record<string, ConfidenceLevel>;
+  fields_missing: string[];
+  fields_extracted: number;
+  fields_total: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecruitDqsScore {
+  id: string;
+  recruit_id: string;
+  coach_id: string;
+  overall_score: number | null;
+  is_qualified: boolean;
+  disqualification_reasons: string[];
+  academic_score: number | null;
+  competition_score: number | null;
+  physical_score: number | null;
+  position_fit_score: number | null;
+  grad_year_score: number | null;
+  completeness_score: number | null;
+  bonus_points: number;
+  completeness_penalty: number;
+  score_breakdown: Record<string, unknown>;
+  calculated_at: string;
+}
+
+export interface CoachRecruitFlag {
+  id: string;
+  coach_id: string;
+  recruit_id: string;
+  flag: FlagType;
+  created_at: string;
+}
+
+/** Recruit joined with its DQS score and flag for dashboard display */
+export interface RecruitWithScore extends Recruit {
+  dqs_score: RecruitDqsScore | null;
+  flag: CoachRecruitFlag | null;
+}
