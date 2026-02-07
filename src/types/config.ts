@@ -1,5 +1,3 @@
-import type { PriorityTier } from "./database";
-
 /** Form data for onboarding threshold step */
 export interface ThresholdFormData {
   min_gpa: number | null;
@@ -10,14 +8,14 @@ export interface ThresholdFormData {
   accepted_positions: string[];
 }
 
-/** Form data for onboarding weight step */
+/** Form data for onboarding weight step (0-100 sliders) */
 export interface WeightFormData {
-  weight_academic: PriorityTier;
-  weight_competition: PriorityTier;
-  weight_physical: PriorityTier;
-  weight_position_fit: PriorityTier;
-  weight_grad_year: PriorityTier;
-  weight_completeness: PriorityTier;
+  weight_academic: number;
+  weight_competition: number;
+  weight_physical: number;
+  weight_position_fit: number;
+  weight_grad_year: number;
+  weight_completeness: number;
 }
 
 /** Form data for roster context step */
@@ -32,14 +30,6 @@ export interface ConfigFormData
   extends ThresholdFormData,
     WeightFormData,
     RosterContextFormData {}
-
-/** Tier weight numeric values */
-export const TIER_WEIGHTS: Record<PriorityTier, number> = {
-  critical: 4,
-  high: 3,
-  medium: 2,
-  low: 1,
-};
 
 /** Available soccer positions */
 export const POSITIONS = [

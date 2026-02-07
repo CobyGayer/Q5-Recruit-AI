@@ -54,12 +54,12 @@ export default function OnboardingPage() {
   });
 
   const [weights, setWeights] = useState<WeightFormData>({
-    weight_academic: "high",
-    weight_competition: "high",
-    weight_physical: "medium",
-    weight_position_fit: "critical",
-    weight_grad_year: "medium",
-    weight_completeness: "low",
+    weight_academic: 70,
+    weight_competition: 70,
+    weight_physical: 50,
+    weight_position_fit: 80,
+    weight_grad_year: 50,
+    weight_completeness: 20,
   });
 
   const [roster, setRoster] = useState<RosterContextFormData>({

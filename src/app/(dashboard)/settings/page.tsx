@@ -41,12 +41,12 @@ export default function SettingsPage() {
   });
 
   const [weights, setWeights] = useState<WeightFormData>({
-    weight_academic: "high",
-    weight_competition: "high",
-    weight_physical: "medium",
-    weight_position_fit: "critical",
-    weight_grad_year: "medium",
-    weight_completeness: "low",
+    weight_academic: 70,
+    weight_competition: 70,
+    weight_physical: 50,
+    weight_position_fit: 80,
+    weight_grad_year: 50,
+    weight_completeness: 20,
   });
 
   const [roster, setRoster] = useState<RosterContextFormData>({
@@ -70,12 +70,12 @@ export default function SettingsPage() {
             accepted_positions: data.accepted_positions || [],
           });
           setWeights({
-            weight_academic: data.weight_academic || "medium",
-            weight_competition: data.weight_competition || "medium",
-            weight_physical: data.weight_physical || "medium",
-            weight_position_fit: data.weight_position_fit || "medium",
-            weight_grad_year: data.weight_grad_year || "medium",
-            weight_completeness: data.weight_completeness || "low",
+            weight_academic: data.weight_academic ?? 70,
+            weight_competition: data.weight_competition ?? 70,
+            weight_physical: data.weight_physical ?? 50,
+            weight_position_fit: data.weight_position_fit ?? 80,
+            weight_grad_year: data.weight_grad_year ?? 50,
+            weight_completeness: data.weight_completeness ?? 20,
           });
           setRoster({
             high_need_positions: data.high_need_positions || [],

@@ -14,7 +14,6 @@ export type ClubLevel =
   | "other"
   | "unknown";
 export type ConfidenceLevel = "high" | "medium" | "low";
-export type PriorityTier = "critical" | "high" | "medium" | "low";
 export type FlagType = "interested" | "not_a_fit";
 
 export interface Program {
@@ -50,13 +49,13 @@ export interface ProgramConfig {
   min_height_by_position: Record<string, number>;
   accepted_grad_years: number[];
   accepted_positions: string[];
-  // Section B: Priority Weights
-  weight_academic: PriorityTier;
-  weight_competition: PriorityTier;
-  weight_physical: PriorityTier;
-  weight_position_fit: PriorityTier;
-  weight_grad_year: PriorityTier;
-  weight_completeness: PriorityTier;
+  // Section B: Priority Weights (0-100 sliders)
+  weight_academic: number;
+  weight_competition: number;
+  weight_physical: number;
+  weight_position_fit: number;
+  weight_grad_year: number;
+  weight_completeness: number;
   // Section C: Roster Context
   high_need_positions: Array<{ position: string; rank: number }>;
   priority_grad_years: Array<{ year: number; rank: number }>;

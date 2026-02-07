@@ -1,5 +1,4 @@
-import type { Recruit, ProgramConfig, PriorityTier } from "@/types/database";
-import { TIER_WEIGHTS } from "@/types/config";
+import type { Recruit, ProgramConfig } from "@/types/database";
 import { checkThresholds } from "./thresholds";
 import {
   scoreAcademic,
@@ -29,16 +28,16 @@ export interface DQSResult {
 }
 
 interface WeightConfig {
-  academic: PriorityTier;
-  competition: PriorityTier;
-  physical: PriorityTier;
-  positionFit: PriorityTier;
-  gradYear: PriorityTier;
-  completeness: PriorityTier;
+  academic: number;
+  competition: number;
+  physical: number;
+  positionFit: number;
+  gradYear: number;
+  completeness: number;
 }
 
 /**
- * Convert tier-based weights to normalized percentages.
+ * Convert numeric weights to normalized percentages.
  * Redistributes weight from components with missing data.
  */
 function normalizeWeights(
@@ -48,10 +47,10 @@ function normalizeWeights(
   const rawWeights: Record<string, number> = {};
   let total = 0;
 
-  for (const [key, tier] of Object.entries(weightConfig) as [string, PriorityTier][]) {
+  for (const [key, weight] of Object.entries(weightConfig)) {
     if (availableComponents[key]) {
-      rawWeights[key] = TIER_WEIGHTS[tier];
-      total += TIER_WEIGHTS[tier];
+      rawWeights[key] = weight as number;
+      total += weight as number;
     }
   }
 
