@@ -15,6 +15,7 @@ export type ClubLevel =
   | "unknown";
 export type ConfidenceLevel = "high" | "medium" | "low";
 export type FlagType = "interested" | "not_a_fit";
+export type EmailPipelineStatus = "not_started" | "pending_setup" | "active";
 
 export interface Program {
   id: string;
@@ -35,6 +36,7 @@ export interface Coach {
   status: CoachStatus;
   api_key: string | null;
   onboarding_completed: boolean;
+  email_pipeline_status: EmailPipelineStatus;
   created_at: string;
   updated_at: string;
 }

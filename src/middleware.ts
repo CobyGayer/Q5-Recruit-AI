@@ -56,6 +56,11 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
+    // Admin users always have access to /admin, regardless of coach status
+    if (pathname.startsWith("/admin") && coach?.role === "admin") {
+      return supabaseResponse;
+    }
+
     // Coach not approved yet
     if (coach?.status !== "approved") {
       if (!pathname.startsWith("/pending-approval")) {

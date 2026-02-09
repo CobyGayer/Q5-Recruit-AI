@@ -24,14 +24,14 @@ import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
 import type { ThresholdFormData, WeightFormData, RosterContextFormData } from "@/types/config";
 import type { Program } from "@/types/database";
-import { Check, ChevronLeft, ChevronRight, Copy } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 
 const STEPS = [
   "Program Setup",
   "Minimum Thresholds",
   "Priority Weights",
   "Roster Context",
-  "Gmail Setup",
+  "Complete",
 ];
 
 export default function OnboardingPage() {
@@ -39,8 +39,6 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
-  const [apiKey, setApiKey] = useState<string | null>(null);
-  const [apiKeyCopied, setApiKeyCopied] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -104,21 +102,13 @@ export default function OnboardingPage() {
       onConflict: "coach_id",
     });
 
-    // Generate API key
-    const res = await fetch("/api/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "generate_api_key" }),
-    });
-    const keyData = await res.json();
-    if (keyData.api_key) {
-      setApiKey(keyData.api_key);
-    }
-
-    // Mark onboarding completed
+    // Mark onboarding completed, pipeline awaiting admin setup
     await supabase
       .from("coaches")
-      .update({ onboarding_completed: true })
+      .update({
+        onboarding_completed: true,
+        email_pipeline_status: "pending_setup",
+      })
       .eq("id", user.id);
 
     setLoading(false);
@@ -128,14 +118,6 @@ export default function OnboardingPage() {
   function handleFinish() {
     router.push("/dashboard");
     router.refresh();
-  }
-
-  function copyApiKey() {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
-      setApiKeyCopied(true);
-      setTimeout(() => setApiKeyCopied(false), 2000);
-    }
   }
 
   return (
@@ -217,77 +199,27 @@ export default function OnboardingPage() {
               <RosterContextForm data={roster} onChange={setRoster} />
             )}
 
-            {/* Step 4: Gmail Setup */}
+            {/* Step 4: Complete */}
             {step === 4 && (
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <h4 className="font-medium">Your API Key</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Copy this key — you&apos;ll need it for Zapier setup. It
-                    will only be shown once.
+              <div className="space-y-6 text-center py-4">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                  <Check className="h-8 w-8 text-green-600" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">You&apos;re all set!</h3>
+                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    We&apos;ll handle the email pipeline setup for you.
+                    You&apos;ll receive a notification when it&apos;s active
+                    and ready to start processing recruit emails.
                   </p>
-                  {apiKey && (
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 bg-muted px-3 py-2 rounded text-sm font-mono break-all">
-                        {apiKey}
-                      </code>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={copyApiKey}
-                      >
-                        {apiKeyCopied ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  )}
                 </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-medium">Gmail Setup Instructions</h4>
-                  <ol className="list-decimal list-inside space-y-2 text-sm text-muted-foreground">
-                    <li>
-                      In Gmail, create a new label called{" "}
-                      <strong>&quot;Recruiting Score AI&quot;</strong>
-                    </li>
-                    <li>
-                      Go to{" "}
-                      <strong>zapier.com</strong> and create a new Zap
-                    </li>
-                    <li>
-                      Set the trigger to{" "}
-                      <strong>Gmail → New Email Matching Search</strong> with
-                      the label &quot;Recruiting Score AI&quot;
-                    </li>
-                    <li>
-                      Set the action to{" "}
-                      <strong>Webhooks by Zapier → POST</strong>
-                    </li>
-                    <li>
-                      Set the URL to your platform&apos;s ingestion endpoint
-                    </li>
-                    <li>
-                      Add header: <code>x-api-key</code> with your API key
-                      above
-                    </li>
-                    <li>
-                      Map the email fields (From, Subject, Body Plain, Date) to
-                      the payload
-                    </li>
-                    <li>Test the Zap and turn it on!</li>
-                  </ol>
-                </div>
-
-                <div className="bg-blue-50 rounded-lg p-4">
+                <div className="bg-blue-50 rounded-lg p-4 text-left">
                   <p className="text-sm text-blue-800">
-                    <strong>How it works:</strong> When you apply the
-                    &quot;Recruiting Score AI&quot; label to any recruit email in
-                    Gmail, Zapier will automatically send it to your dashboard.
-                    The AI will extract the recruit&apos;s information and score
-                    them based on your configured preferences.
+                    <strong>What happens next:</strong> Our team will configure
+                    your Gmail integration within 24 hours. Once active, simply
+                    apply the &quot;Recruiting Score AI&quot; label to any
+                    recruit email in Gmail and it will automatically appear
+                    in your dashboard, scored and ready for review.
                   </p>
                 </div>
               </div>
