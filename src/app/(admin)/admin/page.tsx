@@ -138,7 +138,7 @@ export default function AdminPage() {
   function getZapierCopilotPrompt() {
     if (!generatedKey) return "";
     const webhookUrl = `${window.location.origin}/api/ingest/email`;
-    return `Create a Zap: When a new email arrives in Gmail matching the search "label:Recruiting Score AI", send a POST request to ${webhookUrl}. Add a custom header "x-api-key" with value "${generatedKey.key}". Send the following fields as JSON in the request body: "sender_email" mapped to the sender's email address, "subject" mapped to the email subject line, "body_plain" mapped to the plain text body of the email, and "received_at" mapped to the date the email was received.`;
+    return `Create a Zap: When a new email arrives in Gmail matching the search "label:Q5 Recruit AI", send a POST request to ${webhookUrl}. Add a custom header "x-api-key" with value "${generatedKey.key}". Send the following fields as JSON in the request body: "sender_email" mapped to the sender's email address, "subject" mapped to the email subject line, "body_plain" mapped to the plain text body of the email, and "received_at" mapped to the date the email was received.`;
   }
 
   function copySetupInfo() {
@@ -419,7 +419,7 @@ export default function AdminPage() {
                   <div className="space-y-3">
                     <p className="text-xs font-medium text-muted-foreground">
                       Copy the prompt below and paste it into Zapier Copilot to auto-create the Zap.
-                      The coach must first create a Gmail label called &quot;Recruiting Score AI&quot;.
+                      The coach must first create a Gmail label called &quot;Q5 Recruit AI&quot;.
                     </p>
                     <div className="bg-white px-3 py-2 rounded text-sm border break-all text-muted-foreground">
                       {getZapierCopilotPrompt()}

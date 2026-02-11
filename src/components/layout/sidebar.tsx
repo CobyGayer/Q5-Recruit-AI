@@ -43,7 +43,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
   return (
     <aside className="w-64 border-r bg-white h-screen sticky top-0 flex flex-col">
       <div className="p-6">
-        <h1 className="text-lg font-bold">Recruiting Score AI</h1>
+        <h1 className="text-lg font-bold">Q5 Recruit AI</h1>
       </div>
       <nav className="flex-1 px-3 space-y-1">
         {items.map((item) => {

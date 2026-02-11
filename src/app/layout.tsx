@@ -13,8 +13,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Recruiting Score AI",
+  title: "Q5 Recruit AI",
   description: "AI-powered college soccer recruiting platform for coaches",
+  metadataBase: new URL("https://q5recruit.ai"),
+  openGraph: {
+    title: "Q5 Recruit AI",
+    description: "AI-powered college soccer recruiting platform for coaches",
+    url: "https://q5recruit.ai",
+    siteName: "Q5 Recruit AI",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

@@ -217,7 +217,7 @@ export default function OnboardingPage() {
                   <p className="text-sm text-blue-800">
                     <strong>What happens next:</strong> Our team will configure
                     your Gmail integration within 24 hours. Once active, simply
-                    apply the &quot;Recruiting Score AI&quot; label to any
+                    apply the &quot;Q5 Recruit AI&quot; label to any
                     recruit email in Gmail and it will automatically appear
                     in your dashboard, scored and ready for review.
                   </p>

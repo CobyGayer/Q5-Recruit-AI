@@ -48,7 +48,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
-            The Recruiting Score AI
+            Q5 Recruit AI
           </CardTitle>
           <CardDescription>Sign in to your coaching dashboard</CardDescription>
         </CardHeader>

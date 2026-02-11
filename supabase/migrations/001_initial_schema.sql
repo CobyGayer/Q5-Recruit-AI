@@ -1,5 +1,5 @@
 -- ==========================================
--- The Recruiting Score AI - Database Schema
+-- Q5 Recruit AI - Database Schema
 -- ==========================================
 
 -- Enum types
