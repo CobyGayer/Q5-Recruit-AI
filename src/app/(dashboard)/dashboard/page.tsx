@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRecruits } from "@/hooks/use-recruits";
 import { RecruitCard } from "@/components/recruits/recruit-card";
 import { RecruitFilterPanel } from "@/components/recruits/recruit-filters";
@@ -131,11 +131,12 @@ export default function DashboardPage() {
   const { recruits, loading } = useRecruits();
   const [filters, setFilters] = useState<RecruitFilters>(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<"cards" | "list">(() => {
-    if (typeof window === "undefined") return "cards";
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+
+  useEffect(() => {
     const saved = localStorage.getItem("q5r_view_mode");
-    return saved === "list" ? "list" : "cards";
-  });
+    if (saved === "list") setViewMode("list");
+  }, []);
 
   function handleViewMode(mode: "cards" | "list") {
     setViewMode(mode);
