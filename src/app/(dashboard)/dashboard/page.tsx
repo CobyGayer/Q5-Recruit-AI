@@ -4,12 +4,13 @@ import { useState, useMemo } from "react";
 import { useRecruits } from "@/hooks/use-recruits";
 import { RecruitCard } from "@/components/recruits/recruit-card";
 import { RecruitFilterPanel } from "@/components/recruits/recruit-filters";
+import { RecruitListView } from "@/components/recruits/recruit-list-view";
 import type { RecruitFilters } from "@/types/recruit";
 import { DEFAULT_FILTERS } from "@/types/recruit";
 import type { RecruitWithScore } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, LayoutGrid, List, X } from "lucide-react";
 
 function applyFilters(
   recruits: RecruitWithScore[],
@@ -130,6 +131,7 @@ export default function DashboardPage() {
   const { recruits, loading } = useRecruits();
   const [filters, setFilters] = useState<RecruitFilters>(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
 
   const filteredRecruits = useMemo(
     () => applyFilters(recruits, filters),
@@ -163,18 +165,40 @@ export default function DashboardPage() {
             {filteredRecruits.length} of {recruits.length} recruits
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <SlidersHorizontal className="h-4 w-4 mr-2" />
-          Filters
-          {activeFilterCount > 0 && (
-            <Badge variant="secondary" className="ml-2">
-              {activeFilterCount}
-            </Badge>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border rounded-md">
+            <Button
+              variant={viewMode === "cards" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-2.5 rounded-r-none"
+              onClick={() => setViewMode("cards")}
+              title="Card view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-2.5 rounded-l-none"
+              onClick={() => setViewMode("list")}
+              title="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <SlidersHorizontal className="h-4 w-4 mr-2" />
+            Filters
+            {activeFilterCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {activeFilterCount}
+              </Badge>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-6">
@@ -209,12 +233,14 @@ export default function DashboardPage() {
                 </Button>
               )}
             </div>
-          ) : (
+          ) : viewMode === "cards" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredRecruits.map((recruit) => (
                 <RecruitCard key={recruit.id} recruit={recruit} />
               ))}
             </div>
+          ) : (
+            <RecruitListView recruits={filteredRecruits} />
           )}
         </div>
       </div>
