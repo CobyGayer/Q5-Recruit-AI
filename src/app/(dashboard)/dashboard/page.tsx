@@ -131,7 +131,16 @@ export default function DashboardPage() {
   const { recruits, loading } = useRecruits();
   const [filters, setFilters] = useState<RecruitFilters>(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+  const [viewMode, setViewMode] = useState<"cards" | "list">(() => {
+    if (typeof window === "undefined") return "cards";
+    const saved = localStorage.getItem("q5r_view_mode");
+    return saved === "list" ? "list" : "cards";
+  });
+
+  function handleViewMode(mode: "cards" | "list") {
+    setViewMode(mode);
+    localStorage.setItem("q5r_view_mode", mode);
+  }
 
   const filteredRecruits = useMemo(
     () => applyFilters(recruits, filters),
@@ -171,7 +180,7 @@ export default function DashboardPage() {
               variant={viewMode === "cards" ? "secondary" : "ghost"}
               size="sm"
               className="h-8 px-2.5 rounded-r-none"
-              onClick={() => setViewMode("cards")}
+              onClick={() => handleViewMode("cards")}
               title="Card view"
             >
               <LayoutGrid className="h-4 w-4" />
@@ -180,7 +189,7 @@ export default function DashboardPage() {
               variant={viewMode === "list" ? "secondary" : "ghost"}
               size="sm"
               className="h-8 px-2.5 rounded-l-none"
-              onClick={() => setViewMode("list")}
+              onClick={() => handleViewMode("list")}
               title="List view"
             >
               <List className="h-4 w-4" />
