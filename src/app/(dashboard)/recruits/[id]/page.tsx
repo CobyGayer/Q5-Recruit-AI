@@ -405,7 +405,7 @@ export default function RecruitDetailPage() {
                     href={recruit.video_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline text-sm"
+                    className="text-primary hover:underline text-sm"
                   >
                     {recruit.video_url}
                   </a>
@@ -455,14 +455,14 @@ export default function RecruitDetailPage() {
           )}
 
           {dqsScore && !dqsScore.is_qualified && (
-            <Card className="border-red-200 bg-red-50">
+            <Card className="border-rose-200 bg-rose-50">
               <CardHeader>
-                <CardTitle className="text-red-700">Not Qualified</CardTitle>
+                <CardTitle className="text-rose-700">Not Qualified</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-1">
                   {dqsScore.disqualification_reasons.map((reason, i) => (
-                    <li key={i} className="text-sm text-red-600">
+                    <li key={i} className="text-sm text-rose-600">
                       {reason}
                     </li>
                   ))}
@@ -472,9 +472,9 @@ export default function RecruitDetailPage() {
           )}
 
           {recruit.fields_missing.length > 0 && (
-            <Card className="border-yellow-200 bg-yellow-50">
+            <Card className="border-amber-200 bg-amber-50">
               <CardHeader>
-                <CardTitle className="text-yellow-700 text-sm">
+                <CardTitle className="text-amber-700 text-sm">
                   Missing Data ({recruit.fields_missing.length} fields)
                 </CardTitle>
               </CardHeader>
@@ -484,7 +484,7 @@ export default function RecruitDetailPage() {
                     <Badge
                       key={field}
                       variant="outline"
-                      className="text-xs bg-white"
+                      className="text-xs bg-card"
                     >
                       {FIELD_LABELS[field] ?? field}
                     </Badge>

@@ -41,7 +41,7 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
   }
 
   return (
-    <div className="space-y-5 p-4 border rounded-lg bg-white">
+    <div className="space-y-5 p-4 border rounded-lg bg-card">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-sm">Filters</h3>
         <Button variant="ghost" size="sm" onClick={resetFilters}>

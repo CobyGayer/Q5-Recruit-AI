@@ -183,15 +183,15 @@ export default function AdminPage() {
   ).length;
 
   const pipelineColors: Record<EmailPipelineStatus, string> = {
-    not_started: "bg-gray-100 text-gray-800",
-    pending_setup: "bg-yellow-100 text-yellow-800",
-    active: "bg-green-100 text-green-800",
+    not_started: "bg-stone-100 text-stone-600",
+    pending_setup: "bg-amber-50 text-amber-700",
+    active: "bg-emerald-50 text-emerald-700",
   };
 
   const statusColors: Record<CoachStatus, string> = {
-    pending: "bg-yellow-100 text-yellow-800",
-    approved: "bg-green-100 text-green-800",
-    rejected: "bg-red-100 text-red-800",
+    pending: "bg-amber-50 text-amber-700",
+    approved: "bg-emerald-50 text-emerald-700",
+    rejected: "bg-rose-50 text-rose-700",
   };
 
   if (loading) {
@@ -211,7 +211,7 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
-              <Users className="h-8 w-8 text-blue-500" />
+              <Users className="h-8 w-8 text-teal-500" />
               <div>
                 <p className="text-2xl font-bold">{stats.total_coaches}</p>
                 <p className="text-xs text-muted-foreground">Total Coaches</p>
@@ -220,7 +220,7 @@ export default function AdminPage() {
           </Card>
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
-              <Mail className="h-8 w-8 text-green-500" />
+              <Mail className="h-8 w-8 text-emerald-500" />
               <div>
                 <p className="text-2xl font-bold">{stats.total_emails}</p>
                 <p className="text-xs text-muted-foreground">Emails Ingested</p>
@@ -229,7 +229,7 @@ export default function AdminPage() {
           </Card>
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-purple-500" />
+              <BarChart3 className="h-8 w-8 text-primary" />
               <div>
                 <p className="text-2xl font-bold">
                   {stats.total_emails > 0
@@ -247,7 +247,7 @@ export default function AdminPage() {
           </Card>
           <Card>
             <CardContent className="p-4 flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-orange-500" />
+              <BarChart3 className="h-8 w-8 text-amber-500" />
               <div>
                 <p className="text-2xl font-bold">
                   {stats.avg_fields_extracted.toFixed(1)}
@@ -288,14 +288,14 @@ export default function AdminPage() {
 
         <TabsContent value="pending">
           {approvalMessage && (
-            <Card className="border-green-200 bg-green-50 mb-4">
+            <Card className="border-emerald-200 bg-emerald-50 mb-4">
               <CardContent className="p-4">
-                <p className="text-sm font-medium text-green-800">
+                <p className="text-sm font-medium text-emerald-800">
                   <CheckCircle className="h-4 w-4 inline mr-1" />
                   {approvalMessage.coachName} approved!
                 </p>
                 {approvalMessage.needsOnboarding && (
-                  <p className="text-sm text-green-700 mt-1">
+                  <p className="text-sm text-emerald-700 mt-1">
                     Next step: Complete onboarding. If this is you, navigate to{" "}
                     <a href="/onboarding" className="underline font-medium">/onboarding</a>
                     {" "}to continue the flow.
@@ -409,7 +409,7 @@ export default function AdminPage() {
           <div className="space-y-4">
             {/* Setup card — shown after generating a key */}
             {generatedKey && (
-              <Card className="border-yellow-200 bg-yellow-50">
+              <Card className="border-amber-200 bg-amber-50">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">
                     Pipeline Setup for {generatedKey.coachName}
@@ -421,7 +421,7 @@ export default function AdminPage() {
                       Copy the prompt below and paste it into Zapier Copilot to auto-create the Zap.
                       The coach must first create a Gmail label called &quot;Q5 Recruit AI&quot;.
                     </p>
-                    <div className="bg-white px-3 py-2 rounded text-sm border break-all text-muted-foreground">
+                    <div className="bg-card px-3 py-2 rounded text-sm border break-all text-muted-foreground">
                       {getZapierCopilotPrompt()}
                     </div>
                     <Button size="sm" variant="outline" onClick={copySetupInfo}>
@@ -539,10 +539,10 @@ export default function AdminPage() {
 
         <TabsContent value="devtools">
           <div className="space-y-4">
-            <Card className="border-orange-200 bg-orange-50">
+            <Card className="border-amber-200 bg-amber-50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
                   Coach Reset Tool
                 </CardTitle>
               </CardHeader>
@@ -580,10 +580,10 @@ export default function AdminPage() {
                     </SelectContent>
                   </Select>
 
-                  <div className="bg-white rounded border p-3 text-xs space-y-1">
+                  <div className="bg-card rounded border p-3 text-xs space-y-1">
                     {resetLevel === "full" && (
                       <>
-                        <p className="font-medium text-red-700">Deletes everything. Coach must be re-approved.</p>
+                        <p className="font-medium text-rose-700">Deletes everything. Coach must be re-approved.</p>
                         <p className="text-muted-foreground">
                           Sets status to pending, clears onboarding, program config, API key, all recruits, emails, and scores.
                         </p>
@@ -591,7 +591,7 @@ export default function AdminPage() {
                     )}
                     {resetLevel === "pre_onboarding" && (
                       <>
-                        <p className="font-medium text-orange-700">Keeps approval. Clears everything else.</p>
+                        <p className="font-medium text-amber-700">Keeps approval. Clears everything else.</p>
                         <p className="text-muted-foreground">
                           Coach remains approved but must redo onboarding. Clears program config, API key, all recruits, emails, and scores.
                         </p>
@@ -599,7 +599,7 @@ export default function AdminPage() {
                     )}
                     {resetLevel === "clear_data" && (
                       <>
-                        <p className="font-medium text-yellow-700">Keeps config. Clears pipeline data only.</p>
+                        <p className="font-medium text-amber-600">Keeps config. Clears pipeline data only.</p>
                         <p className="text-muted-foreground">
                           Coach stays approved with onboarding intact. Clears API key, all recruits, emails, and scores.
                         </p>
@@ -620,7 +620,7 @@ export default function AdminPage() {
                 {resetResult && (
                   <div
                     className={`p-3 rounded text-sm ${
-                      resetResult.success ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+                      resetResult.success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
                     }`}
                   >
                     {resetResult.message}

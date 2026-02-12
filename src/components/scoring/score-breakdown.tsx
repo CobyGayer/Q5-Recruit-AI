@@ -19,11 +19,11 @@ function ScoreBar({ label, score }: { label: string; score: number | null }) {
   const displayScore = score ?? 0;
   const barWidth = Math.max(0, Math.min(100, displayScore));
 
-  let barColor = "bg-gray-300";
+  let barColor = "bg-stone-300";
   if (score != null) {
-    if (score >= 80) barColor = "bg-green-500";
-    else if (score >= 60) barColor = "bg-yellow-500";
-    else barColor = "bg-gray-400";
+    if (score >= 80) barColor = "bg-emerald-500";
+    else if (score >= 60) barColor = "bg-amber-500";
+    else barColor = "bg-stone-400";
   }
 
   return (
@@ -34,7 +34,7 @@ function ScoreBar({ label, score }: { label: string; score: number | null }) {
           {score != null ? Math.round(score) : "N/A"}
         </span>
       </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${barColor}`}
           style={{ width: `${barWidth}%` }}
@@ -69,16 +69,16 @@ export function ScoreBreakdown({ score }: ScoreBreakdownProps) {
       <div className="border-t pt-3 space-y-1 text-sm">
         {score.bonus_points > 0 && (
           <div className="flex justify-between">
-            <span className="text-green-600">Bonus Points</span>
-            <span className="font-medium text-green-600">
+            <span className="text-emerald-600">Bonus Points</span>
+            <span className="font-medium text-emerald-600">
               +{score.bonus_points}
             </span>
           </div>
         )}
         {score.completeness_penalty > 0 && (
           <div className="flex justify-between">
-            <span className="text-orange-600">Completeness Penalty</span>
-            <span className="font-medium text-orange-600">
+            <span className="text-amber-600">Completeness Penalty</span>
+            <span className="font-medium text-amber-600">
               -{score.completeness_penalty}%
             </span>
           </div>

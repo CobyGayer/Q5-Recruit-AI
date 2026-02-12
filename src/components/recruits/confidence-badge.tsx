@@ -5,9 +5,9 @@ interface ConfidenceBadgeProps {
 }
 
 const COLORS: Record<ConfidenceLevel, string> = {
-  high: "bg-green-500",
-  medium: "bg-yellow-500",
-  low: "bg-red-500",
+  high: "bg-emerald-500",
+  medium: "bg-amber-500",
+  low: "bg-rose-500",
 };
 
 const LABELS: Record<ConfidenceLevel, string> = {

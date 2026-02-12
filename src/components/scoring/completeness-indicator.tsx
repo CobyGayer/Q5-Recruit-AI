@@ -63,7 +63,7 @@ export function CompletenessIndicator({
                 {fieldsMissing.map((field) => (
                   <span
                     key={field}
-                    className="text-xs bg-gray-100 rounded px-1.5 py-0.5"
+                    className="text-xs bg-muted rounded px-1.5 py-0.5"
                   >
                     {FIELD_LABELS[field] ?? field}
                   </span>

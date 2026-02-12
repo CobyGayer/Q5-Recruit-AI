@@ -93,7 +93,7 @@ export function RecruitCard({ recruit }: RecruitCardProps) {
               </span>
             )}
             {recruit.video_url && (
-              <span className="flex items-center gap-1 text-blue-600">
+              <span className="flex items-center gap-1 text-primary">
                 <Video className="h-3 w-3" />
                 Video
               </span>
@@ -110,7 +110,7 @@ export function RecruitCard({ recruit }: RecruitCardProps) {
             {hasLowConfidence && (
               <Badge
                 variant="outline"
-                className="text-xs bg-orange-50 text-orange-700 border-orange-200"
+                className="text-xs bg-amber-50 text-amber-700 border-amber-200"
               >
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Needs Review

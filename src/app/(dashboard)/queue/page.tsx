@@ -32,20 +32,20 @@ const STATUS_CONFIG: Record<
   ProcessingStatus,
   { label: string; icon: typeof CheckCircle; color: string }
 > = {
-  pending: { label: "Pending", icon: RefreshCw, color: "bg-gray-100 text-gray-700" },
-  processing: { label: "Processing", icon: RefreshCw, color: "bg-blue-100 text-blue-700" },
-  processed: { label: "Processed", icon: CheckCircle, color: "bg-green-100 text-green-700" },
+  pending: { label: "Pending", icon: RefreshCw, color: "bg-stone-100 text-stone-600" },
+  processing: { label: "Processing", icon: RefreshCw, color: "bg-sky-50 text-sky-700" },
+  processed: { label: "Processed", icon: CheckCircle, color: "bg-emerald-50 text-emerald-700" },
   needs_review: {
     label: "Needs Review",
     icon: AlertTriangle,
-    color: "bg-yellow-100 text-yellow-700",
+    color: "bg-amber-50 text-amber-700",
   },
   insufficient: {
     label: "Insufficient Data",
     icon: Info,
-    color: "bg-orange-100 text-orange-700",
+    color: "bg-amber-100 text-amber-600",
   },
-  failed: { label: "Failed", icon: XCircle, color: "bg-red-100 text-red-700" },
+  failed: { label: "Failed", icon: XCircle, color: "bg-rose-50 text-rose-700" },
 };
 
 export default function QueuePage() {
@@ -133,7 +133,7 @@ export default function QueuePage() {
                         {email.recruit_id && (
                           <Link
                             href={`/recruits/${email.recruit_id}`}
-                            className="text-blue-600 hover:underline text-sm"
+                            className="text-primary hover:underline text-sm"
                             onClick={(e) => e.stopPropagation()}
                           >
                             View Profile
@@ -169,10 +169,10 @@ export default function QueuePage() {
                           <div className="p-4 bg-muted rounded-lg">
                             {email.extraction_error && (
                               <div className="mb-3">
-                                <p className="text-sm font-medium text-red-600 mb-1">
+                                <p className="text-sm font-medium text-destructive mb-1">
                                   Error:
                                 </p>
-                                <p className="text-sm text-red-500">
+                                <p className="text-sm text-destructive">
                                   {email.extraction_error}
                                 </p>
                               </div>
@@ -180,7 +180,7 @@ export default function QueuePage() {
                             <p className="text-sm font-medium mb-1">
                               Email Body:
                             </p>
-                            <pre className="text-xs whitespace-pre-wrap max-h-48 overflow-auto bg-white p-3 rounded">
+                            <pre className="text-xs whitespace-pre-wrap max-h-48 overflow-auto bg-card p-3 rounded">
                               {email.body_plain || "(empty)"}
                             </pre>
                           </div>
