@@ -14,9 +14,9 @@ interface DqsBadgeProps {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return "bg-green-100 text-green-800 border-green-300";
-  if (score >= 60) return "bg-yellow-100 text-yellow-800 border-yellow-300";
-  return "bg-gray-100 text-gray-800 border-gray-300";
+  if (score >= 80) return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (score >= 60) return "bg-amber-50 text-amber-700 border-amber-200";
+  return "bg-stone-100 text-stone-600 border-stone-200";
 }
 
 export function DqsBadge({
@@ -38,7 +38,7 @@ export function DqsBadge({
           <TooltipTrigger>
             <Badge
               variant="outline"
-              className={`${sizeClasses[size]} bg-red-50 text-red-700 border-red-300`}
+              className={`${sizeClasses[size]} bg-rose-50 text-rose-600 border-rose-200`}
             >
               NQ
             </Badge>
@@ -60,7 +60,7 @@ export function DqsBadge({
     return (
       <Badge
         variant="outline"
-        className={`${sizeClasses[size]} bg-gray-50 text-gray-500`}
+        className={`${sizeClasses[size]} bg-stone-50 text-stone-400`}
       >
         --
       </Badge>

@@ -41,7 +41,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
   const items = isAdmin ? [...NAV_ITEMS, ...ADMIN_ITEMS] : NAV_ITEMS;
 
   return (
-    <aside className="w-64 border-r bg-white h-screen sticky top-0 flex flex-col">
+    <aside className="w-64 border-r bg-card h-screen sticky top-0 flex flex-col">
       <div className="p-6">
         <h1 className="text-lg font-bold">Q5 Recruit AI</h1>
       </div>
@@ -54,8 +54,8 @@ export function Sidebar({ isAdmin }: SidebarProps) {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
                 isActive
-                  ? "bg-gray-100 text-gray-900 font-medium"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <item.icon className="h-4 w-4" />
@@ -67,7 +67,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
       <div className="p-3 border-t">
         <Button
           variant="ghost"
-          className="w-full justify-start text-gray-600"
+          className="w-full justify-start text-muted-foreground"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4 mr-3" />

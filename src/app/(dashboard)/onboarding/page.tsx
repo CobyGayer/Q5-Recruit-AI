@@ -121,7 +121,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Progress steps */}
         <div className="flex items-center justify-center gap-2 mb-8">
@@ -130,10 +130,10 @@ export default function OnboardingPage() {
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   i < step
-                    ? "bg-green-500 text-white"
+                    ? "bg-emerald-500 text-white"
                     : i === step
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-500"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {i < step ? <Check className="h-4 w-4" /> : i + 1}
@@ -141,7 +141,7 @@ export default function OnboardingPage() {
               {i < STEPS.length - 1 && (
                 <div
                   className={`w-8 h-0.5 ${
-                    i < step ? "bg-green-500" : "bg-gray-200"
+                    i < step ? "bg-emerald-500" : "bg-muted"
                   }`}
                 />
               )}
@@ -202,8 +202,8 @@ export default function OnboardingPage() {
             {/* Step 4: Complete */}
             {step === 4 && (
               <div className="space-y-6 text-center py-4">
-                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                  <Check className="h-8 w-8 text-green-600" />
+                <div className="mx-auto w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center">
+                  <Check className="h-8 w-8 text-emerald-600" />
                 </div>
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold">You&apos;re all set!</h3>
@@ -213,8 +213,8 @@ export default function OnboardingPage() {
                     and ready to start processing recruit emails.
                   </p>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-4 text-left">
-                  <p className="text-sm text-blue-800">
+                <div className="bg-primary/10 rounded-lg p-4 text-left">
+                  <p className="text-sm text-primary">
                     <strong>What happens next:</strong> Our team will configure
                     your Gmail integration within 24 hours. Once active, simply
                     apply the &quot;Q5 Recruit AI&quot; label to any

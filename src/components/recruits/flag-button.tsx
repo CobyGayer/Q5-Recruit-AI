@@ -60,8 +60,8 @@ export function FlagButton({
         size="sm"
         className={`h-8 w-8 p-0 ${
           flag === "interested"
-            ? "text-yellow-500 hover:text-yellow-600"
-            : "text-gray-400 hover:text-yellow-500"
+            ? "text-amber-500 hover:text-amber-600"
+            : "text-stone-400 hover:text-amber-500"
         }`}
         onClick={() => handleFlag("interested")}
         disabled={loading}
@@ -77,8 +77,8 @@ export function FlagButton({
         size="sm"
         className={`h-8 w-8 p-0 ${
           flag === "not_a_fit"
-            ? "text-red-500 hover:text-red-600"
-            : "text-gray-400 hover:text-red-500"
+            ? "text-rose-500 hover:text-rose-600"
+            : "text-stone-400 hover:text-rose-500"
         }`}
         onClick={() => handleFlag("not_a_fit")}
         disabled={loading}
