@@ -129,6 +129,7 @@ export interface RecruitDqsScore {
   bonus_points: number;
   completeness_penalty: number;
   score_breakdown: Record<string, unknown>;
+  ai_summary: string | null;
   calculated_at: string;
 }
 
