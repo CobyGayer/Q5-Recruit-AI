@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calculateDQS } from "@/lib/scoring/dqs";
+import { generateDQSSummary } from "@/lib/scoring/summary";
 import type { Recruit, ProgramConfig } from "@/types/database";
 
 export async function POST() {
@@ -45,6 +46,12 @@ export async function POST() {
   for (const recruit of recruits) {
     const dqsResult = calculateDQS(recruit as Recruit, config as ProgramConfig);
 
+    const aiSummary = await generateDQSSummary(
+      recruit as Recruit,
+      config as ProgramConfig,
+      dqsResult
+    );
+
     await adminSupabase.from("recruit_dqs_scores").upsert(
       {
         recruit_id: recruit.id,
@@ -61,6 +68,7 @@ export async function POST() {
         bonus_points: dqsResult.bonusPoints,
         completeness_penalty: dqsResult.completenessPenalty,
         score_breakdown: dqsResult.breakdown,
+        ai_summary: aiSummary,
         calculated_at: new Date().toISOString(),
       },
       { onConflict: "recruit_id" }

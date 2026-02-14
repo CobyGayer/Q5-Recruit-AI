@@ -5,6 +5,7 @@ import { checkRateLimit } from "@/lib/utils/rate-limit";
 import { IngestPayloadSchema } from "@/lib/extraction/schema";
 import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
+import { generateDQSSummary } from "@/lib/scoring/summary";
 import type { Recruit, ProgramConfig, ConfidenceLevel } from "@/types/database";
 
 export async function POST(request: NextRequest) {
@@ -183,6 +184,12 @@ export async function POST(request: NextRequest) {
           config as ProgramConfig
         );
 
+        const aiSummary = await generateDQSSummary(
+          recruit as Recruit,
+          config as ProgramConfig,
+          dqsResult
+        );
+
         await supabase.from("recruit_dqs_scores").upsert(
           {
             recruit_id: recruitId,
@@ -199,6 +206,7 @@ export async function POST(request: NextRequest) {
             bonus_points: dqsResult.bonusPoints,
             completeness_penalty: dqsResult.completenessPenalty,
             score_breakdown: dqsResult.breakdown,
+            ai_summary: aiSummary,
             calculated_at: new Date().toISOString(),
           },
           { onConflict: "recruit_id" }
