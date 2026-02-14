@@ -1,4 +1,5 @@
 import type { Recruit, ProgramConfig, ClubLevel } from "@/types/database";
+import { lookupClubLevel } from "@/lib/data/club-directory";
 
 /** Club level tier scores */
 const CLUB_LEVEL_SCORES: Record<ClubLevel, number> = {
@@ -57,7 +58,14 @@ export function scoreCompetition(recruit: Recruit): number | null {
   if (recruit.club_level === "unknown" && !recruit.club_team) {
     return null; // No competition data
   }
-  return CLUB_LEVEL_SCORES[recruit.club_level] ?? 50;
+
+  // Fallback: if club_level is unknown but club_team exists, try directory lookup
+  let level: ClubLevel = recruit.club_level;
+  if (level === "unknown" && recruit.club_team) {
+    level = lookupClubLevel(recruit.club_team) ?? "unknown";
+  }
+
+  return CLUB_LEVEL_SCORES[level] ?? 50;
 }
 
 /**

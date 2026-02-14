@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ExtractionResultSchema, type ExtractionResultType } from "./schema";
 import { buildExtractionPrompt } from "./prompt";
 import type { ProcessingStatus, ClubLevel, ConfidenceLevel } from "@/types/database";
+import { lookupClubLevel } from "@/lib/data/club-directory";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -77,6 +78,15 @@ export async function extractRecruitData(
 
   // Validate with Zod schema
   const parsed = ExtractionResultSchema.parse(rawJson);
+
+  // Override club_level from authoritative directory when club_team is known
+  if (parsed.club_team.value) {
+    const directoryLevel = lookupClubLevel(parsed.club_team.value);
+    if (directoryLevel) {
+      parsed.club_level.value = directoryLevel;
+      parsed.club_level.confidence = "high";
+    }
+  }
 
   // Process extraction results
   const confidence: Record<string, ConfidenceLevel> = {};
