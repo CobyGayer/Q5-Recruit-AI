@@ -28,7 +28,7 @@ export default function PendingApprovalPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md text-center">
+      <Card className="w-full max-w-md text-center border-primary/10">
         <CardHeader>
           <div className="flex justify-center mb-4">
             <Clock className="h-12 w-12 text-amber-500" />

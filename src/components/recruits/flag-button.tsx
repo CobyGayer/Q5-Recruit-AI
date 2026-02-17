@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import type { FlagType } from "@/types/database";
-import { Star, X } from "lucide-react";
+import { Star, ThumbsDown } from "lucide-react";
 
 interface FlagButtonProps {
   recruitId: string;
@@ -21,7 +21,9 @@ export function FlagButton({
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
-  async function handleFlag(newFlag: FlagType) {
+  async function handleFlag(e: React.MouseEvent, newFlag: FlagType) {
+    e.preventDefault();
+    e.stopPropagation();
     setLoading(true);
     const targetFlag = flag === newFlag ? null : newFlag;
 
@@ -54,18 +56,24 @@ export function FlagButton({
   }
 
   return (
-    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="flex items-center gap-0.5"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
       <Button
         variant="ghost"
         size="sm"
-        className={`h-8 w-8 p-0 ${
+        className={`h-7 w-7 p-0 ${
           flag === "interested"
             ? "text-amber-500 hover:text-amber-600"
             : "text-stone-400 hover:text-amber-500"
         }`}
-        onClick={() => handleFlag("interested")}
+        onClick={(e) => handleFlag(e, "interested")}
         disabled={loading}
-        title="Mark as interested"
+        title="Star recruit"
       >
         <Star
           className="h-4 w-4"
@@ -75,16 +83,19 @@ export function FlagButton({
       <Button
         variant="ghost"
         size="sm"
-        className={`h-8 w-8 p-0 ${
+        className={`h-7 w-7 p-0 ${
           flag === "not_a_fit"
             ? "text-rose-500 hover:text-rose-600"
             : "text-stone-400 hover:text-rose-500"
         }`}
-        onClick={() => handleFlag("not_a_fit")}
+        onClick={(e) => handleFlag(e, "not_a_fit")}
         disabled={loading}
-        title="Mark as not a fit"
+        title="Not a fit"
       >
-        <X className="h-4 w-4" />
+        <ThumbsDown
+          className="h-3.5 w-3.5"
+          fill={flag === "not_a_fit" ? "currentColor" : "none"}
+        />
       </Button>
     </div>
   );

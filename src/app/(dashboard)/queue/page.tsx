@@ -85,15 +85,15 @@ export default function QueuePage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="border-primary/10">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Status</TableHead>
-                <TableHead>Sender</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead>Received</TableHead>
-                <TableHead>Profile</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider">Status</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider">Sender</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider">Subject</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider">Received</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider">Profile</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>

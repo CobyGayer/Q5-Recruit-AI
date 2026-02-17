@@ -1,4 +1,3 @@
-import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
   TooltipContent,
@@ -39,18 +38,13 @@ export function CompletenessIndicator({
   fieldsTotal,
   fieldsMissing = [],
 }: CompletenessIndicatorProps) {
-  const percentage = fieldsTotal > 0 ? (fieldsExtracted / fieldsTotal) * 100 : 0;
-
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-2 cursor-help">
-            <Progress value={percentage} className="h-1.5 w-16" />
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {fieldsExtracted}/{fieldsTotal}
-            </span>
-          </div>
+          <span className="text-xs text-muted-foreground whitespace-nowrap cursor-help">
+            {fieldsExtracted}/{fieldsTotal}
+          </span>
         </TooltipTrigger>
         <TooltipContent className="max-w-xs">
           <p className="font-medium mb-1">

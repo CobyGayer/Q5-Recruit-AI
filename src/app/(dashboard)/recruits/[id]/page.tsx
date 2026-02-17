@@ -239,7 +239,7 @@ export default function RecruitDetailPage() {
             </h1>
             <div className="flex items-center gap-2 mt-1">
               {recruit.positions.map((pos) => (
-                <Badge key={pos} variant="secondary">
+                <Badge key={pos} variant="outline" className="border-primary/40 text-primary">
                   {pos}
                 </Badge>
               ))}
@@ -281,10 +281,10 @@ export default function RecruitDetailPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left: Profile fields */}
         <div className="lg:col-span-2 space-y-6">
-          <Card>
+          <Card className="border-primary/10">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Profile Information</CardTitle>
               <CompletenessIndicator
@@ -367,7 +367,7 @@ export default function RecruitDetailPage() {
                         key={key}
                         className="grid grid-cols-3 gap-2 items-center py-1 border-b last:border-0"
                       >
-                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                           {confidence[key] && (
                             <ConfidenceBadge confidence={confidence[key]} />
                           )}
@@ -390,7 +390,7 @@ export default function RecruitDetailPage() {
 
           {/* Embedded video */}
           {recruit.video_url && (
-            <Card>
+            <Card className="border-primary/10">
               <CardHeader>
                 <CardTitle>Highlight Video</CardTitle>
               </CardHeader>
@@ -422,7 +422,7 @@ export default function RecruitDetailPage() {
 
           {/* Original email */}
           {originalEmail && (
-            <Card>
+            <Card className="border-primary/10">
               <CardHeader>
                 <button
                   className="flex items-center justify-between w-full"
@@ -450,7 +450,7 @@ export default function RecruitDetailPage() {
         {/* Right: Score breakdown */}
         <div className="space-y-6">
           {dqsScore && (
-            <Card>
+            <Card className="border-primary/10">
               <CardHeader>
                 <CardTitle>Score Breakdown</CardTitle>
               </CardHeader>

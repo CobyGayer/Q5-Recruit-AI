@@ -130,7 +130,7 @@ export default function OnboardingPage() {
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   i < step
-                    ? "bg-emerald-500 text-white"
+                    ? "bg-primary text-white"
                     : i === step
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground"
@@ -141,7 +141,7 @@ export default function OnboardingPage() {
               {i < STEPS.length - 1 && (
                 <div
                   className={`w-8 h-0.5 ${
-                    i < step ? "bg-emerald-500" : "bg-muted"
+                    i < step ? "bg-primary" : "bg-muted"
                   }`}
                 />
               )}
@@ -149,7 +149,7 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        <Card>
+        <Card className="border-primary/10">
           <CardHeader>
             <CardTitle>{STEPS[step]}</CardTitle>
             <CardDescription>

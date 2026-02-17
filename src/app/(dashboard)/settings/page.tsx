@@ -170,7 +170,7 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="thresholds">
-          <Card>
+          <Card className="border-primary/10">
             <CardContent className="pt-6">
               <ThresholdForm data={thresholds} onChange={setThresholds} />
             </CardContent>
@@ -178,7 +178,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="weights">
-          <Card>
+          <Card className="border-primary/10">
             <CardContent className="pt-6">
               <WeightSelector data={weights} onChange={setWeights} />
             </CardContent>
@@ -186,7 +186,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="roster">
-          <Card>
+          <Card className="border-primary/10">
             <CardContent className="pt-6">
               <RosterContextForm data={roster} onChange={setRoster} />
             </CardContent>
@@ -194,7 +194,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="api">
-          <Card>
+          <Card className="border-primary/10">
             <CardHeader>
               <CardTitle>API Key</CardTitle>
               <CardDescription>

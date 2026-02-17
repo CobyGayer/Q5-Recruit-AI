@@ -1,10 +1,10 @@
-import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getScoreBadgeClass } from "@/lib/scoring/colors";
 
 interface DqsBadgeProps {
   score: number | null;
@@ -13,11 +13,11 @@ interface DqsBadgeProps {
   size?: "sm" | "md" | "lg";
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 80) return "bg-emerald-50 text-emerald-700 border-emerald-200";
-  if (score >= 60) return "bg-amber-50 text-amber-700 border-amber-200";
-  return "bg-stone-100 text-stone-600 border-stone-200";
-}
+const sizeClasses = {
+  sm: "w-8 h-8 text-xs rounded-lg",
+  md: "w-10 h-10 text-sm rounded-xl",
+  lg: "w-12 h-12 text-lg rounded-xl",
+};
 
 export function DqsBadge({
   score,
@@ -25,23 +25,16 @@ export function DqsBadge({
   disqualificationReasons = [],
   size = "md",
 }: DqsBadgeProps) {
-  const sizeClasses = {
-    sm: "text-xs px-2 py-0.5",
-    md: "text-sm px-2.5 py-1",
-    lg: "text-lg px-3 py-1.5 font-bold",
-  };
-
   if (!isQualified) {
     return (
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger>
-            <Badge
-              variant="outline"
-              className={`${sizeClasses[size]} bg-rose-50 text-rose-600 border-rose-200`}
+            <div
+              className={`${sizeClasses[size]} bg-rose-500 text-white flex items-center justify-center font-bold shrink-0`}
             >
               NQ
-            </Badge>
+            </div>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">
             <p className="font-medium mb-1">Not Qualified</p>
@@ -58,21 +51,19 @@ export function DqsBadge({
 
   if (score == null) {
     return (
-      <Badge
-        variant="outline"
-        className={`${sizeClasses[size]} bg-stone-50 text-stone-400`}
+      <div
+        className={`${sizeClasses[size]} bg-muted text-muted-foreground flex items-center justify-center font-bold shrink-0`}
       >
         --
-      </Badge>
+      </div>
     );
   }
 
   return (
-    <Badge
-      variant="outline"
-      className={`${sizeClasses[size]} ${getScoreColor(score)}`}
+    <div
+      className={`${sizeClasses[size]} ${getScoreBadgeClass(score)} flex items-center justify-center font-bold shrink-0`}
     >
       {Math.round(score)}
-    </Badge>
+    </div>
   );
 }
