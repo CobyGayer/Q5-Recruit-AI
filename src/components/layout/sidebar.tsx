@@ -12,6 +12,7 @@ import {
   Shield,
   LogOut,
 } from "lucide-react";
+import { FeedbackDialog } from "@/components/layout/feedback-dialog";
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -64,7 +65,8 @@ export function Sidebar({ isAdmin }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="p-3 border-t">
+      <div className="p-3 border-t space-y-1">
+        <FeedbackDialog />
         <Button
           variant="ghost"
           className="w-full justify-start text-muted-foreground"
