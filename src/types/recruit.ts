@@ -1,5 +1,38 @@
 import type { FlagType, ProcessingStatus } from "./database";
 
+/** Sort options for the recruit dashboard */
+export type SortOption =
+  | "dqs"
+  | "name"
+  | "grad_year"
+  | "date"
+  | "gpa"
+  | "height"
+  | "completeness";
+
+export type SortDirection = "asc" | "desc";
+
+export const SORT_LABELS: Record<SortOption, string> = {
+  dqs: "DQS Score",
+  name: "Name",
+  grad_year: "Grad Year",
+  date: "Date Added",
+  gpa: "GPA",
+  height: "Height",
+  completeness: "Completeness",
+};
+
+/** Default sort direction per sort option */
+export const DEFAULT_SORT_DIRECTIONS: Record<SortOption, SortDirection> = {
+  dqs: "desc",
+  name: "asc",
+  grad_year: "asc",
+  date: "desc",
+  gpa: "desc",
+  height: "desc",
+  completeness: "desc",
+};
+
 /** Filters for the recruit dashboard */
 export interface RecruitFilters {
   graduation_years: number[];
@@ -16,7 +49,7 @@ export interface RecruitFilters {
   completeness_min: number;
   show_not_qualified: boolean;
   needs_review: boolean;
-  flag_filter: FlagType | "none" | "all";
+  flag_filter: FlagType | "all";
 }
 
 /** Default filter values */

@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
-  Users,
   Inbox,
   Settings,
   Shield,
@@ -42,9 +41,9 @@ export function Sidebar({ isAdmin }: SidebarProps) {
   const items = isAdmin ? [...NAV_ITEMS, ...ADMIN_ITEMS] : NAV_ITEMS;
 
   return (
-    <aside className="w-64 border-r bg-card h-screen sticky top-0 flex flex-col">
-      <div className="p-6">
-        <h1 className="text-lg font-bold">Q5 Recruit AI</h1>
+    <aside className="w-64 border-r border-sidebar-border/30 bg-card h-screen sticky top-0 flex flex-col">
+      <div className="p-6 pb-4">
+        <h1 className="text-xl font-bold">Q5</h1>
       </div>
       <nav className="flex-1 px-3 space-y-1">
         {items.map((item) => {
@@ -53,10 +52,10 @@ export function Sidebar({ isAdmin }: SidebarProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                 isActive
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-secondary text-secondary-foreground font-medium"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
             >
               <item.icon className="h-4 w-4" />
@@ -65,7 +64,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="p-3 border-t space-y-1">
+      <div className="p-3 border-t border-sidebar-border/30 space-y-1">
         <FeedbackDialog />
         <Button
           variant="ghost"

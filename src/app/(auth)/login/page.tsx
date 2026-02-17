@@ -45,12 +45,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md border-primary/10">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
-            Q5 Recruit AI
+            Q5
           </CardTitle>
-          <CardDescription>Sign in to your coaching dashboard</CardDescription>
+          <CardDescription>Recruit AI — Sign in to your coaching dashboard</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

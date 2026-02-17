@@ -13,17 +13,23 @@ import { Badge } from "@/components/ui/badge";
 import { DqsBadge } from "@/components/scoring/dqs-badge";
 import { CompletenessIndicator } from "@/components/scoring/completeness-indicator";
 import { FlagButton } from "./flag-button";
-import type { RecruitWithScore } from "@/types/database";
+import type { RecruitWithScore, FlagType } from "@/types/database";
+import type { SortOption, SortDirection } from "@/types/recruit";
+import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AlertTriangle, Video } from "lucide-react";
+import { AlertTriangle, Video, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
 
 interface RecruitListViewProps {
   recruits: RecruitWithScore[];
+  sortBy: SortOption;
+  sortDirection: SortDirection;
+  onSort: (field: SortOption) => void;
+  onFlagChange?: (recruitId: string, flag: FlagType | null) => void;
 }
 
 const CLUB_LEVEL_LABELS: Record<string, string> = {
@@ -39,24 +45,93 @@ function formatHeight(inches: number): string {
   return `${Math.floor(inches / 12)}'${inches % 12}"`;
 }
 
-export function RecruitListView({ recruits }: RecruitListViewProps) {
+/** Column definition for sortable table headers */
+interface SortableColumn {
+  label: string;
+  sortKey: SortOption | null;
+  className?: string;
+}
+
+const COLUMNS: SortableColumn[] = [
+  { label: "", sortKey: null, className: "w-10" },
+  { label: "DQS", sortKey: "dqs", className: "w-14" },
+  { label: "Name", sortKey: "name" },
+  { label: "Pos", sortKey: null },
+  { label: "Year", sortKey: "grad_year", className: "w-16" },
+  { label: "GPA", sortKey: "gpa", className: "w-14" },
+  { label: "Height", sortKey: "height", className: "w-16" },
+  { label: "Club", sortKey: null },
+  { label: "Location", sortKey: null },
+  { label: "Video", sortKey: null, className: "w-14" },
+  { label: "Data", sortKey: "completeness", className: "w-20" },
+];
+
+function SortableHeader({
+  column,
+  sortBy,
+  sortDirection,
+  onSort,
+}: {
+  column: SortableColumn;
+  sortBy: SortOption;
+  sortDirection: SortDirection;
+  onSort: (field: SortOption) => void;
+}) {
+  const isActive = column.sortKey === sortBy;
+  const isSortable = column.sortKey !== null;
+
+  return (
+    <TableHead
+      className={`text-[10px] uppercase tracking-wider ${column.className ?? ""} ${
+        isSortable ? "cursor-pointer select-none hover:text-foreground group" : ""
+      }`}
+      onClick={isSortable ? () => onSort(column.sortKey!) : undefined}
+    >
+      {column.label ? (
+        <div className="flex items-center gap-1">
+          {column.label}
+          {isSortable &&
+            (isActive ? (
+              sortDirection === "asc" ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )
+            ) : (
+              <ArrowUpDown className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />
+            ))}
+        </div>
+      ) : null}
+    </TableHead>
+  );
+}
+
+export function RecruitListView({
+  recruits,
+  sortBy,
+  sortDirection,
+  onSort,
+  onFlagChange,
+}: RecruitListViewProps) {
   const router = useRouter();
+
+  function handleSort(field: SortOption) {
+    onSort(field);
+  }
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-14">DQS</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead>Pos</TableHead>
-          <TableHead className="w-16">Year</TableHead>
-          <TableHead className="w-14">GPA</TableHead>
-          <TableHead className="w-16">Height</TableHead>
-          <TableHead>Club</TableHead>
-          <TableHead>Location</TableHead>
-          <TableHead className="w-14">Video</TableHead>
-          <TableHead className="w-24">Data</TableHead>
-          <TableHead className="w-20"></TableHead>
+          {COLUMNS.map((col, i) => (
+            <SortableHeader
+              key={i}
+              column={col}
+              sortBy={sortBy}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
+          ))}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -69,9 +144,16 @@ export function RecruitListView({ recruits }: RecruitListViewProps) {
           return (
             <TableRow
               key={recruit.id}
-              className="cursor-pointer"
+              className="cursor-pointer h-14"
               onClick={() => router.push(`/recruits/${recruit.id}`)}
             >
+              <TableCell>
+                <FlagButton
+                  recruitId={recruit.id}
+                  currentFlag={recruit.flag?.flag ?? null}
+                  onFlagChange={(flag) => onFlagChange?.(recruit.id, flag)}
+                />
+              </TableCell>
               <TableCell>
                 <DqsBadge
                   score={dqs?.overall_score ?? null}
@@ -101,8 +183,8 @@ export function RecruitListView({ recruits }: RecruitListViewProps) {
                     {recruit.positions.map((pos) => (
                       <Badge
                         key={pos}
-                        variant="secondary"
-                        className="text-xs"
+                        variant="outline"
+                        className="text-xs border-primary/40 text-primary"
                       >
                         {pos}
                       </Badge>
@@ -155,12 +237,6 @@ export function RecruitListView({ recruits }: RecruitListViewProps) {
                   fieldsExtracted={recruit.fields_extracted}
                   fieldsTotal={recruit.fields_total}
                   fieldsMissing={recruit.fields_missing}
-                />
-              </TableCell>
-              <TableCell onClick={(e) => e.stopPropagation()}>
-                <FlagButton
-                  recruitId={recruit.id}
-                  currentFlag={recruit.flag?.flag ?? null}
                 />
               </TableCell>
             </TableRow>

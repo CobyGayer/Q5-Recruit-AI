@@ -209,25 +209,25 @@ export default function AdminPage() {
       {/* Stats cards */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
+          <Card className="border-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
-              <Users className="h-8 w-8 text-teal-500" />
+              <Users className="h-8 w-8 text-primary" />
               <div>
                 <p className="text-2xl font-bold">{stats.total_coaches}</p>
-                <p className="text-xs text-muted-foreground">Total Coaches</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Coaches</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
-              <Mail className="h-8 w-8 text-emerald-500" />
+              <Mail className="h-8 w-8 text-primary" />
               <div>
                 <p className="text-2xl font-bold">{stats.total_emails}</p>
-                <p className="text-xs text-muted-foreground">Emails Ingested</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Emails Ingested</p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
               <BarChart3 className="h-8 w-8 text-primary" />
               <div>
@@ -239,20 +239,20 @@ export default function AdminPage() {
                     : 0}
                   %
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   Extraction Success Rate
                 </p>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
               <BarChart3 className="h-8 w-8 text-amber-500" />
               <div>
                 <p className="text-2xl font-bold">
                   {stats.avg_fields_extracted.toFixed(1)}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   Avg Fields Extracted
                 </p>
               </div>
@@ -311,14 +311,14 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           ) : pendingCoaches.length === 0 ? null : (
-            <Card>
+            <Card className="border-primary/10">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Registered</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wider">Name</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wider">Email</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wider">Registered</TableHead>
+                    <TableHead className="text-[10px] uppercase tracking-wider">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -365,15 +365,15 @@ export default function AdminPage() {
         </TabsContent>
 
         <TabsContent value="all">
-          <Card>
+          <Card className="border-primary/10">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Onboarded</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Name</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Email</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Role</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Status</TableHead>
+                  <TableHead className="text-[10px] uppercase tracking-wider">Onboarded</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -470,15 +470,15 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
+              <Card className="border-primary/10">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Coach</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Pipeline Status</TableHead>
-                      <TableHead>Has API Key</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Coach</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Email</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Pipeline Status</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Has API Key</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -629,7 +629,7 @@ export default function AdminPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-primary/10">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Current Coach States</CardTitle>
               </CardHeader>
@@ -637,11 +637,11 @@ export default function AdminPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Coach</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Onboarded</TableHead>
-                      <TableHead>Pipeline</TableHead>
-                      <TableHead>Has Key</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Coach</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Status</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Onboarded</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Pipeline</TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wider">Has Key</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

@@ -1,6 +1,7 @@
 "use client";
 
 import type { RecruitDqsScore } from "@/types/database";
+import { getScoreBarClass } from "@/lib/scoring/colors";
 
 interface ScoreBreakdownProps {
   score: RecruitDqsScore;
@@ -19,22 +20,17 @@ function ScoreBar({ label, score }: { label: string; score: number | null }) {
   const displayScore = score ?? 0;
   const barWidth = Math.max(0, Math.min(100, displayScore));
 
-  let barColor = "bg-stone-300";
-  if (score != null) {
-    if (score >= 80) barColor = "bg-emerald-500";
-    else if (score >= 60) barColor = "bg-amber-500";
-    else barColor = "bg-stone-400";
-  }
+  const barColor = score != null ? getScoreBarClass(score) : "bg-stone-300";
 
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
         <span className="font-medium">
           {score != null ? Math.round(score) : "N/A"}
         </span>
       </div>
-      <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${barColor}`}
           style={{ width: `${barWidth}%` }}
@@ -69,8 +65,8 @@ export function ScoreBreakdown({ score }: ScoreBreakdownProps) {
       <div className="border-t pt-3 space-y-1 text-sm">
         {score.bonus_points > 0 && (
           <div className="flex justify-between">
-            <span className="text-emerald-600">Bonus Points</span>
-            <span className="font-medium text-emerald-600">
+            <span className="text-primary">Bonus Points</span>
+            <span className="font-medium text-primary">
               +{score.bonus_points}
             </span>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { RecruitWithScore } from "@/types/database";
+import type { RecruitWithScore, FlagType } from "@/types/database";
 
 export function useRecruits() {
   const [recruits, setRecruits] = useState<RecruitWithScore[]>([]);
@@ -73,5 +73,24 @@ export function useRecruits() {
     fetchRecruits();
   }, [fetchRecruits]);
 
-  return { recruits, loading, error, refetch: fetchRecruits };
+  /** Optimistically update a recruit's flag in local state (DB write happens in FlagButton) */
+  const updateRecruitFlag = useCallback(
+    (recruitId: string, newFlag: FlagType | null) => {
+      setRecruits((prev) =>
+        prev.map((r) =>
+          r.id === recruitId
+            ? {
+                ...r,
+                flag: newFlag
+                  ? { ...r.flag, recruit_id: recruitId, flag: newFlag } as RecruitWithScore["flag"]
+                  : null,
+              }
+            : r
+        )
+      );
+    },
+    []
+  );
+
+  return { recruits, loading, error, refetch: fetchRecruits, updateRecruitFlag };
 }

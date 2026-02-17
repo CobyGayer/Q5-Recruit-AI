@@ -1,22 +1,42 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRecruits } from "@/hooks/use-recruits";
+import { useDashboardParams } from "@/hooks/use-dashboard-params";
 import { RecruitCard } from "@/components/recruits/recruit-card";
 import { RecruitFilterPanel } from "@/components/recruits/recruit-filters";
 import { RecruitListView } from "@/components/recruits/recruit-list-view";
-import type { RecruitFilters } from "@/types/recruit";
-import { DEFAULT_FILTERS } from "@/types/recruit";
+import { RecruitFilterBar } from "@/components/recruits/recruit-filter-bar";
+import { ActiveFilterChips } from "@/components/recruits/active-filter-chips";
+import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit";
+import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import type { RecruitWithScore } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { SlidersHorizontal, LayoutGrid, List, X } from "lucide-react";
+import { X } from "lucide-react";
 
 function applyFilters(
   recruits: RecruitWithScore[],
-  filters: RecruitFilters
+  filters: RecruitFilters,
+  searchTerm: string
 ): RecruitWithScore[] {
   return recruits.filter((r) => {
+    // Multi-field search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const searchFields = [
+        r.full_name,
+        r.email,
+        r.club_team,
+        r.current_school,
+        r.city,
+        r.state,
+        r.high_school_team,
+      ];
+      if (!searchFields.some((f) => f?.toLowerCase().includes(term))) {
+        return false;
+      }
+    }
+
     const dqs = r.dqs_score;
 
     // Hide not qualified by default
@@ -24,15 +44,11 @@ function applyFilters(
       return false;
     }
 
-    // Hide "not a fit" flagged unless filtering for them
+    // Flag filter
     if (
       filters.flag_filter !== "all" &&
-      filters.flag_filter !== "none" &&
       r.flag?.flag !== filters.flag_filter
     ) {
-      return false;
-    }
-    if (filters.flag_filter === "none" && r.flag) {
       return false;
     }
 
@@ -103,7 +119,10 @@ function applyFilters(
 
     // DQS range
     if (dqs?.overall_score != null) {
-      if (dqs.overall_score < filters.dqs_min || dqs.overall_score > filters.dqs_max) {
+      if (
+        dqs.overall_score < filters.dqs_min ||
+        dqs.overall_score > filters.dqs_max
+      ) {
         return false;
       }
     }
@@ -127,9 +146,121 @@ function applyFilters(
   });
 }
 
-export default function DashboardPage() {
-  const { recruits, loading } = useRecruits();
-  const [filters, setFilters] = useState<RecruitFilters>(DEFAULT_FILTERS);
+function applySorting(
+  recruits: RecruitWithScore[],
+  sortBy: SortOption,
+  sortDir: SortDirection
+): RecruitWithScore[] {
+  const sorted = [...recruits];
+  const dir = sortDir === "asc" ? 1 : -1;
+
+  switch (sortBy) {
+    case "name":
+      sorted.sort(
+        (a, b) =>
+          dir * (a.full_name ?? "").localeCompare(b.full_name ?? "")
+      );
+      break;
+    case "grad_year":
+      sorted.sort(
+        (a, b) =>
+          dir *
+          ((a.graduation_year ?? 9999) - (b.graduation_year ?? 9999))
+      );
+      break;
+    case "date":
+      sorted.sort(
+        (a, b) =>
+          dir *
+          (new Date(a.created_at).getTime() -
+            new Date(b.created_at).getTime())
+      );
+      break;
+    case "gpa":
+      sorted.sort(
+        (a, b) => dir * ((a.gpa ?? -1) - (b.gpa ?? -1))
+      );
+      break;
+    case "height":
+      sorted.sort(
+        (a, b) =>
+          dir * ((a.height_inches ?? -1) - (b.height_inches ?? -1))
+      );
+      break;
+    case "completeness": {
+      sorted.sort((a, b) => {
+        const compA =
+          a.fields_total > 0 ? a.fields_extracted / a.fields_total : 0;
+        const compB =
+          b.fields_total > 0 ? b.fields_extracted / b.fields_total : 0;
+        return dir * (compA - compB);
+      });
+      break;
+    }
+    default:
+      // DQS score
+      sorted.sort(
+        (a, b) =>
+          dir *
+          ((a.dqs_score?.overall_score ?? -1) -
+            (b.dqs_score?.overall_score ?? -1))
+      );
+      break;
+  }
+  return sorted;
+}
+
+/** Map filter keys to their default values for removing individual filters */
+function getDefaultForKey(key: keyof RecruitFilters): Partial<RecruitFilters> {
+  switch (key) {
+    case "graduation_years":
+      return { graduation_years: [] };
+    case "positions":
+      return { positions: [] };
+    case "min_gpa":
+      return { min_gpa: null };
+    case "min_height":
+      return { min_height: null };
+    case "min_sat":
+      return { min_sat: null };
+    case "min_act":
+      return { min_act: null };
+    case "club_levels":
+      return { club_levels: [] };
+    case "location":
+      return { location: "" };
+    case "has_video":
+      return { has_video: false };
+    case "dqs_min":
+      return { dqs_min: 0, dqs_max: 100 };
+    case "dqs_max":
+      return { dqs_min: 0, dqs_max: 100 };
+    case "completeness_min":
+      return { completeness_min: 0 };
+    case "show_not_qualified":
+      return { show_not_qualified: false };
+    case "needs_review":
+      return { needs_review: false };
+    case "flag_filter":
+      return { flag_filter: "all" };
+  }
+}
+
+function DashboardContent() {
+  const { recruits, loading, updateRecruitFlag } = useRecruits();
+  const {
+    searchTerm,
+    setSearchTerm,
+    sortBy,
+    setSortBy,
+    sortDir,
+    setSortDir,
+    filters,
+    setFilters,
+    resetFilters,
+    activeFilterCount,
+  } = useDashboardParams();
+
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
 
@@ -143,15 +274,36 @@ export default function DashboardPage() {
     localStorage.setItem("q5r_view_mode", mode);
   }
 
+  function handleSort(field: SortOption) {
+    if (field === sortBy) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortDir(DEFAULT_SORT_DIRECTIONS[field]);
+    }
+  }
+
+  function handleRemoveFilter(key: keyof RecruitFilters) {
+    setFilters(getDefaultForKey(key));
+  }
+
+  function handleClearAll() {
+    resetFilters();
+  }
+
   const filteredRecruits = useMemo(
-    () => applyFilters(recruits, filters),
-    [recruits, filters]
+    () => applyFilters(recruits, filters, searchTerm),
+    [recruits, filters, searchTerm]
   );
 
-  const activeFilterCount = useMemo(() => {
+  const sortedRecruits = useMemo(
+    () => applySorting(filteredRecruits, sortBy, sortDir),
+    [filteredRecruits, sortBy, sortDir]
+  );
+
+  // Count only sidebar-relevant filters (exclude Year/Position/Flag which are in popovers)
+  const sidebarFilterCount = useMemo(() => {
     let count = 0;
-    if (filters.graduation_years.length > 0) count++;
-    if (filters.positions.length > 0) count++;
     if (filters.min_gpa != null) count++;
     if (filters.min_height != null) count++;
     if (filters.min_sat != null) count++;
@@ -160,6 +312,7 @@ export default function DashboardPage() {
     if (filters.location) count++;
     if (filters.has_video) count++;
     if (filters.dqs_min > 0 || filters.dqs_max < 100) count++;
+    if (filters.completeness_min > 0) count++;
     if (filters.show_not_qualified) count++;
     if (filters.needs_review) count++;
     return count;
@@ -168,54 +321,52 @@ export default function DashboardPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Recruit Dashboard</h1>
+      <div className="mb-6">
+        <div className="flex items-baseline gap-3 mb-4">
+          <h1 className="text-2xl font-bold">Recruits</h1>
           <p className="text-sm text-muted-foreground">
-            {filteredRecruits.length} of {recruits.length} recruits
+            {sortedRecruits.length} of {recruits.length} players
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center border rounded-md">
-            <Button
-              variant={viewMode === "cards" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-2.5 rounded-r-none"
-              onClick={() => handleViewMode("cards")}
-              title="Card view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-2.5 rounded-l-none"
-              onClick={() => handleViewMode("list")}
-              title="List view"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <SlidersHorizontal className="h-4 w-4 mr-2" />
-            Filters
-            {activeFilterCount > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {activeFilterCount}
-              </Badge>
-            )}
-          </Button>
+
+        {/* Controls row */}
+        <RecruitFilterBar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          filters={filters}
+          onFiltersChange={setFilters}
+          showFilters={showFilters}
+          onToggleFilters={() => setShowFilters(!showFilters)}
+          activeFilterCount={sidebarFilterCount}
+          viewMode={viewMode}
+          onViewModeChange={handleViewMode}
+        />
+
+        {/* Active filter chips */}
+        <div className="mt-3">
+          <ActiveFilterChips
+            filters={filters}
+            searchTerm={searchTerm}
+            onRemoveFilter={handleRemoveFilter}
+            onClearSearch={() => setSearchTerm("")}
+            onClearAll={handleClearAll}
+          />
         </div>
       </div>
 
       <div className="flex gap-6">
-        {/* Filter panel */}
+        {/* Sidebar filter panel */}
         {showFilters && (
           <div className="w-72 shrink-0">
-            <RecruitFilterPanel filters={filters} onChange={setFilters} />
+            <RecruitFilterPanel
+              filters={filters}
+              onChange={setFilters}
+              onReset={resetFilters}
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSortChange={setSortBy}
+              onSortDirChange={setSortDir}
+            />
           </div>
         )}
 
@@ -225,35 +376,59 @@ export default function DashboardPage() {
             <div className="flex items-center justify-center h-64">
               <p className="text-muted-foreground">Loading recruits...</p>
             </div>
-          ) : filteredRecruits.length === 0 ? (
+          ) : sortedRecruits.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <p className="text-muted-foreground mb-2">
                 {recruits.length === 0
                   ? "No recruits yet. Emails ingested through Zapier will appear here."
+                  : searchTerm && activeFilterCount === 0
+                  ? `No recruits match "${searchTerm}"`
+                  : searchTerm
+                  ? `No recruits match "${searchTerm}" with current filters`
                   : "No recruits match your filters."}
               </p>
-              {activeFilterCount > 0 && (
+              {(activeFilterCount > 0 || searchTerm) && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  onClick={handleClearAll}
                 >
                   <X className="h-3 w-3 mr-1" />
-                  Clear filters
+                  Clear all filters
                 </Button>
               )}
             </div>
           ) : viewMode === "cards" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredRecruits.map((recruit) => (
-                <RecruitCard key={recruit.id} recruit={recruit} />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {sortedRecruits.map((recruit) => (
+                <RecruitCard key={recruit.id} recruit={recruit} onFlagChange={updateRecruitFlag} />
               ))}
             </div>
           ) : (
-            <RecruitListView recruits={filteredRecruits} />
+            <RecruitListView
+              recruits={sortedRecruits}
+              sortBy={sortBy}
+              sortDirection={sortDir}
+              onSort={handleSort}
+              onFlagChange={updateRecruitFlag}
+            />
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

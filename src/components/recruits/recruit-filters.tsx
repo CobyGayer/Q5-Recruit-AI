@@ -2,18 +2,23 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { POSITIONS, GRAD_YEARS } from "@/types/config";
-import type { RecruitFilters } from "@/types/recruit";
-import { DEFAULT_FILTERS } from "@/types/recruit";
-import { RotateCcw } from "lucide-react";
+import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit";
+import { SORT_LABELS, DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
+import { RotateCcw, ChevronUp, ChevronDown } from "lucide-react";
 
 interface RecruitFiltersProps {
   filters: RecruitFilters;
-  onChange: (filters: RecruitFilters) => void;
+  onChange: (updates: Partial<RecruitFilters>) => void;
+  onReset: () => void;
+  // Sort
+  sortBy: SortOption;
+  sortDir: SortDirection;
+  onSortChange: (sort: SortOption) => void;
+  onSortDirChange: (dir: SortDirection) => void;
 }
 
 const CLUB_LEVELS = [
@@ -24,67 +29,94 @@ const CLUB_LEVELS = [
   { value: "other", label: "Other" },
 ];
 
-export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
-  function toggleArrayItem(
-    key: "graduation_years" | "positions" | "club_levels",
-    value: string | number
-  ) {
-    const arr = filters[key] as (string | number)[];
+export function RecruitFilterPanel({
+  filters,
+  onChange,
+  onReset,
+  sortBy,
+  sortDir,
+  onSortChange,
+  onSortDirChange,
+}: RecruitFiltersProps) {
+  function toggleClubLevel(value: string) {
+    const arr = filters.club_levels;
     const updated = arr.includes(value)
       ? arr.filter((v) => v !== value)
       : [...arr, value];
-    onChange({ ...filters, [key]: updated });
+    onChange({ club_levels: updated });
   }
 
-  function resetFilters() {
-    onChange(DEFAULT_FILTERS);
+  function handleSortClick(option: SortOption) {
+    if (option === sortBy) {
+      onSortDirChange(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      onSortChange(option);
+      onSortDirChange(DEFAULT_SORT_DIRECTIONS[option]);
+    }
   }
 
   return (
     <div className="space-y-5 p-4 border rounded-lg bg-card">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm">Filters</h3>
-        <Button variant="ghost" size="sm" onClick={resetFilters}>
+        <h3 className="font-semibold text-sm">Filters & Sort</h3>
+        <Button variant="ghost" size="sm" onClick={onReset}>
           <RotateCcw className="h-3 w-3 mr-1" />
           Reset
         </Button>
       </div>
 
-      {/* Graduation Year */}
+      {/* Sort */}
       <div className="space-y-2">
-        <Label className="text-xs">Graduation Year</Label>
-        <div className="flex flex-wrap gap-1.5">
-          {GRAD_YEARS.map((year) => (
-            <Badge
-              key={year}
-              variant={
-                filters.graduation_years.includes(year) ? "default" : "outline"
-              }
-              className="cursor-pointer text-xs"
-              onClick={() => toggleArrayItem("graduation_years", year)}
+        <Label className="text-xs">Sort By</Label>
+        <div className="space-y-0.5">
+          {(Object.keys(SORT_LABELS) as SortOption[]).map((option) => (
+            <button
+              key={option}
+              onClick={() => handleSortClick(option)}
+              className={`flex items-center justify-between w-full px-2.5 py-1.5 text-sm rounded-md transition-colors ${
+                sortBy === option
+                  ? "bg-secondary font-medium"
+                  : "hover:bg-muted"
+              }`}
             >
-              {year}
-            </Badge>
+              {SORT_LABELS[option]}
+              {sortBy === option && (
+                sortDir === "asc" ? (
+                  <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                )
+              )}
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Position */}
+      {/* DQS Range + Show Not Qualified */}
       <div className="space-y-2">
-        <Label className="text-xs">Position</Label>
-        <div className="flex flex-wrap gap-1.5">
-          {POSITIONS.map((pos) => (
-            <Badge
-              key={pos}
-              variant={
-                filters.positions.includes(pos) ? "default" : "outline"
-              }
-              className="cursor-pointer text-xs"
-              onClick={() => toggleArrayItem("positions", pos)}
-            >
-              {pos}
-            </Badge>
-          ))}
+        <Label className="text-xs">
+          DQS Range: {filters.dqs_min}–{filters.dqs_max}
+        </Label>
+        <Slider
+          min={0}
+          max={100}
+          step={5}
+          value={[filters.dqs_min, filters.dqs_max]}
+          onValueChange={([min, max]) =>
+            onChange({ dqs_min: min, dqs_max: max })
+          }
+        />
+        <div className="flex items-center gap-2 pt-1">
+          <Checkbox
+            id="show_nq"
+            checked={filters.show_not_qualified}
+            onCheckedChange={(checked) =>
+              onChange({ show_not_qualified: checked === true })
+            }
+          />
+          <Label htmlFor="show_nq" className="text-xs">
+            Include disqualified recruits
+          </Label>
         </div>
       </div>
 
@@ -101,7 +133,6 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
             value={filters.min_gpa ?? ""}
             onChange={(e) =>
               onChange({
-                ...filters,
                 min_gpa: e.target.value ? parseFloat(e.target.value) : null,
               })
             }
@@ -118,7 +149,6 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
             value={filters.min_height ?? ""}
             onChange={(e) =>
               onChange({
-                ...filters,
                 min_height: e.target.value ? parseInt(e.target.value) : null,
               })
             }
@@ -135,7 +165,6 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
             value={filters.min_sat ?? ""}
             onChange={(e) =>
               onChange({
-                ...filters,
                 min_sat: e.target.value ? parseInt(e.target.value) : null,
               })
             }
@@ -152,7 +181,6 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
             value={filters.min_act ?? ""}
             onChange={(e) =>
               onChange({
-                ...filters,
                 min_act: e.target.value ? parseInt(e.target.value) : null,
               })
             }
@@ -174,7 +202,7 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
                   : "outline"
               }
               className="cursor-pointer text-xs"
-              onClick={() => toggleArrayItem("club_levels", level.value)}
+              onClick={() => toggleClubLevel(level.value)}
             >
               {level.label}
             </Badge>
@@ -188,24 +216,22 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
         <Input
           placeholder="City, state, or country"
           value={filters.location}
-          onChange={(e) => onChange({ ...filters, location: e.target.value })}
+          onChange={(e) => onChange({ location: e.target.value })}
           className="h-8 text-sm"
         />
       </div>
 
-      {/* DQS Range */}
+      {/* Completeness */}
       <div className="space-y-2">
         <Label className="text-xs">
-          DQS Range: {filters.dqs_min}–{filters.dqs_max}
+          Min Completeness: {filters.completeness_min}%
         </Label>
         <Slider
           min={0}
           max={100}
           step={5}
-          value={[filters.dqs_min, filters.dqs_max]}
-          onValueChange={([min, max]) =>
-            onChange({ ...filters, dqs_min: min, dqs_max: max })
-          }
+          value={[filters.completeness_min]}
+          onValueChange={([val]) => onChange({ completeness_min: val })}
         />
       </div>
 
@@ -216,7 +242,7 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
             id="has_video"
             checked={filters.has_video}
             onCheckedChange={(checked) =>
-              onChange({ ...filters, has_video: checked === true })
+              onChange({ has_video: checked === true })
             }
           />
           <Label htmlFor="has_video" className="text-xs">
@@ -225,26 +251,14 @@ export function RecruitFilterPanel({ filters, onChange }: RecruitFiltersProps) {
         </div>
         <div className="flex items-center gap-2">
           <Checkbox
-            id="show_nq"
-            checked={filters.show_not_qualified}
-            onCheckedChange={(checked) =>
-              onChange({ ...filters, show_not_qualified: checked === true })
-            }
-          />
-          <Label htmlFor="show_nq" className="text-xs">
-            Show Not Qualified
-          </Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Checkbox
             id="needs_review"
             checked={filters.needs_review}
             onCheckedChange={(checked) =>
-              onChange({ ...filters, needs_review: checked === true })
+              onChange({ needs_review: checked === true })
             }
           />
           <Label htmlFor="needs_review" className="text-xs">
-            Needs Review only
+            Needs review only
           </Label>
         </div>
       </div>
