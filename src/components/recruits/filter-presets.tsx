@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Zap } from "lucide-react";
+import { ListFilter } from "lucide-react";
 import type { RecruitFilters } from "@/types/recruit";
 import { DEFAULT_FILTERS } from "@/types/recruit";
 
@@ -76,7 +76,7 @@ export function FilterPresets({ onApply, onReset }: FilterPresetsProps) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="h-9 gap-1.5">
-          <Zap className="h-3.5 w-3.5" />
+          <ListFilter className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Presets</span>
         </Button>
       </DropdownMenuTrigger>

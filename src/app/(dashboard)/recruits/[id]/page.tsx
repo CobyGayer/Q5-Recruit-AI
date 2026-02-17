@@ -24,10 +24,6 @@ import {
   ArrowLeft,
   Copy,
   Check,
-  Pencil,
-  Save,
-  X,
-  Mail,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -262,14 +258,13 @@ export default function RecruitDetailPage() {
               {emailCopied ? (
                 <Check className="h-4 w-4 mr-1" />
               ) : (
-                <Mail className="h-4 w-4 mr-1" />
+                <Copy className="h-4 w-4 mr-1" />
               )}
               {emailCopied ? "Copied!" : "Copy Email"}
             </Button>
           )}
           {!editing && (
             <Button variant="outline" size="sm" onClick={startEditing}>
-              <Pencil className="h-4 w-4 mr-1" />
               Edit
             </Button>
           )}
@@ -324,14 +319,12 @@ export default function RecruitDetailPage() {
                   })}
                   <div className="flex gap-2 pt-2">
                     <Button onClick={handleSaveEdit} disabled={saving}>
-                      <Save className="h-4 w-4 mr-1" />
                       {saving ? "Saving..." : "Save Changes"}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => setEditing(false)}
                     >
-                      <X className="h-4 w-4 mr-1" />
                       Cancel
                     </Button>
                   </div>

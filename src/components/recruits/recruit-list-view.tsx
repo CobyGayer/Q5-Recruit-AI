@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DqsBadge } from "@/components/scoring/dqs-badge";
-import { CompletenessIndicator } from "@/components/scoring/completeness-indicator";
+import { CompletenessBar } from "@/components/scoring/completeness-bar";
 import { FlagButton } from "./flag-button";
 import type { RecruitWithScore, FlagType } from "@/types/database";
 import type { SortOption, SortDirection } from "@/types/recruit";
@@ -22,7 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AlertTriangle, Video, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
+import { AlertTriangle, Play, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
 
 interface RecruitListViewProps {
   recruits: RecruitWithScore[];
@@ -229,15 +229,17 @@ export function RecruitListView({
               </TableCell>
               <TableCell>
                 {recruit.video_url && (
-                  <Video className="h-4 w-4 text-primary" />
+                  <Play className="h-4 w-4 text-primary" />
                 )}
               </TableCell>
               <TableCell>
-                <CompletenessIndicator
-                  fieldsExtracted={recruit.fields_extracted}
-                  fieldsTotal={recruit.fields_total}
-                  fieldsMissing={recruit.fields_missing}
-                />
+                <div className="w-16">
+                  <CompletenessBar
+                    fieldsExtracted={recruit.fields_extracted}
+                    fieldsTotal={recruit.fields_total}
+                    fieldsMissing={recruit.fields_missing}
+                  />
+                </div>
               </TableCell>
             </TableRow>
           );

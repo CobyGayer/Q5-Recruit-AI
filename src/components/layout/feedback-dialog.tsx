@@ -67,13 +67,12 @@ export function FeedbackDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-muted-foreground"
+        <button
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-muted-foreground hover:bg-muted/50 hover:text-foreground w-full"
         >
-          <MessageSquare className="h-4 w-4 mr-3" />
+          <MessageSquare className="h-4 w-4" />
           Feedback
-        </Button>
+        </button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

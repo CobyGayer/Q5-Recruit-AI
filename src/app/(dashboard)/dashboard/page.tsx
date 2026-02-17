@@ -12,7 +12,6 @@ import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit"
 import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import type { RecruitWithScore } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
 
 function applyFilters(
   recruits: RecruitWithScore[],
@@ -393,7 +392,6 @@ function DashboardContent() {
                   size="sm"
                   onClick={handleClearAll}
                 >
-                  <X className="h-3 w-3 mr-1" />
                   Clear all filters
                 </Button>
               )}

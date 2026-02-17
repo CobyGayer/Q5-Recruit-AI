@@ -20,7 +20,7 @@ import type {
   WeightFormData,
   RosterContextFormData,
 } from "@/types/config";
-import { Check, Copy, RefreshCw, Save } from "lucide-react";
+import { Check, Copy, RefreshCw } from "lucide-react";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -153,10 +153,7 @@ export default function SettingsPage() {
               "Saving..."
             )
           ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save & Recalculate
-            </>
+            "Save & Recalculate"
           )}
         </Button>
       </div>
@@ -223,7 +220,6 @@ export default function SettingsPage() {
                 </p>
               )}
               <Button variant="outline" onClick={handleRegenerateApiKey}>
-                <RefreshCw className="h-4 w-4 mr-2" />
                 Regenerate API Key
               </Button>
             </CardContent>

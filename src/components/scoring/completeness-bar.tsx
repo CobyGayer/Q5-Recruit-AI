@@ -4,8 +4,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getCompletenessBarClass } from "@/lib/scoring/colors";
 
-interface CompletenessIndicatorProps {
+interface CompletenessBarProps {
   fieldsExtracted: number;
   fieldsTotal: number;
   fieldsMissing?: string[];
@@ -35,7 +36,8 @@ const FIELD_LABELS: Record<string, string> = {
 
 /**
  * SAT and ACT are alternative test scores — having either one satisfies
- * the requirement. If only one is missing, drop it from display.
+ * the requirement. If only one is in fieldsMissing, the other was extracted,
+ * so we drop the missing one from display and adjust the counts.
  */
 function adjustForAlternativeFields(
   missing: string[],
@@ -45,6 +47,7 @@ function adjustForAlternativeFields(
   const hasMissingSat = missing.includes("sat_score");
   const hasMissingAct = missing.includes("act_score");
 
+  // Only one is missing → the other was found, so drop the missing one
   if (hasMissingSat !== hasMissingAct) {
     const drop = hasMissingSat ? "sat_score" : "act_score";
     return {
@@ -57,43 +60,54 @@ function adjustForAlternativeFields(
   return { missing, extracted, total };
 }
 
-export function CompletenessIndicator({
+export function CompletenessBar({
   fieldsExtracted,
   fieldsTotal,
   fieldsMissing = [],
-}: CompletenessIndicatorProps) {
+}: CompletenessBarProps) {
   const adjusted = adjustForAlternativeFields(
     fieldsMissing,
     fieldsExtracted,
     fieldsTotal
   );
+  const pct =
+    adjusted.total > 0 ? (adjusted.extracted / adjusted.total) * 100 : 0;
+  const barClass = getCompletenessBarClass(pct);
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="text-xs text-muted-foreground whitespace-nowrap cursor-help">
-            {adjusted.extracted}/{adjusted.total}
-          </span>
+          <div className="w-full h-0.5 bg-border/40 rounded-full overflow-hidden cursor-help">
+            <div
+              className={`h-full rounded-full transition-all opacity-50 ${barClass}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
         </TooltipTrigger>
-        <TooltipContent className="max-w-xs">
-          <p className="font-medium mb-1">
-            {adjusted.extracted} of {adjusted.total} fields extracted
+        <TooltipContent
+          sideOffset={6}
+          className="bg-white text-foreground border border-border/60 shadow-lg rounded-lg max-w-xs p-3 [&>:last-child]:hidden"
+        >
+          <p className="font-medium text-xs text-foreground">
+            {adjusted.extracted} of {adjusted.total} fields filled
           </p>
           {adjusted.missing.length > 0 && (
-            <>
-              <p className="text-xs text-muted-foreground mb-1">Missing:</p>
+            <div className="mt-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                Missing
+              </p>
               <div className="flex flex-wrap gap-1">
                 {adjusted.missing.map((field) => (
                   <span
                     key={field}
-                    className="text-xs bg-muted rounded px-1.5 py-0.5"
+                    className="text-[10px] bg-stone-100 text-stone-500 rounded-md px-1.5 py-0.5"
                   >
                     {FIELD_LABELS[field] ?? field}
                   </span>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </TooltipContent>
       </Tooltip>

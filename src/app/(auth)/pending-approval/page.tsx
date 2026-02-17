@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Clock } from "lucide-react";
+import { Hourglass } from "lucide-react";
 
 export default function PendingApprovalPage() {
   const router = useRouter();
@@ -31,7 +31,7 @@ export default function PendingApprovalPage() {
       <Card className="w-full max-w-md text-center border-primary/10">
         <CardHeader>
           <div className="flex justify-center mb-4">
-            <Clock className="h-12 w-12 text-amber-500" />
+            <Hourglass className="h-12 w-12 text-amber-500" />
           </div>
           <CardTitle className="text-2xl font-bold">
             Account Pending Approval

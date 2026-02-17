@@ -18,11 +18,6 @@ import {
 } from "@/components/ui/table";
 import type { ProcessingStatus } from "@/types/database";
 import {
-  CheckCircle,
-  AlertTriangle,
-  Info,
-  XCircle,
-  RefreshCw,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -30,22 +25,20 @@ import Link from "next/link";
 
 const STATUS_CONFIG: Record<
   ProcessingStatus,
-  { label: string; icon: typeof CheckCircle; color: string }
+  { label: string; color: string }
 > = {
-  pending: { label: "Pending", icon: RefreshCw, color: "bg-stone-100 text-stone-600" },
-  processing: { label: "Processing", icon: RefreshCw, color: "bg-sky-50 text-sky-700" },
-  processed: { label: "Processed", icon: CheckCircle, color: "bg-emerald-50 text-emerald-700" },
+  pending: { label: "Pending", color: "bg-stone-100 text-stone-600" },
+  processing: { label: "Processing", color: "bg-sky-50 text-sky-700" },
+  processed: { label: "Processed", color: "bg-emerald-50 text-emerald-700" },
   needs_review: {
     label: "Needs Review",
-    icon: AlertTriangle,
     color: "bg-amber-50 text-amber-700",
   },
   insufficient: {
     label: "Insufficient Data",
-    icon: Info,
     color: "bg-amber-100 text-amber-600",
   },
-  failed: { label: "Failed", icon: XCircle, color: "bg-rose-50 text-rose-700" },
+  failed: { label: "Failed", color: "bg-rose-50 text-rose-700" },
 };
 
 export default function QueuePage() {
@@ -70,7 +63,6 @@ export default function QueuePage() {
           </p>
         </div>
         <Button variant="outline" onClick={refetch}>
-          <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
       </div>
@@ -100,7 +92,6 @@ export default function QueuePage() {
             <TableBody>
               {emails.map((email) => {
                 const status = STATUS_CONFIG[email.processing_status];
-                const StatusIcon = status.icon;
                 const isExpanded = expandedId === email.id;
 
                 return (
@@ -111,7 +102,6 @@ export default function QueuePage() {
                           variant="outline"
                           className={`text-xs ${status.color}`}
                         >
-                          <StatusIcon className="h-3 w-3 mr-1" />
                           {status.label}
                         </Badge>
                       </TableCell>

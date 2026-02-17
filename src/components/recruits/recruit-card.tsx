@@ -4,14 +4,9 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DqsBadge } from "@/components/scoring/dqs-badge";
+import { CompletenessBar } from "@/components/scoring/completeness-bar";
 import { FlagButton } from "./flag-button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { GraduationCap, Ruler, Shield, MapPin } from "lucide-react";
+import { Play } from "lucide-react";
 import type { RecruitWithScore, FlagType } from "@/types/database";
 
 interface RecruitCardProps {
@@ -28,110 +23,83 @@ const CLUB_LEVEL_LABELS: Record<string, string> = {
   unknown: "Unknown",
 };
 
-const FIELD_LABELS: Record<string, string> = {
-  full_name: "Name",
-  email: "Email",
-  phone: "Phone",
-  graduation_year: "Grad Year",
-  current_school: "School",
-  city: "City",
-  state: "State",
-  country: "Country",
-  positions: "Position(s)",
-  preferred_foot: "Preferred Foot",
-  height_inches: "Height",
-  weight_lbs: "Weight",
-  gpa: "GPA",
-  sat_score: "SAT",
-  act_score: "ACT",
-  club_team: "Club Team",
-  club_level: "Club Level",
-  high_school_team: "HS Team",
-  video_url: "Video",
-};
-
 function formatHeight(inches: number): string {
   return `${Math.floor(inches / 12)}'${inches % 12}"`;
 }
 
+interface Stat {
+  label: string;
+  value: string;
+  truncate?: boolean;
+  icon?: React.ReactNode;
+}
+
+/** Priority-ordered list of stats to display — first available wins */
+function getAvailableStats(recruit: RecruitWithScore): Stat[] {
+  const all: (Stat | null)[] = [
+    recruit.gpa != null
+      ? { label: "GPA", value: recruit.gpa.toFixed(1) }
+      : null,
+    recruit.height_inches != null
+      ? { label: "Height", value: formatHeight(recruit.height_inches) }
+      : null,
+    recruit.club_level && recruit.club_level !== "unknown"
+      ? { label: "Club", value: CLUB_LEVEL_LABELS[recruit.club_level] }
+      : null,
+    recruit.city || recruit.state
+      ? {
+          label: "Location",
+          value: [recruit.city, recruit.state].filter(Boolean).join(", "),
+          truncate: true,
+        }
+      : null,
+    recruit.video_url
+      ? {
+          label: "Video",
+          value: "has video",
+          icon: <Play className="h-3.5 w-3.5 text-primary" />,
+        }
+      : null,
+  ];
+
+  return all.filter((s): s is Stat => s !== null).slice(0, 4);
+}
+
+function StatCell({ label, value, truncate, icon }: Stat) {
+  return (
+    <div className="flex flex-col items-center text-center min-w-0 flex-1">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground leading-none">
+        {label}
+      </span>
+      <span
+        className={`text-xs font-medium mt-0.5 leading-tight text-foreground ${
+          truncate ? "truncate max-w-full" : ""
+        }`}
+        title={truncate ? value : undefined}
+      >
+        {icon ?? value}
+      </span>
+    </div>
+  );
+}
+
 export function RecruitCard({ recruit, onFlagChange }: RecruitCardProps) {
   const dqs = recruit.dqs_score;
-
-  // Build filtered stats — only include non-empty values
-  const stats: { icon: React.ReactNode; value: string; truncate?: boolean }[] = [];
-
-  if (recruit.gpa != null) {
-    stats.push({
-      icon: <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
-      value: recruit.gpa.toFixed(1),
-    });
-  }
-
-  if (recruit.height_inches != null) {
-    stats.push({
-      icon: <Ruler className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
-      value: formatHeight(recruit.height_inches),
-    });
-  }
-
-  if (recruit.club_level && recruit.club_level !== "unknown") {
-    stats.push({
-      icon: <Shield className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
-      value: CLUB_LEVEL_LABELS[recruit.club_level],
-    });
-  }
-
-  if (recruit.city || recruit.state) {
-    stats.push({
-      icon: <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
-      value: [recruit.city, recruit.state].filter(Boolean).join(", "),
-      truncate: true,
-    });
-  }
-
+  const stats = getAvailableStats(recruit);
 
   return (
     <Link href={`/recruits/${recruit.id}`} className="block h-full">
-      <Card className="hover:shadow-md transition-shadow cursor-pointer border-primary/10 py-0 gap-0 h-full">
-        <CardContent className="px-3 py-4 sm:px-4 sm:py-5">
-          {/* Row 1: Score badge + Name + Flag buttons */}
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-center shrink-0">
+      <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-150 cursor-pointer border-primary/10 py-0 gap-0 h-full flex flex-col">
+        <CardContent className="px-3 py-3 sm:px-4 sm:py-4 flex-1 flex flex-col">
+          {/* Zone 1: Identity Header */}
+          <div className="flex items-start gap-3">
+            <div className="shrink-0">
               <DqsBadge
                 score={dqs?.overall_score ?? null}
                 isQualified={dqs?.is_qualified ?? true}
                 disqualificationReasons={dqs?.disqualification_reasons}
                 size="md"
               />
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-[10px] text-muted-foreground mt-0.5 cursor-help">
-                      {recruit.fields_extracted}/{recruit.fields_total}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-xs p-3">
-                    <p className="font-medium text-xs">
-                      {recruit.fields_extracted} of {recruit.fields_total} fields filled
-                    </p>
-                    {recruit.fields_missing.length > 0 && (
-                      <div className="mt-1.5">
-                        <p className="text-[10px] text-white/50 mb-1">Missing</p>
-                        <div className="flex flex-wrap gap-1">
-                          {recruit.fields_missing.map((field) => (
-                            <span
-                              key={field}
-                              className="text-[10px] bg-white/10 text-white/70 rounded px-1.5 py-0.5"
-                            >
-                              {FIELD_LABELS[field] ?? field}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
             </div>
 
             <div className="flex-1 min-w-0">
@@ -146,7 +114,7 @@ export function RecruitCard({ recruit, onFlagChange }: RecruitCardProps) {
                 )}
               </div>
               {recruit.positions.length > 0 && (
-                <div className="flex gap-1 mt-1">
+                <div className="flex gap-1 mt-1 flex-wrap">
                   {recruit.positions.map((pos) => (
                     <Badge
                       key={pos}
@@ -169,19 +137,27 @@ export function RecruitCard({ recruit, onFlagChange }: RecruitCardProps) {
             </div>
           </div>
 
-          {/* Row 2: Horizontal stats with icons */}
+          {/* Zone 2: Available Stats */}
           {stats.length > 0 && (
-            <div className="flex items-center gap-3 mt-2 ml-[52px] overflow-hidden">
-              {stats.map((stat, i) => (
-                <div key={i} className={`flex items-center gap-1 ${stat.truncate ? "min-w-0" : "shrink-0"}`}>
-                  {stat.icon}
-                  <span className={`text-xs text-muted-foreground ${stat.truncate ? "truncate" : ""}`}>{stat.value}</span>
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="border-t border-border/50 my-2.5" />
+              <div className="flex gap-1">
+                {stats.map((stat) => (
+                  <StatCell key={stat.label} {...stat} />
+                ))}
+              </div>
+            </>
           )}
-
         </CardContent>
+
+        {/* Zone 3: Completeness Bar */}
+        <div className="px-3 pb-2 sm:px-4 mt-auto">
+          <CompletenessBar
+            fieldsExtracted={recruit.fields_extracted}
+            fieldsTotal={recruit.fields_total}
+            fieldsMissing={recruit.fields_missing}
+          />
+        </div>
       </Card>
     </Link>
   );

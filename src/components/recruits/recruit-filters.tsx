@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit";
 import { SORT_LABELS, DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
-import { RotateCcw, ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 interface RecruitFiltersProps {
   filters: RecruitFilters;
@@ -60,7 +60,6 @@ export function RecruitFilterPanel({
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-sm">Filters & Sort</h3>
         <Button variant="ghost" size="sm" onClick={onReset}>
-          <RotateCcw className="h-3 w-3 mr-1" />
           Reset
         </Button>
       </div>

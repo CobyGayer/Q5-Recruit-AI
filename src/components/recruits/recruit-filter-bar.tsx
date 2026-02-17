@@ -12,9 +12,6 @@ import type { RecruitFilters } from "@/types/recruit";
 import type { FlagType } from "@/types/database";
 import { RecruitSearch } from "./recruit-search";
 import {
-  Calendar,
-  Shirt,
-  Flag,
   SlidersHorizontal,
   LayoutGrid,
   List,
@@ -78,8 +75,7 @@ export function RecruitFilterBar({
       {/* Quick filter: Graduation Year */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 gap-1.5">
-            <Calendar className="h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" className="h-9">
             Year
             {filters.graduation_years.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[10px]">
@@ -112,8 +108,7 @@ export function RecruitFilterBar({
       {/* Quick filter: Position */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 gap-1.5">
-            <Shirt className="h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" className="h-9">
             Position
             {filters.positions.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1 text-[10px]">
@@ -146,8 +141,7 @@ export function RecruitFilterBar({
       {/* Quick filter: Flag */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 gap-1.5">
-            <Flag className="h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" className="h-9">
             Flag
             {filters.flag_filter !== "all" && (
               <span className="ml-1 h-2 w-2 rounded-full bg-primary" />

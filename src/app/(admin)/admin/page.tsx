@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, XCircle, Users, Mail, BarChart3, Key, Copy, Check, AlertTriangle, RotateCcw, Wrench } from "lucide-react";
+import { CheckCircle, Users, Mail, TrendingUp, BarChart3, Key, Copy, Check, AlertTriangle, RotateCcw, Wrench } from "lucide-react";
 import type { Coach, CoachStatus, EmailPipelineStatus } from "@/types/database";
 
 interface AdminStats {
@@ -211,7 +211,7 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card className="border-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
-              <Users className="h-8 w-8 text-primary" />
+              <Users className="h-6 w-6 text-primary" />
               <div>
                 <p className="text-2xl font-bold">{stats.total_coaches}</p>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Total Coaches</p>
@@ -220,7 +220,7 @@ export default function AdminPage() {
           </Card>
           <Card className="border-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
-              <Mail className="h-8 w-8 text-primary" />
+              <Mail className="h-6 w-6 text-primary" />
               <div>
                 <p className="text-2xl font-bold">{stats.total_emails}</p>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Emails Ingested</p>
@@ -229,7 +229,7 @@ export default function AdminPage() {
           </Card>
           <Card className="border-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-primary" />
+              <TrendingUp className="h-6 w-6 text-primary" />
               <div>
                 <p className="text-2xl font-bold">
                   {stats.total_emails > 0
@@ -247,7 +247,7 @@ export default function AdminPage() {
           </Card>
           <Card className="border-primary/10">
             <CardContent className="p-4 flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-amber-500" />
+              <BarChart3 className="h-6 w-6 text-amber-500" />
               <div>
                 <p className="text-2xl font-bold">
                   {stats.avg_fields_extracted.toFixed(1)}
@@ -340,7 +340,6 @@ export default function AdminPage() {
                             }
                             disabled={actionLoading === coach.id}
                           >
-                            <CheckCircle className="h-4 w-4 mr-1" />
                             Approve
                           </Button>
                           <Button
@@ -351,7 +350,6 @@ export default function AdminPage() {
                             }
                             disabled={actionLoading === coach.id}
                           >
-                            <XCircle className="h-4 w-4 mr-1" />
                             Reject
                           </Button>
                         </div>
@@ -456,7 +454,6 @@ export default function AdminPage() {
                     onClick={() => handleUpdatePipelineStatus(generatedKey.coachId, "active")}
                     disabled={actionLoading === generatedKey.coachId}
                   >
-                    <CheckCircle className="h-4 w-4 mr-1" />
                     Mark as Active
                   </Button>
                 </CardContent>
@@ -512,7 +509,6 @@ export default function AdminPage() {
                                 onClick={() => handleUpdatePipelineStatus(coach.id, "active")}
                                 disabled={actionLoading === coach.id}
                               >
-                                <CheckCircle className="h-4 w-4 mr-1" />
                                 Mark Active
                               </Button>
                             )}

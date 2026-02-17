@@ -24,7 +24,7 @@ import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
 import type { ThresholdFormData, WeightFormData, RosterContextFormData } from "@/types/config";
 import type { Program } from "@/types/database";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check } from "lucide-react";
 
 const STEPS = [
   "Program Setup",
@@ -232,7 +232,6 @@ export default function OnboardingPage() {
                   variant="outline"
                   onClick={() => setStep(step - 1)}
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
                   Back
                 </Button>
               )}
@@ -240,7 +239,6 @@ export default function OnboardingPage() {
               {step < 3 && (
                 <Button onClick={() => setStep(step + 1)}>
                   Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               )}
               {step === 3 && (
@@ -251,7 +249,6 @@ export default function OnboardingPage() {
               {step === 4 && (
                 <Button onClick={handleFinish} className="ml-auto">
                   Go to Dashboard
-                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               )}
             </div>
