@@ -187,7 +187,7 @@ export function RecruitFilterBar({
         onClick={onToggleFilters}
       >
         <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
-        Filters
+        Advanced
         {activeFilterCount > 0 && (
           <Badge variant="secondary" className="ml-1.5 h-5 min-w-5 px-1 text-[10px]">
             {activeFilterCount}

@@ -14,9 +14,9 @@ export type SortDirection = "asc" | "desc";
 
 export const SORT_LABELS: Record<SortOption, string> = {
   dqs: "DQS Score",
+  date: "Date Added",
   name: "Name",
   grad_year: "Grad Year",
-  date: "Date Added",
   gpa: "GPA",
   height: "Height",
   completeness: "Completeness",

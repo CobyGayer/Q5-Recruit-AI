@@ -58,7 +58,7 @@ export function RecruitCard({ recruit, onFlagChange }: RecruitCardProps) {
   const dqs = recruit.dqs_score;
 
   // Build filtered stats — only include non-empty values
-  const stats: { icon: React.ReactNode; value: string }[] = [];
+  const stats: { icon: React.ReactNode; value: string; truncate?: boolean }[] = [];
 
   if (recruit.gpa != null) {
     stats.push({
@@ -85,13 +85,14 @@ export function RecruitCard({ recruit, onFlagChange }: RecruitCardProps) {
     stats.push({
       icon: <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />,
       value: [recruit.city, recruit.state].filter(Boolean).join(", "),
+      truncate: true,
     });
   }
 
 
   return (
-    <Link href={`/recruits/${recruit.id}`} className="block">
-      <Card className="hover:shadow-md transition-shadow cursor-pointer border-primary/10 py-0 gap-0">
+    <Link href={`/recruits/${recruit.id}`} className="block h-full">
+      <Card className="hover:shadow-md transition-shadow cursor-pointer border-primary/10 py-0 gap-0 h-full">
         <CardContent className="px-3 py-4 sm:px-4 sm:py-5">
           {/* Row 1: Score badge + Name + Flag buttons */}
           <div className="flex items-center gap-3">
@@ -170,11 +171,11 @@ export function RecruitCard({ recruit, onFlagChange }: RecruitCardProps) {
 
           {/* Row 2: Horizontal stats with icons */}
           {stats.length > 0 && (
-            <div className="flex items-center gap-3 mt-2 ml-[52px] flex-wrap">
+            <div className="flex items-center gap-3 mt-2 ml-[52px] overflow-hidden">
               {stats.map((stat, i) => (
-                <div key={i} className="flex items-center gap-1">
+                <div key={i} className={`flex items-center gap-1 ${stat.truncate ? "min-w-0" : "shrink-0"}`}>
                   {stat.icon}
-                  <span className="text-xs text-muted-foreground">{stat.value}</span>
+                  <span className={`text-xs text-muted-foreground ${stat.truncate ? "truncate" : ""}`}>{stat.value}</span>
                 </div>
               ))}
             </div>
