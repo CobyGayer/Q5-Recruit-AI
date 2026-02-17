@@ -10,8 +10,10 @@ import {
   Settings,
   Shield,
   LogOut,
+  FlaskConical,
 } from "lucide-react";
 import { FeedbackDialog } from "@/components/layout/feedback-dialog";
+import { DqsInfoDialog } from "@/components/scoring/dqs-info-dialog";
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -65,6 +67,17 @@ export function Sidebar({ isAdmin }: SidebarProps) {
         })}
       </nav>
       <div className="p-3 border-t border-sidebar-border/30 space-y-1">
+        <DqsInfoDialog
+          trigger={
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground"
+            >
+              <FlaskConical className="h-4 w-4 mr-3" />
+              DQS Methodology
+            </Button>
+          }
+        />
         <FeedbackDialog />
         <Button
           variant="ghost"

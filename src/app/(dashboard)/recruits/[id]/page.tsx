@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DqsBadge } from "@/components/scoring/dqs-badge";
 import { ScoreBreakdown } from "@/components/scoring/score-breakdown";
+import { DqsInfoDialog } from "@/components/scoring/dqs-info-dialog";
 import { CompletenessIndicator } from "@/components/scoring/completeness-indicator";
 import { FlagButton } from "@/components/recruits/flag-button";
 import { ConfidenceBadge } from "@/components/recruits/confidence-badge";
@@ -451,8 +452,9 @@ export default function RecruitDetailPage() {
         <div className="space-y-6">
           {dqsScore && (
             <Card className="border-primary/10">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Score Breakdown</CardTitle>
+                <DqsInfoDialog />
               </CardHeader>
               <CardContent>
                 <ScoreBreakdown score={dqsScore} />
