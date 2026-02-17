@@ -142,10 +142,7 @@ export function RecruitFilterBar({
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="h-9">
-            Flag
-            {filters.flag_filter !== "all" && (
-              <span className="ml-1 h-2 w-2 rounded-full bg-primary" />
-            )}
+            {FLAG_OPTIONS.find((o) => o.value === filters.flag_filter)?.label ?? "All Recruits"}
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-48 p-2">
