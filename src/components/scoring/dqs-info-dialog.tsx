@@ -13,10 +13,11 @@ import {
 } from "@/components/ui/dialog";
 
 const SCORE_TIERS = [
-  { range: "85-100", label: "Excellent", color: "bg-emerald-600" },
+  { range: "95-100", label: "Elite", color: "bg-emerald-700" },
+  { range: "85-94", label: "Excellent", color: "bg-emerald-500" },
   { range: "70-84", label: "Strong", color: "bg-primary" },
   { range: "55-69", label: "Average", color: "bg-amber-500" },
-  { range: "40-54", label: "Below Average", color: "bg-orange-500" },
+  { range: "40-54", label: "Below Avg", color: "bg-orange-500" },
   { range: "0-39", label: "Low", color: "bg-rose-500" },
 ];
 
@@ -184,7 +185,7 @@ export function DqsInfoDialog({ trigger }: DqsInfoDialogProps) {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
               Score Tiers
             </h3>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-6 gap-2">
               {SCORE_TIERS.map((tier) => (
                 <div key={tier.range} className="text-center space-y-1.5">
                   <div
