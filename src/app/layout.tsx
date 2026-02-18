@@ -23,6 +23,27 @@ export const metadata: Metadata = {
     url: "https://q5recruit.ai",
     siteName: "Q5 Recruit AI",
     type: "website",
+    images: [
+      {
+        url: "/brand/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Q5 Recruit AI — AI-powered college soccer recruiting",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Q5 Recruit AI",
+    description: "AI-powered college soccer recruiting platform for coaches",
+    images: ["/brand/og-image.png"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
   },
 };
 
