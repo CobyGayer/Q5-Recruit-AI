@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { FeedbackDialog } from "@/components/layout/feedback-dialog";
 import { DqsInfoDialog } from "@/components/scoring/dqs-info-dialog";
+import { Logo } from "@/components/brand/logo";
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -33,7 +34,7 @@ const UTILITY_NAV = [
 ];
 
 function navLinkClasses(isActive: boolean) {
-  return `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+  return `flex items-center gap-3 px-3 py-3.5 rounded-lg text-sm transition-colors ${
     isActive
       ? "bg-secondary text-secondary-foreground font-medium"
       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -52,13 +53,17 @@ export function Sidebar({ isAdmin }: SidebarProps) {
   }
 
   return (
-    <aside className="w-64 border-r border-sidebar-border/30 bg-card h-screen sticky top-0 flex flex-col">
-      <div className="p-6 pb-4">
-        <h1 className="text-xl font-bold">Q5</h1>
+    <aside className="w-64 border-r border-sidebar-border/30 bg-card h-screen sticky top-0 flex flex-col" aria-label="Main navigation">
+      <div className="pt-4 pb-6 px-5">
+        <Logo variant="mark" width={90} href="/dashboard" />
+      </div>
+
+      <div className="px-3">
+        <Separator className="opacity-50 h-[1.5px]" />
       </div>
 
       {/* Primary navigation — daily workflow */}
-      <nav className="px-3 space-y-1">
+      <nav className="px-3 pt-3 space-y-1">
         {PRIMARY_NAV.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
@@ -126,7 +131,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
           />
         </div>
 
-        <Separator className="opacity-50" />
+        <Separator className="opacity-50 h-[1.5px]" />
 
         {/* Meta group — app-level actions */}
         <div className="space-y-1">

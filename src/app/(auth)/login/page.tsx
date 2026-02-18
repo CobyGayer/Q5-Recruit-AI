@@ -12,8 +12,8 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
+import { Logo } from "@/components/brand/logo";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -46,11 +46,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md border-primary/10">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
-            Q5
-          </CardTitle>
-          <CardDescription>Recruit AI — Sign in to your coaching dashboard</CardDescription>
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Logo variant="full" width={160} />
+          </div>
+          <CardDescription>Sign in to your coaching dashboard</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

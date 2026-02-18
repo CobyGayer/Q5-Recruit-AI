@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Hourglass } from "lucide-react";
+import { Logo } from "@/components/brand/logo";
 
 export default function PendingApprovalPage() {
   const router = useRouter();
@@ -29,17 +30,22 @@ export default function PendingApprovalPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md text-center border-primary/10">
-        <CardHeader>
-          <div className="flex justify-center mb-4">
-            <Hourglass className="h-12 w-12 text-amber-500" />
+        <CardHeader className="text-center space-y-4">
+          <div className="flex justify-center">
+            <Logo variant="full" width={160} />
           </div>
-          <CardTitle className="text-2xl font-bold">
-            Account Pending Approval
-          </CardTitle>
-          <CardDescription>
-            Your account is awaiting admin verification. You&apos;ll be able to
-            access the platform once an administrator approves your account.
-          </CardDescription>
+          <div className="flex justify-center">
+            <Hourglass className="h-10 w-10 text-amber-500" />
+          </div>
+          <div>
+            <CardTitle className="text-2xl font-bold">
+              Account Pending Approval
+            </CardTitle>
+            <CardDescription>
+              Your account is awaiting admin verification. You&apos;ll be able to
+              access the platform once an administrator approves your account.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <Button onClick={handleCheckStatus} className="w-full" variant="outline">
