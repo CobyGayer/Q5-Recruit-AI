@@ -73,12 +73,20 @@ export async function POST(
 
   // Send the sample email via Resend
   try {
-    await resend.emails.send({
+    const { error: sendError } = await resend.emails.send({
       from: FROM_EMAIL,
       to: coach.email,
       subject: payload.subject,
       text: payload.body_plain,
     });
+
+    if (sendError) {
+      console.error("Resend API error:", sendError);
+      return NextResponse.json(
+        { error: sendError.message || "Failed to send sample email" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

@@ -36,12 +36,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await resend.emails.send({
+    const { error: sendError } = await resend.emails.send({
       from: FROM_EMAIL,
       to: FEEDBACK_RECIPIENT,
       subject: "Q5 Recruit AI Feedback",
       text: `Feedback from: ${user.email}\n\n${message}`,
     });
+
+    if (sendError) {
+      console.error("Resend API error:", sendError);
+      return NextResponse.json(
+        { error: "Failed to send feedback. Please try again." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
