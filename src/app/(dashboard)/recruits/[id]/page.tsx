@@ -21,11 +21,20 @@ import { FlagButton } from "@/components/recruits/flag-button";
 import { ConfidenceBadge } from "@/components/recruits/confidence-badge";
 import type { Recruit, RecruitDqsScore, CoachRecruitFlag, ConfidenceLevel } from "@/types/database";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   Copy,
   Check,
   ChevronDown,
   ChevronUp,
+  Trash2,
 } from "lucide-react";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -74,6 +83,8 @@ export default function RecruitDetailPage() {
   const [saving, setSaving] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function loadRecruit() {
@@ -180,6 +191,17 @@ export default function RecruitDetailPage() {
     setEditing(true);
   }
 
+  async function handleDelete() {
+    setDeleting(true);
+    const res = await fetch(`/api/recruits/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      router.push("/dashboard");
+    } else {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  }
+
   function copyEmail() {
     if (recruit?.email) {
       navigator.clipboard.writeText(recruit.email);
@@ -264,12 +286,55 @@ export default function RecruitDetailPage() {
             </Button>
           )}
           {!editing && (
-            <Button variant="outline" size="sm" onClick={startEditing}>
-              Edit
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={startEditing}>
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
           )}
         </div>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete Recruit</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-foreground">
+                {recruit.full_name || "this recruit"}
+              </span>
+              ? This will permanently remove their profile, scores, and all
+              associated data. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete Recruit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {dqsScore?.ai_summary && (
         <p className="text-sm text-muted-foreground mb-6">
