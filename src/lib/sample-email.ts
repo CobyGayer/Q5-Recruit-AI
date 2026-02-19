@@ -23,8 +23,7 @@ const POSITION_LABELS: Record<string, string> = {
 const DEFAULTS = {
   gradYear: 2027,
   positions: ["CM", "CAM"] as string[],
-  sat: 1320,
-  act: 28,
+  gpa: 3.75,
   heightInches: 70,
 };
 
@@ -60,17 +59,11 @@ export function buildSampleEmailPayload(
     positions = DEFAULTS.positions;
   }
 
-  // SAT: at or above their minimum
-  const sat =
-    config?.min_sat != null
-      ? Math.min(1600, config.min_sat + 80)
-      : DEFAULTS.sat;
-
-  // ACT: include if coach has a minimum, otherwise omit
-  const act =
-    config?.min_act != null
-      ? Math.min(36, config.min_act + 2)
-      : null;
+  // GPA: at or above their minimum
+  const gpa =
+    config?.min_gpa != null
+      ? Math.min(4.0, config.min_gpa + 0.15)
+      : DEFAULTS.gpa;
 
   // Height: clear the tallest per-position minimum the sample's positions need
   let heightInches = DEFAULTS.heightInches;
@@ -98,21 +91,18 @@ export function buildSampleEmailPayload(
   });
 
   // --- Build email body ---
-  // Intentionally omit GPA and phone number for realism — real recruit
-  // emails often leave out academics or contact details.
+  // Intentionally omit SAT/ACT and phone number for realism — real recruit
+  // emails often leave out test scores or contact details.
   const academicLines = [
-    `- SAT: ${sat}`,
+    `- GPA: ${gpa.toFixed(2)} (unweighted)`,
+    "- Intended Major: Business Administration",
   ];
-  if (act != null) {
-    academicLines.push(`- ACT: ${act}`);
-  }
-  academicLines.push("- Intended Major: Business Administration");
 
   const body = `** THIS IS A SAMPLE EMAIL FROM Q5 RECRUIT AI **
 
 This is a test email to help you verify your email pipeline is working correctly. To process it, move this email to your "Q5 Recruit AI" Gmail label (or drag it into that folder). Once you do, Zapier will automatically pick it up, extract the recruit's information, and you should see a new recruit appear on your Q5 dashboard within a minute or two.
 
-Note: This sample intentionally leaves out a couple of fields (GPA and phone number) so you can see how Q5 handles incomplete recruit emails — which is very common in real recruiting outreach.
+Note: This sample intentionally leaves out a couple of fields (SAT/ACT scores and phone number) so you can see how Q5 handles incomplete recruit emails — which is very common in real recruiting outreach.
 
 — — — — — — — — — — — — — — — — — — — —
 
