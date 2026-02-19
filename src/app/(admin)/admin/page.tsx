@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, Users, Mail, TrendingUp, BarChart3, Key, Copy, Check, AlertTriangle, RotateCcw, Wrench } from "lucide-react";
+import { CheckCircle, Users, Mail, TrendingUp, BarChart3, Key, Copy, Check, AlertTriangle, RotateCcw, Wrench, Send } from "lucide-react";
 import type { Coach, CoachStatus, EmailPipelineStatus } from "@/types/database";
 
 interface AdminStats {
@@ -61,6 +61,8 @@ export default function AdminPage() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetResult, setResetResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [sampleLoading, setSampleLoading] = useState<string | null>(null);
+  const [sampleResult, setSampleResult] = useState<{ coachId: string; success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     fetchData(true);
@@ -170,6 +172,38 @@ export default function AdminPage() {
     }
     setResetLoading(false);
     setResetDialogOpen(false);
+  }
+
+  async function handleSendSample(coachId: string) {
+    setSampleLoading(coachId);
+    setSampleResult(null);
+    try {
+      const res = await fetch(`/api/admin/coaches/${coachId}/sample-email`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const coachName = coaches.find((c) => c.id === coachId)?.full_name;
+        setSampleResult({
+          coachId,
+          success: true,
+          message: `Sample recruit created for ${coachName} (${data.fields_extracted} fields extracted). Check their dashboard.`,
+        });
+      } else {
+        setSampleResult({
+          coachId,
+          success: false,
+          message: data.error || "Failed to send sample email",
+        });
+      }
+    } catch {
+      setSampleResult({
+        coachId,
+        success: false,
+        message: "Network error",
+      });
+    }
+    setSampleLoading(null);
   }
 
   const pendingCoaches = coaches.filter((c) => c.status === "pending");
@@ -522,6 +556,23 @@ export default function AdminPage() {
                                 Deactivate
                               </Button>
                             )}
+                            {coach.api_key && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSendSample(coach.id)}
+                                disabled={actionLoading === coach.id || sampleLoading === coach.id}
+                              >
+                                {sampleLoading === coach.id ? (
+                                  "Sending..."
+                                ) : (
+                                  <>
+                                    <Send className="h-4 w-4 mr-1" />
+                                    Send Sample
+                                  </>
+                                )}
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -529,6 +580,16 @@ export default function AdminPage() {
                   </TableBody>
                 </Table>
               </Card>
+            )}
+
+            {sampleResult && (
+              <div
+                className={`p-3 rounded text-sm ${
+                  sampleResult.success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                }`}
+              >
+                {sampleResult.message}
+              </div>
             )}
           </div>
         </TabsContent>
