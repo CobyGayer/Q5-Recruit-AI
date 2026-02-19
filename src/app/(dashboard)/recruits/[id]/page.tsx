@@ -83,6 +83,7 @@ export default function RecruitDetailPage() {
   const [saving, setSaving] = useState(false);
   const [emailCopied, setEmailCopied] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
+  const [emailReceivedAt, setEmailReceivedAt] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -126,12 +127,13 @@ export default function RecruitDetailPage() {
       // Fetch original email
       const { data: emailData } = await supabase
         .from("ingested_emails")
-        .select("body_plain")
+        .select("body_plain, received_at")
         .eq("recruit_id", id)
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
       setOriginalEmail(emailData?.body_plain ?? null);
+      setEmailReceivedAt(emailData?.received_at ?? null);
 
       setLoading(false);
     }
@@ -487,7 +489,14 @@ export default function RecruitDetailPage() {
                   className="flex items-center justify-between w-full"
                   onClick={() => setShowEmail(!showEmail)}
                 >
-                  <CardTitle>Original Email</CardTitle>
+                  <CardTitle>
+                    Original Email
+                    {emailReceivedAt && (
+                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                        ({new Date(emailReceivedAt).toLocaleDateString()})
+                      </span>
+                    )}
+                  </CardTitle>
                   {showEmail ? (
                     <ChevronUp className="h-4 w-4" />
                   ) : (
