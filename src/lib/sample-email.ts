@@ -23,7 +23,6 @@ const POSITION_LABELS: Record<string, string> = {
 const DEFAULTS = {
   gradYear: 2027,
   positions: ["CM", "CAM"] as string[],
-  gpa: 3.75,
   sat: 1320,
   act: 28,
   heightInches: 70,
@@ -60,12 +59,6 @@ export function buildSampleEmailPayload(
   } else {
     positions = DEFAULTS.positions;
   }
-
-  // GPA: at or above their minimum
-  const gpa =
-    config?.min_gpa != null
-      ? Math.min(4.0, config.min_gpa + 0.15)
-      : DEFAULTS.gpa;
 
   // SAT: at or above their minimum
   const sat =
@@ -105,8 +98,9 @@ export function buildSampleEmailPayload(
   });
 
   // --- Build email body ---
+  // Intentionally omit GPA and phone number for realism — real recruit
+  // emails often leave out academics or contact details.
   const academicLines = [
-    `- GPA: ${gpa.toFixed(2)} (unweighted)`,
     `- SAT: ${sat}`,
   ];
   if (act != null) {
@@ -114,7 +108,15 @@ export function buildSampleEmailPayload(
   }
   academicLines.push("- Intended Major: Business Administration");
 
-  const body = `Dear Coach,
+  const body = `** THIS IS A SAMPLE EMAIL FROM Q5 RECRUIT AI **
+
+This is a test email to help you verify your email pipeline is working correctly. To process it, move this email to your "Q5 Recruit AI" Gmail label (or drag it into that folder). Once you do, Zapier will automatically pick it up, extract the recruit's information, and you should see a new recruit appear on your Q5 dashboard within a minute or two.
+
+Note: This sample intentionally leaves out a couple of fields (GPA and phone number) so you can see how Q5 handles incomplete recruit emails — which is very common in real recruiting outreach.
+
+— — — — — — — — — — — — — — — — — — — —
+
+Dear Coach,
 
 My name is Sam Sample and I am writing to express my interest in your soccer program. I am currently attending Northfield Academy in Evanston, IL, graduating in ${gradYear}.
 
@@ -135,15 +137,10 @@ CLUB & HIGH SCHOOL
 
 CONTACT INFORMATION
 - Email: sam.sample@q5recruit.example
-- Phone: (555) 012-3456
 - Location: Evanston, Illinois
 
 HIGHLIGHT VIDEO
 https://www.youtube.com/watch?v=dQw4w9WgXcQ
-
----
-NOTE: This is a sample recruit created by Q5 Recruit AI to verify your email pipeline is working correctly. You should see this recruit appear in your dashboard with a full profile and DQS score. You can delete this recruit at any time.
----
 
 Thank you for your time, and I look forward to learning more about your program.
 

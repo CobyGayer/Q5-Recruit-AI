@@ -183,11 +183,10 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        const coachName = coaches.find((c) => c.id === coachId)?.full_name;
         setSampleResult({
           coachId,
           success: true,
-          message: `Sample recruit created for ${coachName} (${data.fields_extracted} fields extracted). Check their dashboard.`,
+          message: data.message || "Sample email sent. The coach should move it to their \"Q5 Recruit AI\" Gmail label to trigger the pipeline.",
         });
       } else {
         setSampleResult({
