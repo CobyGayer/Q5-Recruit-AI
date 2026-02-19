@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL || "Q5 Recruit AI <onboarding@resend.dev>";
 const FEEDBACK_RECIPIENT = "coby.gayer@gmail.com";
 const MAX_MESSAGE_LENGTH = 2000;
 
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   try {
     await resend.emails.send({
-      from: "Q5 Recruit AI <onboarding@resend.dev>",
+      from: FROM_EMAIL,
       to: FEEDBACK_RECIPIENT,
       subject: "Q5 Recruit AI Feedback",
       text: `Feedback from: ${user.email}\n\n${message}`,

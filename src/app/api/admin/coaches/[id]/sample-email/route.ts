@@ -6,6 +6,8 @@ import { Resend } from "resend";
 import type { ProgramConfig } from "@/types/database";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM_EMAIL =
+  process.env.RESEND_FROM_EMAIL || "Q5 Recruit AI <onboarding@resend.dev>";
 
 export async function POST(
   request: NextRequest,
@@ -72,7 +74,7 @@ export async function POST(
   // Send the sample email via Resend
   try {
     await resend.emails.send({
-      from: "Q5 Recruit AI <onboarding@resend.dev>",
+      from: FROM_EMAIL,
       to: coach.email,
       subject: payload.subject,
       text: payload.body_plain,
