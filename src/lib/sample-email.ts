@@ -98,9 +98,9 @@ export function buildSampleEmailPayload(
     "- Intended Major: Business Administration",
   ];
 
-  const body = `** THIS IS A SAMPLE EMAIL FROM Q5 RECRUIT AI **
+  const body = `** WELCOME TO Q5 RECRUIT AI **
 
-This is a test email to help you verify your email pipeline is working correctly. To process it, move this email to your "Q5 Recruit AI" Gmail label (or drag it into that folder). Once you do, Zapier will automatically pick it up, extract the recruit's information, and you should see a new recruit appear on your Q5 dashboard within a minute or two.
+You're all set! This is a sample recruit email to help you see Q5 in action. To process it, move this email to your "Q5 Recruit AI" Gmail label (or drag it into that folder). Within a minute or two, the recruit's information will be extracted and a new profile will appear on your Q5 dashboard.
 
 Note: This sample intentionally leaves out a couple of fields (SAT/ACT scores and phone number) so you can see how Q5 handles incomplete recruit emails — which is very common in real recruiting outreach.
 
