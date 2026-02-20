@@ -135,7 +135,7 @@ export function DqsInfoDialog({ trigger }: DqsInfoDialogProps) {
                   Adaptive weighting.
                 </span>{" "}
                 You assign relative importance to each dimension via the weight
-                sliders in Settings. When a recruit is missing data for a
+                sliders in Preferences. When a recruit is missing data for a
                 dimension, DQS automatically redistributes that weight across
                 the remaining dimensions, so the recruit is never penalized for
                 data we don&apos;t have.
@@ -208,7 +208,7 @@ export function DqsInfoDialog({ trigger }: DqsInfoDialogProps) {
               DQS is fully tailored to your program. Adjust scoring weights,
               set minimum thresholds, define position priorities, and target
               graduation years in{" "}
-              <span className="font-medium text-foreground">Settings</span> to
+              <span className="font-medium text-foreground">Preferences</span> to
               ensure every score aligns with your recruiting strategy.
             </p>
           </section>

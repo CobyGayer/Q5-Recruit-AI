@@ -30,7 +30,7 @@ const ADMIN_NAV = [
 ];
 
 const UTILITY_NAV = [
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/settings", label: "Preferences", icon: Settings },
 ];
 
 function navLinkClasses(isActive: boolean) {

@@ -128,7 +128,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Loading settings...</p>
+        <p className="text-muted-foreground">Loading preferences...</p>
       </div>
     );
   }
@@ -137,7 +137,7 @@ export default function SettingsPage() {
     <div className="max-w-3xl mx-auto py-8 px-4">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Settings</h1>
+          <h1 className="text-2xl font-bold">Preferences</h1>
           <p className="text-muted-foreground">
             Update your program configuration and scoring preferences
           </p>
