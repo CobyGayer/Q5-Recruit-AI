@@ -19,6 +19,7 @@ import { DqsInfoDialog } from "@/components/scoring/dqs-info-dialog";
 import { CompletenessIndicator } from "@/components/scoring/completeness-indicator";
 import { FlagButton } from "@/components/recruits/flag-button";
 import { ConfidenceBadge } from "@/components/recruits/confidence-badge";
+import { EmailComposeDialog } from "@/components/email/email-compose-dialog";
 import type { Recruit, RecruitDqsScore, CoachRecruitFlag, ConfidenceLevel } from "@/types/database";
 import {
   Dialog,
@@ -35,6 +36,7 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
+  Mail,
 } from "lucide-react";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -86,6 +88,7 @@ export default function RecruitDetailPage() {
   const [emailReceivedAt, setEmailReceivedAt] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [emailComposeOpen, setEmailComposeOpen] = useState(false);
 
   useEffect(() => {
     async function loadRecruit() {
@@ -278,14 +281,20 @@ export default function RecruitDetailPage() {
             currentFlag={flag?.flag ?? null}
           />
           {recruit.email && (
-            <Button variant="outline" size="sm" onClick={copyEmail}>
-              {emailCopied ? (
-                <Check className="h-4 w-4 mr-1" />
-              ) : (
-                <Copy className="h-4 w-4 mr-1" />
-              )}
-              {emailCopied ? "Copied!" : "Copy Email"}
-            </Button>
+            <>
+              <Button size="sm" onClick={() => setEmailComposeOpen(true)}>
+                <Mail className="h-4 w-4 mr-1" />
+                Email Recruit
+              </Button>
+              <Button variant="outline" size="sm" onClick={copyEmail}>
+                {emailCopied ? (
+                  <Check className="h-4 w-4 mr-1" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-1" />
+                )}
+                {emailCopied ? "Copied!" : "Copy Email"}
+              </Button>
+            </>
           )}
           {!editing && (
             <>
@@ -304,6 +313,15 @@ export default function RecruitDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Email compose dialog */}
+      <EmailComposeDialog
+        open={emailComposeOpen}
+        onClose={() => setEmailComposeOpen(false)}
+        recruitId={recruit.id}
+        recruitName={recruit.full_name}
+        recruitEmail={recruit.email}
+      />
 
       {/* Delete confirmation dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

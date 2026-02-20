@@ -15,6 +15,7 @@ export type ClubLevel =
   | "unknown";
 export type ConfidenceLevel = "high" | "medium" | "low";
 export type FlagType = "interested" | "not_a_fit";
+export type EmailMethod = "gmail" | "outlook" | "mailto" | "clipboard";
 export type EmailPipelineStatus = "not_started" | "pending_setup" | "active";
 
 export interface Program {
@@ -138,6 +139,16 @@ export interface CoachRecruitFlag {
   coach_id: string;
   recruit_id: string;
   flag: FlagType;
+  created_at: string;
+}
+
+export interface EmailLog {
+  id: string;
+  coach_id: string;
+  recruit_id: string;
+  subject: string;
+  body: string;
+  method: EmailMethod;
   created_at: string;
 }
 

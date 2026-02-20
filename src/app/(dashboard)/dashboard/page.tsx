@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, Suspense } from "react";
+import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
 import { useRecruits } from "@/hooks/use-recruits";
 import { useDashboardParams } from "@/hooks/use-dashboard-params";
 import { RecruitCard } from "@/components/recruits/recruit-card";
@@ -8,10 +8,12 @@ import { RecruitFilterPanel } from "@/components/recruits/recruit-filters";
 import { RecruitListView } from "@/components/recruits/recruit-list-view";
 import { RecruitFilterBar } from "@/components/recruits/recruit-filter-bar";
 import { ActiveFilterChips } from "@/components/recruits/active-filter-chips";
+import { BulkEmailDialog } from "@/components/email/bulk-email-dialog";
 import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit";
 import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import type { RecruitWithScore } from "@/types/database";
 import { Button } from "@/components/ui/button";
+import { Mail, X } from "lucide-react";
 
 function applyFilters(
   recruits: RecruitWithScore[],
@@ -262,6 +264,8 @@ function DashboardContent() {
 
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("q5r_view_mode");
@@ -298,6 +302,32 @@ function DashboardContent() {
   const sortedRecruits = useMemo(
     () => applySorting(filteredRecruits, sortBy, sortDir),
     [filteredRecruits, sortBy, sortDir]
+  );
+
+  const toggleSelect = useCallback((recruitId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(recruitId)) {
+        next.delete(recruitId);
+      } else {
+        next.add(recruitId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (sortedRecruits.every((r) => prev.has(r.id))) {
+        return new Set();
+      }
+      return new Set(sortedRecruits.map((r) => r.id));
+    });
+  }, [sortedRecruits]);
+
+  const selectedRecruits = useMemo(
+    () => sortedRecruits.filter((r) => selectedIds.has(r.id)),
+    [sortedRecruits, selectedIds]
   );
 
   // Count only sidebar-relevant filters (exclude Year/Position/Flag which are in popovers)
@@ -353,6 +383,40 @@ function DashboardContent() {
         </div>
       </div>
 
+      {/* Selection toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="mb-4 flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5">
+          <span className="text-sm font-medium">
+            {selectedIds.size} recruit{selectedIds.size !== 1 ? "s" : ""} selected
+          </span>
+          <Button
+            size="sm"
+            onClick={() => setBulkEmailOpen(true)}
+          >
+            <Mail className="h-4 w-4 mr-1.5" />
+            Email Selected
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            <X className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        </div>
+      )}
+
+      {/* Bulk email dialog */}
+      <BulkEmailDialog
+        open={bulkEmailOpen}
+        onClose={() => {
+          setBulkEmailOpen(false);
+          setSelectedIds(new Set());
+        }}
+        selectedRecruits={selectedRecruits}
+      />
+
       <div className="flex gap-6">
         {/* Sidebar filter panel */}
         {showFilters && (
@@ -399,7 +463,13 @@ function DashboardContent() {
           ) : viewMode === "cards" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {sortedRecruits.map((recruit) => (
-                <RecruitCard key={recruit.id} recruit={recruit} onFlagChange={updateRecruitFlag} />
+                <RecruitCard
+                  key={recruit.id}
+                  recruit={recruit}
+                  onFlagChange={updateRecruitFlag}
+                  selected={selectedIds.has(recruit.id)}
+                  onToggleSelect={toggleSelect}
+                />
               ))}
             </div>
           ) : (
@@ -409,6 +479,9 @@ function DashboardContent() {
               sortDirection={sortDir}
               onSort={handleSort}
               onFlagChange={updateRecruitFlag}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+              onToggleSelectAll={toggleSelectAll}
             />
           )}
         </div>

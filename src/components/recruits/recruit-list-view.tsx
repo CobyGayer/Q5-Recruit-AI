@@ -10,6 +10,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DqsBadge } from "@/components/scoring/dqs-badge";
 import { CompletenessBar } from "@/components/scoring/completeness-bar";
 import { FlagButton } from "./flag-button";
@@ -30,6 +31,9 @@ interface RecruitListViewProps {
   sortDirection: SortDirection;
   onSort: (field: SortOption) => void;
   onFlagChange?: (recruitId: string, flag: FlagType | null) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (recruitId: string) => void;
+  onToggleSelectAll?: () => void;
 }
 
 const CLUB_LEVEL_LABELS: Record<string, string> = {
@@ -112,6 +116,9 @@ export function RecruitListView({
   sortDirection,
   onSort,
   onFlagChange,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: RecruitListViewProps) {
   const router = useRouter();
 
@@ -123,6 +130,18 @@ export function RecruitListView({
     <Table>
       <TableHeader>
         <TableRow>
+          {onToggleSelect && (
+            <TableHead className="w-10">
+              <Checkbox
+                checked={
+                  selectedIds &&
+                  recruits.length > 0 &&
+                  recruits.every((r) => selectedIds.has(r.id))
+                }
+                onCheckedChange={() => onToggleSelectAll?.()}
+              />
+            </TableHead>
+          )}
           {COLUMNS.map((col, i) => (
             <SortableHeader
               key={i}
@@ -144,9 +163,19 @@ export function RecruitListView({
           return (
             <TableRow
               key={recruit.id}
-              className="cursor-pointer h-14"
+              className={`cursor-pointer h-14 ${selectedIds?.has(recruit.id) ? "bg-primary/5" : ""}`}
               onClick={() => router.push(`/recruits/${recruit.id}`)}
             >
+              {onToggleSelect && (
+                <TableCell
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleSelect(recruit.id);
+                  }}
+                >
+                  <Checkbox checked={selectedIds?.has(recruit.id) ?? false} />
+                </TableCell>
+              )}
               <TableCell>
                 <FlagButton
                   recruitId={recruit.id}

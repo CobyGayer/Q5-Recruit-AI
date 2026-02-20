@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DqsBadge } from "@/components/scoring/dqs-badge";
 import { CompletenessBar } from "@/components/scoring/completeness-bar";
 import { FlagButton } from "./flag-button";
@@ -12,6 +13,8 @@ import type { RecruitWithScore, FlagType } from "@/types/database";
 interface RecruitCardProps {
   recruit: RecruitWithScore;
   onFlagChange?: (recruitId: string, flag: FlagType | null) => void;
+  selected?: boolean;
+  onToggleSelect?: (recruitId: string) => void;
 }
 
 const CLUB_LEVEL_LABELS: Record<string, string> = {
@@ -83,16 +86,28 @@ function StatCell({ label, value, truncate, icon }: Stat) {
   );
 }
 
-export function RecruitCard({ recruit, onFlagChange }: RecruitCardProps) {
+export function RecruitCard({ recruit, onFlagChange, selected, onToggleSelect }: RecruitCardProps) {
   const dqs = recruit.dqs_score;
   const stats = getAvailableStats(recruit);
 
   return (
     <Link href={`/recruits/${recruit.id}`} className="block h-full">
-      <Card className="hover:shadow-md hover:border-primary/20 transition-all duration-150 cursor-pointer border-primary/10 py-0 gap-0 h-full flex flex-col">
+      <Card className={`hover:shadow-md hover:border-primary/20 transition-all duration-150 cursor-pointer border-primary/10 py-0 gap-0 h-full flex flex-col ${selected ? "ring-2 ring-primary/50 border-primary/30" : ""}`}>
         <CardContent className="px-3 py-3 sm:px-4 sm:py-4 flex-1 flex flex-col">
           {/* Zone 1: Identity Header */}
           <div className="flex items-start gap-3">
+            {onToggleSelect && (
+              <div
+                className="shrink-0 flex items-center pt-0.5"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onToggleSelect(recruit.id);
+                }}
+              >
+                <Checkbox checked={selected} />
+              </div>
+            )}
             <div className="shrink-0">
               <DqsBadge
                 score={dqs?.overall_score ?? null}
