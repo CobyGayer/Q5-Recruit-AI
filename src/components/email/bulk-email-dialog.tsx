@@ -38,6 +38,7 @@ interface BulkEmailDialogProps {
   open: boolean;
   onClose: () => void;
   selectedRecruits: RecruitWithScore[];
+  coachEmail?: string;
 }
 
 interface PersonalizedDraft {
@@ -52,6 +53,7 @@ export function BulkEmailDialog({
   open,
   onClose,
   selectedRecruits,
+  coachEmail,
 }: BulkEmailDialogProps) {
   const isMultiple = selectedRecruits.length > 1;
   const [mode, setMode] = useState<BulkMode>(isMultiple ? "choose" : "personalized");
@@ -142,14 +144,14 @@ export function BulkEmailDialog({
   }
 
   function handleAnnGmail() {
-    const url = buildGmailComposeUrl({ bcc: annBccEmails, subject: annSubject, body: annBody });
+    const url = buildGmailComposeUrl({ bcc: annBccEmails, subject: annSubject, body: annBody, authuser: coachEmail });
     logEmail(selectedRecruits.map((r) => r.id), annSubject, annBody, "gmail");
     window.open(url, "_blank");
     resetAndClose();
   }
 
   function handleAnnOutlook() {
-    const url = buildOutlookComposeUrl({ bcc: annBccEmails, subject: annSubject, body: annBody });
+    const url = buildOutlookComposeUrl({ bcc: annBccEmails, subject: annSubject, body: annBody, authuser: coachEmail });
     logEmail(selectedRecruits.map((r) => r.id), annSubject, annBody, "outlook");
     window.open(url, "_blank");
     resetAndClose();
@@ -225,9 +227,9 @@ export function BulkEmailDialog({
 
     let url: string;
     if (method === "gmail") {
-      url = buildGmailComposeUrl({ to: draft.recruitEmail ?? undefined, subject: draft.subject, body: draft.body });
+      url = buildGmailComposeUrl({ to: draft.recruitEmail ?? undefined, subject: draft.subject, body: draft.body, authuser: coachEmail });
     } else if (method === "outlook") {
-      url = buildOutlookComposeUrl({ to: draft.recruitEmail ?? undefined, subject: draft.subject, body: draft.body });
+      url = buildOutlookComposeUrl({ to: draft.recruitEmail ?? undefined, subject: draft.subject, body: draft.body, authuser: coachEmail });
     } else {
       url = buildMailtoUrl({ to: draft.recruitEmail ?? undefined, subject: draft.subject, body: draft.body });
     }

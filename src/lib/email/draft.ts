@@ -149,6 +149,94 @@ export async function generateRecruitDraft(ctx: DraftContext): Promise<EmailDraf
   return parseJsonResponse(textBlock.text);
 }
 
+interface RequestInfoContext {
+  recruit: Recruit;
+  dqsScore: RecruitDqsScore | null;
+  coachName: string;
+  programName: string;
+  institution: string;
+  missingFields: string[];
+}
+
+const MISSING_FIELD_LABELS: Record<string, string> = {
+  full_name: "full name",
+  email: "email address",
+  phone: "phone number",
+  graduation_year: "graduation year",
+  current_school: "current school",
+  city: "city",
+  state: "state",
+  country: "country",
+  positions: "position(s) played",
+  preferred_foot: "preferred foot",
+  height_inches: "height",
+  weight_lbs: "weight",
+  gpa: "GPA",
+  sat_score: "SAT score",
+  act_score: "ACT score",
+  club_team: "club team name",
+  club_level: "club level (e.g., MLS Next, ECNL)",
+  high_school_team: "high school team name",
+  video_url: "highlight video link",
+};
+
+function buildRequestInfoPrompt(ctx: RequestInfoContext): string {
+  const recruitSummary = buildRecruitSummary(ctx.recruit, ctx.dqsScore);
+  const fieldNames = ctx.missingFields
+    .map((f) => MISSING_FIELD_LABELS[f] ?? f)
+    .join(", ");
+
+  return `You are a college soccer coach writing a short, friendly email to a prospective student-athlete asking them to provide some missing information from their recruiting profile.
+
+COACH INFO:
+Name: ${ctx.coachName}
+Program: ${ctx.programName}
+Institution: ${ctx.institution}
+
+RECRUIT PROFILE (what we already know):
+${recruitSummary}
+
+MISSING INFORMATION TO REQUEST:
+${fieldNames}
+
+INSTRUCTIONS:
+- Write as ${ctx.coachName}, the coach — use first person
+- Address the recruit by first name${ctx.recruit.full_name ? ` (${ctx.recruit.full_name.split(" ")[0]})` : ""}
+- Open with a warm, brief line referencing something specific from their profile (their club team, position, school, etc.) to show genuine interest
+- Naturally weave in the request for the missing information — do NOT present it as a bulleted checklist unless there are 5+ fields
+- If requesting a highlight video link, express enthusiasm about wanting to see them play
+- If requesting academic info (GPA, SAT, ACT), frame it as helping evaluate the full picture for the program
+- Keep it to 2-3 short paragraphs maximum
+- End with an encouraging note and the coach's name
+- Plain text only — no HTML, no markdown formatting, no bold or italic
+- Do NOT use placeholder brackets like [School Name] — use actual data
+- Do NOT include a subject line in the body — only in the JSON
+
+Respond with ONLY a valid JSON object (no markdown, no explanation):
+{
+  "subject": "the email subject line",
+  "body": "the full email body text"
+}`;
+}
+
+/** Generate an email requesting specific missing info from a recruit */
+export async function generateRequestInfoDraft(ctx: RequestInfoContext): Promise<EmailDraft> {
+  const prompt = buildRequestInfoPrompt(ctx);
+
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-5-20250929",
+    max_tokens: 1000,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const textBlock = message.content.find((block) => block.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("No text response from Claude API");
+  }
+
+  return parseJsonResponse(textBlock.text);
+}
+
 /** Generate a generic announcement email for bulk BCC sending */
 export async function generateAnnouncementDraft(
   coachName: string,

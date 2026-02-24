@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,80 +19,67 @@ import {
 import { Mail, Copy, Check, Loader2, RefreshCw } from "lucide-react";
 import type { EmailMethod } from "@/types/database";
 
-interface EmailComposeDialogProps {
+interface RequestInfoDialogProps {
   open: boolean;
   onClose: () => void;
   recruitId: string;
   recruitName: string | null;
   recruitEmail: string | null;
+  selectedFields: string[];
+  fieldLabels: Record<string, string>;
   coachEmail?: string;
 }
 
-type Step = "prompt" | "compose";
-
-export function EmailComposeDialog({
+export function RequestInfoDialog({
   open,
   onClose,
   recruitId,
   recruitName,
   recruitEmail,
+  selectedFields,
+  fieldLabels,
   coachEmail,
-}: EmailComposeDialogProps) {
-  const [step, setStep] = useState<Step>("prompt");
-  const [purpose, setPurpose] = useState("");
+}: RequestInfoDialogProps) {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const fetchDraft = useCallback(
-    async (purposeText?: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/email/draft", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recruitId,
-            ...(purposeText ? { purpose: purposeText } : {}),
-          }),
-        });
-        if (!res.ok) {
-          throw new Error("Failed to generate draft");
-        }
-        const data = await res.json();
-        setSubject(data.subject);
-        setBody(data.body);
-      } catch {
-        setError(
-          "Failed to generate email draft. You can write your own below."
-        );
-        setSubject("");
-        setBody("");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [recruitId]
-  );
-
-  function handleGenerateDraft() {
-    setStep("compose");
-    fetchDraft(purpose.trim() || undefined);
-  }
-
-  function handleSkip() {
-    setSubject("");
-    setBody("");
+  const fetchDraft = useCallback(async () => {
+    if (selectedFields.length === 0) return;
+    setLoading(true);
     setError(null);
-    setStep("compose");
-  }
+    try {
+      const res = await fetch("/api/email/draft/request-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recruitId, fields: selectedFields }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to generate draft");
+      }
+      const data = await res.json();
+      setSubject(data.subject);
+      setBody(data.body);
+    } catch {
+      setError(
+        "Failed to generate email draft. You can write your own below."
+      );
+      setSubject("");
+      setBody("");
+    } finally {
+      setLoading(false);
+    }
+  }, [recruitId, selectedFields]);
+
+  useEffect(() => {
+    if (open && selectedFields.length > 0) {
+      fetchDraft();
+    }
+  }, [open, fetchDraft, selectedFields.length]);
 
   function handleClose() {
-    setStep("prompt");
-    setPurpose("");
     setSubject("");
     setBody("");
     setError(null);
@@ -166,56 +153,25 @@ export function EmailComposeDialog({
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const fieldSummary = selectedFields
+    .map((f) => fieldLabels[f] ?? f)
+    .join(", ");
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
-            Email {recruitName ?? "Recruit"}
+            Request Info from {recruitName ?? "Recruit"}
           </DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Requesting: {fieldSummary}
+          </p>
         </DialogHeader>
 
-        {/* Step 1: Purpose prompt */}
-        {step === "prompt" && (
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="email-purpose">
-                What is this email about?
-              </Label>
-              <Input
-                id="email-purpose"
-                value={purpose}
-                onChange={(e) => setPurpose(e.target.value)}
-                placeholder='e.g., "Interested in your highlight reel", "Camp invite on March 15th"'
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && purpose.trim()) {
-                    handleGenerateDraft();
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                The AI will generate a personalized email based on this and the
-                recruit&apos;s profile data.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Button
-                onClick={handleGenerateDraft}
-                disabled={!purpose.trim()}
-              >
-                Generate Draft
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleSkip}>
-                Skip &mdash; I&apos;ll write my own
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Compose — loading */}
-        {step === "compose" && loading && (
+        {/* Loading */}
+        {loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
@@ -224,8 +180,8 @@ export function EmailComposeDialog({
           </div>
         )}
 
-        {/* Step 2: Compose — ready */}
-        {step === "compose" && !loading && (
+        {/* Compose — ready */}
+        {!loading && (
           <div className="space-y-4">
             {error && (
               <p className="text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md">
@@ -241,9 +197,9 @@ export function EmailComposeDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email-subject">Subject</Label>
+              <Label htmlFor="ri-subject">Subject</Label>
               <Input
-                id="email-subject"
+                id="ri-subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Email subject"
@@ -251,9 +207,9 @@ export function EmailComposeDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email-body">Message</Label>
+              <Label htmlFor="ri-body">Message</Label>
               <Textarea
-                id="email-body"
+                id="ri-body"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="Write your email..."
@@ -266,7 +222,7 @@ export function EmailComposeDialog({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => fetchDraft(purpose.trim() || undefined)}
+                onClick={fetchDraft}
                 disabled={loading}
               >
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />

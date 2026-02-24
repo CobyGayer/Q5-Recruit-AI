@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { useRecruits } from "@/hooks/use-recruits";
 import { useDashboardParams } from "@/hooks/use-dashboard-params";
 import { RecruitCard } from "@/components/recruits/recruit-card";
@@ -248,7 +249,9 @@ function getDefaultForKey(key: keyof RecruitFilters): Partial<RecruitFilters> {
 }
 
 function DashboardContent() {
+  const supabase = createClient();
   const { recruits, loading, updateRecruitFlag } = useRecruits();
+  const [coachEmail, setCoachEmail] = useState<string | undefined>();
   const {
     searchTerm,
     setSearchTerm,
@@ -271,6 +274,12 @@ function DashboardContent() {
     const saved = localStorage.getItem("q5r_view_mode");
     if (saved === "list") setViewMode("list");
   }, []);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setCoachEmail(user.email);
+    });
+  }, [supabase]);
 
   function handleViewMode(mode: "cards" | "list") {
     setViewMode(mode);
@@ -415,6 +424,7 @@ function DashboardContent() {
           setSelectedIds(new Set());
         }}
         selectedRecruits={selectedRecruits}
+        coachEmail={coachEmail}
       />
 
       <div className="flex gap-6">

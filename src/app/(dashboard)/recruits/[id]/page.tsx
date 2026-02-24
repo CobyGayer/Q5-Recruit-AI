@@ -20,6 +20,8 @@ import { CompletenessIndicator } from "@/components/scoring/completeness-indicat
 import { FlagButton } from "@/components/recruits/flag-button";
 import { ConfidenceBadge } from "@/components/recruits/confidence-badge";
 import { EmailComposeDialog } from "@/components/email/email-compose-dialog";
+import { RequestInfoDialog } from "@/components/email/request-info-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Recruit, RecruitDqsScore, CoachRecruitFlag, ConfidenceLevel } from "@/types/database";
 import {
   Dialog,
@@ -89,6 +91,9 @@ export default function RecruitDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [emailComposeOpen, setEmailComposeOpen] = useState(false);
+  const [selectedMissingFields, setSelectedMissingFields] = useState<string[]>([]);
+  const [requestInfoOpen, setRequestInfoOpen] = useState(false);
+  const [coachEmail, setCoachEmail] = useState<string | undefined>();
 
   useEffect(() => {
     async function loadRecruit() {
@@ -118,6 +123,7 @@ export default function RecruitDetailPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
+        setCoachEmail(user.email ?? undefined);
         const { data: flagData } = await supabase
           .from("coach_recruit_flags")
           .select("*")
@@ -321,6 +327,22 @@ export default function RecruitDetailPage() {
         recruitId={recruit.id}
         recruitName={recruit.full_name}
         recruitEmail={recruit.email}
+        coachEmail={coachEmail}
+      />
+
+      {/* Request info dialog */}
+      <RequestInfoDialog
+        open={requestInfoOpen}
+        onClose={() => {
+          setRequestInfoOpen(false);
+          setSelectedMissingFields([]);
+        }}
+        recruitId={recruit.id}
+        recruitName={recruit.full_name}
+        recruitEmail={recruit.email}
+        selectedFields={selectedMissingFields}
+        fieldLabels={FIELD_LABELS}
+        coachEmail={coachEmail}
       />
 
       {/* Delete confirmation dialog */}
@@ -571,18 +593,68 @@ export default function RecruitDetailPage() {
                   Missing Data ({recruit.fields_missing.length} fields)
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-1">
+              <CardContent className="space-y-3">
+                {/* Select All checkbox */}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={
+                      selectedMissingFields.length === recruit.fields_missing.length
+                        ? true
+                        : selectedMissingFields.length > 0
+                        ? "indeterminate"
+                        : false
+                    }
+                    onCheckedChange={() => {
+                      if (selectedMissingFields.length === recruit.fields_missing.length) {
+                        setSelectedMissingFields([]);
+                      } else {
+                        setSelectedMissingFields([...recruit.fields_missing]);
+                      }
+                    }}
+                  />
+                  <span className="text-xs font-medium text-amber-800">
+                    Select All
+                  </span>
+                </label>
+
+                {/* Individual field checkboxes */}
+                <div className="flex flex-wrap gap-2">
                   {recruit.fields_missing.map((field) => (
-                    <Badge
+                    <label
                       key={field}
-                      variant="outline"
-                      className="text-xs bg-card"
+                      className="flex items-center gap-1.5 cursor-pointer"
                     >
-                      {FIELD_LABELS[field] ?? field}
-                    </Badge>
+                      <Checkbox
+                        checked={selectedMissingFields.includes(field)}
+                        onCheckedChange={() => {
+                          setSelectedMissingFields((prev) =>
+                            prev.includes(field)
+                              ? prev.filter((f) => f !== field)
+                              : [...prev, field]
+                          );
+                        }}
+                      />
+                      <Badge variant="outline" className="text-xs bg-card">
+                        {FIELD_LABELS[field] ?? field}
+                      </Badge>
+                    </label>
                   ))}
                 </div>
+
+                {/* Request Info button */}
+                {recruit.email && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
+                    disabled={selectedMissingFields.length === 0}
+                    onClick={() => setRequestInfoOpen(true)}
+                  >
+                    <Mail className="h-3.5 w-3.5 mr-1.5" />
+                    Request Info ({selectedMissingFields.length} field
+                    {selectedMissingFields.length !== 1 ? "s" : ""})
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
