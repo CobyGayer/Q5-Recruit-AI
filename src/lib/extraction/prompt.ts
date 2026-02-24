@@ -24,6 +24,7 @@ RULES:
 - For gpa: Extract as a decimal (e.g., 3.8). If they mention a weighted GPA, note it but extract the unweighted if both are given.
 - For video_url: Extract YouTube, Vimeo, Hudl, or any other video link mentioned.
 - The email address from the header may be the recruit's or a parent's. If the email body mentions a different contact email for the recruit, prefer that one.
+- IMPORTANT: Emails may contain quoted or forwarded messages below the new content (indicated by lines starting with ">", "On ... wrote:", "---------- Forwarded message ----------", or similar markers). ONLY extract information from the NEW message content above these markers. Ignore all quoted or forwarded text — it often contains the coach's own contact information, not the recruit's.
 
 EMAIL:
 Subject: ${subject || "(no subject)"}

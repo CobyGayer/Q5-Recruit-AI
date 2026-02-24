@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const hashedKey = hashApiKey(apiKey);
   const { data: coach, error: coachError } = await supabase
     .from("coaches")
-    .select("id, status")
+    .select("id, status, email")
     .eq("api_key", hashedKey)
     .single();
 
@@ -96,57 +96,87 @@ export async function POST(request: NextRequest) {
       payload.body_plain
     );
 
-    // Determine the recruit's email for dedup
-    const recruitEmail =
-      (extraction.recruitData.email as string) ?? payload.sender_email;
+    // Normalize emails for dedup comparison
+    const extractedEmail =
+      ((extraction.recruitData.email as string) || null)
+        ?.toLowerCase()
+        .trim() ?? null;
+    const senderEmail =
+      (payload.sender_email || null)?.toLowerCase().trim() ?? null;
+
+    // Store the normalized email in recruitData
+    extraction.recruitData.email = extractedEmail ?? senderEmail;
 
     let recruitId: string;
+    let existing: Record<string, unknown> | null = null;
 
-    if (recruitEmail) {
-      // Check for existing recruit (deduplication)
-      const { data: existing } = await supabase
+    // Two-pass dedup: check extracted email first, then sender_email
+    if (extractedEmail) {
+      const { data } = await supabase
         .from("recruits")
         .select("*")
         .eq("coach_id", coach.id)
-        .eq("email", recruitEmail)
+        .eq("email", extractedEmail)
+        .single();
+      existing = data;
+    }
+
+    if (!existing && senderEmail && senderEmail !== extractedEmail) {
+      const { data } = await supabase
+        .from("recruits")
+        .select("*")
+        .eq("coach_id", coach.id)
+        .eq("email", senderEmail)
+        .single();
+      existing = data;
+
+      if (data) {
+        // Matched via sender_email — the extracted email was wrong.
+        // Override recruitData.email to prevent buildUpdateData from
+        // overwriting the recruit's correct email with the bad extraction.
+        extraction.recruitData.email = senderEmail;
+      }
+    }
+
+    // Guard: if sender is the coach themselves (outbound email processed by
+    // Zapier due to thread-level labeling), skip creation of a new recruit.
+    // Updates to existing recruits are still allowed (via extracted email match).
+    const coachEmail = (coach.email as string)?.toLowerCase().trim() ?? null;
+    const senderIsCoach = coachEmail && senderEmail === coachEmail;
+
+    if (existing) {
+      // Update existing recruit (only overwrite if new confidence >= existing)
+      const updateData = buildUpdateData(
+        existing,
+        extraction.recruitData,
+        extraction.confidence
+      );
+
+      await supabase
+        .from("recruits")
+        .update(updateData)
+        .eq("id", existing.id)
+        .select()
         .single();
 
-      if (existing) {
-        // Update existing recruit (only overwrite if new confidence >= existing)
-        const updateData = buildUpdateData(
-          existing,
-          extraction.recruitData,
-          extraction.confidence
-        );
+      recruitId = existing.id as string;
+    } else if (senderIsCoach) {
+      // Coach's own outbound email — don't create a duplicate recruit
+      await supabase
+        .from("ingested_emails")
+        .update({
+          processing_status: "failed",
+          extraction_error: "Skipped: sender is the coach (outbound email)",
+        })
+        .eq("id", emailRecord.id);
 
-        const { data: updated } = await supabase
-          .from("recruits")
-          .update(updateData)
-          .eq("id", existing.id)
-          .select()
-          .single();
-
-        recruitId = existing.id;
-      } else {
-        // Create new recruit
-        const { data: newRecruit, error: recruitError } = await supabase
-          .from("recruits")
-          .insert({
-            coach_id: coach.id,
-            ...extraction.recruitData,
-          })
-          .select()
-          .single();
-
-        if (recruitError || !newRecruit) {
-          throw new Error(
-            `Failed to create recruit: ${recruitError?.message}`
-          );
-        }
-        recruitId = newRecruit.id;
-      }
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: "Sender matches coach email — outbound email ignored",
+      });
     } else {
-      // No email found — create recruit without dedup
+      // Create new recruit
       const { data: newRecruit, error: recruitError } = await supabase
         .from("recruits")
         .insert({

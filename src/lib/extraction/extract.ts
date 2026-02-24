@@ -131,7 +131,7 @@ export async function extractRecruitData(
   // Build flat recruit data for database insertion
   const recruitData: Record<string, unknown> = {
     full_name: parsed.full_name.value,
-    email: parsed.email.value ?? senderEmail,
+    email: (parsed.email.value ?? senderEmail)?.toLowerCase().trim() ?? null,
     phone: parsed.phone.value,
     graduation_year: parsed.graduation_year.value,
     current_school: parsed.current_school.value,
