@@ -14,6 +14,7 @@ import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit"
 import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import type { RecruitWithScore } from "@/types/database";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, X } from "lucide-react";
 
 function applyFilters(
@@ -471,7 +472,23 @@ function DashboardContent() {
               )}
             </div>
           ) : viewMode === "cards" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <Checkbox
+                  checked={
+                    sortedRecruits.length > 0 &&
+                    sortedRecruits.every((r) => selectedIds.has(r.id))
+                  }
+                  onCheckedChange={toggleSelectAll}
+                />
+                <span
+                  className="text-sm text-muted-foreground cursor-pointer select-none"
+                  onClick={toggleSelectAll}
+                >
+                  Select all ({sortedRecruits.length})
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {sortedRecruits.map((recruit) => (
                 <RecruitCard
                   key={recruit.id}
@@ -481,6 +498,7 @@ function DashboardContent() {
                   onToggleSelect={toggleSelect}
                 />
               ))}
+              </div>
             </div>
           ) : (
             <RecruitListView
