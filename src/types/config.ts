@@ -20,7 +20,7 @@ export interface WeightFormData {
 
 /** Form data for roster context step */
 export interface RosterContextFormData {
-  high_need_positions: Array<{ position: string; rank: number }>;
+  high_need_positions: Record<string, Array<{ position: string; rank: number }>>;
   priority_grad_years: Array<{ year: number; rank: number }>;
   roster_spots: Record<string, number>;
 }

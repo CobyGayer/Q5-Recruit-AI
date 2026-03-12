@@ -170,15 +170,22 @@ export function calculateBonus(
   let points = 0;
   const reasons: string[] = [];
 
-  // High-need position bonus (up to 5 points)
-  if (config.high_need_positions && config.high_need_positions.length > 0) {
-    for (const need of config.high_need_positions) {
-      if (recruit.positions.includes(need.position)) {
-        // Higher rank (lower number) = more bonus
-        const posBonus = Math.max(1, 6 - need.rank);
-        points += posBonus;
-        reasons.push(`+${posBonus} for high-need position ${need.position} (priority #${need.rank})`);
-        break; // Only count best matching position
+  // High-need position bonus (up to 5 points) — per graduation year
+  if (
+    config.high_need_positions &&
+    recruit.graduation_year != null
+  ) {
+    const yearKey = String(recruit.graduation_year);
+    const yearPositions = config.high_need_positions[yearKey];
+    if (yearPositions && yearPositions.length > 0) {
+      for (const need of yearPositions) {
+        if (recruit.positions.includes(need.position)) {
+          // Higher rank (lower number) = more bonus
+          const posBonus = Math.max(1, 6 - need.rank);
+          points += posBonus;
+          reasons.push(`+${posBonus} for high-need position ${need.position} in ${yearKey} (priority #${need.rank})`);
+          break; // Only count best matching position
+        }
       }
     }
   }

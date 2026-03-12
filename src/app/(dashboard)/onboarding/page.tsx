@@ -61,7 +61,7 @@ export default function OnboardingPage() {
   });
 
   const [roster, setRoster] = useState<RosterContextFormData>({
-    high_need_positions: [],
+    high_need_positions: {},
     priority_grad_years: [],
     roster_spots: {},
   });

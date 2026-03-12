@@ -50,7 +50,7 @@ export default function SettingsPage() {
   });
 
   const [roster, setRoster] = useState<RosterContextFormData>({
-    high_need_positions: [],
+    high_need_positions: {},
     priority_grad_years: [],
     roster_spots: {},
   });
@@ -78,7 +78,7 @@ export default function SettingsPage() {
             weight_completeness: data.weight_completeness ?? 20,
           });
           setRoster({
-            high_need_positions: data.high_need_positions || [],
+            high_need_positions: Array.isArray(data.high_need_positions) ? {} : (data.high_need_positions || {}),
             priority_grad_years: data.priority_grad_years || [],
             roster_spots: data.roster_spots || {},
           });
