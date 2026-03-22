@@ -56,8 +56,11 @@ export async function POST(request: NextRequest) {
   let payload;
   try {
     const body = await request.json();
+    console.log("[ingest] Raw payload keys:", Object.keys(body));
+    console.log("[ingest] Attachments field:", JSON.stringify(body.attachments)?.substring(0, 500));
     payload = IngestPayloadSchema.parse(body);
   } catch (err) {
+    console.error("[ingest] Payload validation failed:", err);
     return NextResponse.json(
       { error: "Invalid payload", details: String(err) },
       { status: 422 }
