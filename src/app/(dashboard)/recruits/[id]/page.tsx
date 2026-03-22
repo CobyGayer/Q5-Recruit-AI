@@ -22,7 +22,7 @@ import { ConfidenceBadge } from "@/components/recruits/confidence-badge";
 import { EmailComposeDialog } from "@/components/email/email-compose-dialog";
 import { RequestInfoDialog } from "@/components/email/request-info-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Recruit, RecruitDqsScore, CoachRecruitFlag, ConfidenceLevel } from "@/types/database";
+import type { Recruit, RecruitDqsScore, CoachRecruitFlag, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
 import {
   Dialog,
   DialogContent,
@@ -94,6 +94,7 @@ export default function RecruitDetailPage() {
   const [selectedMissingFields, setSelectedMissingFields] = useState<string[]>([]);
   const [requestInfoOpen, setRequestInfoOpen] = useState(false);
   const [coachEmail, setCoachEmail] = useState<string | undefined>();
+  const [transcriptAnalysis, setTranscriptAnalysis] = useState<TranscriptAnalysis | null>(null);
 
   useEffect(() => {
     async function loadRecruit() {
@@ -143,6 +144,14 @@ export default function RecruitDetailPage() {
         .single();
       setOriginalEmail(emailData?.body_plain ?? null);
       setEmailReceivedAt(emailData?.received_at ?? null);
+
+      // Fetch transcript analysis
+      const { data: transcriptData } = await supabase
+        .from("transcript_analyses")
+        .select("*")
+        .eq("recruit_id", id)
+        .single();
+      setTranscriptAnalysis(transcriptData as TranscriptAnalysis | null);
 
       setLoading(false);
     }
@@ -564,7 +573,80 @@ export default function RecruitDetailPage() {
                 <DqsInfoDialog />
               </CardHeader>
               <CardContent>
-                <ScoreBreakdown score={dqsScore} />
+                <ScoreBreakdown score={dqsScore} rigorGrade={transcriptAnalysis?.rigor_grade} />
+              </CardContent>
+            </Card>
+          )}
+
+          {transcriptAnalysis && transcriptAnalysis.transcript_readable && (
+            <Card className="border-primary/10">
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center justify-between">
+                  Transcript Analysis
+                  <Badge
+                    variant="secondary"
+                    className={
+                      transcriptAnalysis.rigor_grade.startsWith("A")
+                        ? "bg-emerald-100 text-emerald-800"
+                        : transcriptAnalysis.rigor_grade.startsWith("B")
+                        ? "bg-blue-100 text-blue-800"
+                        : transcriptAnalysis.rigor_grade === "C+" || transcriptAnalysis.rigor_grade === "C"
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-red-100 text-red-800"
+                    }
+                  >
+                    Rigor: {transcriptAnalysis.rigor_grade}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {transcriptAnalysis.admissions_notes && (
+                  <p className="text-sm text-muted-foreground italic">
+                    {transcriptAnalysis.admissions_notes}
+                  </p>
+                )}
+                {transcriptAnalysis.strengths.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Strengths</p>
+                    <div className="flex flex-wrap gap-1">
+                      {transcriptAnalysis.strengths.map((s, i) => (
+                        <Badge key={i} variant="secondary" className="bg-emerald-50 text-emerald-700 text-xs">
+                          {s}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {transcriptAnalysis.red_flags.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Red Flags</p>
+                    <div className="flex flex-wrap gap-1">
+                      {transcriptAnalysis.red_flags.map((f, i) => (
+                        <Badge key={i} variant="secondary" className="bg-red-50 text-red-700 text-xs">
+                          {f}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {transcriptAnalysis.grade_trend && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-medium">
+                      Grade Trend: {transcriptAnalysis.grade_trend.charAt(0).toUpperCase() + transcriptAnalysis.grade_trend.slice(1)}
+                    </span>
+                    {transcriptAnalysis.grade_trend_notes && (
+                      <span>— {transcriptAnalysis.grade_trend_notes}</span>
+                    )}
+                  </div>
+                )}
+                {transcriptAnalysis.notable_courses.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notable Courses</p>
+                    <p className="text-xs text-muted-foreground">
+                      {transcriptAnalysis.notable_courses.join(", ")}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

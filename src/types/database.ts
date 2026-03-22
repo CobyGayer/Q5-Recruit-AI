@@ -15,6 +15,8 @@ export type ClubLevel =
   | "unknown";
 export type ConfidenceLevel = "high" | "medium" | "low";
 export type FlagType = "interested" | "not_a_fit";
+export type RigorGrade = "A+" | "A" | "A-" | "B+" | "B" | "B-" | "C+" | "C" | "C-" | "D";
+export type GradeTrend = "improving" | "declining" | "stable" | "inconsistent";
 export type EmailMethod = "gmail" | "outlook" | "mailto" | "clipboard";
 export type EmailPipelineStatus = "not_started" | "pending_setup" | "active";
 
@@ -150,6 +152,34 @@ export interface EmailLog {
   body: string;
   method: EmailMethod;
   created_at: string;
+}
+
+export interface TranscriptAnalysis {
+  id: string;
+  recruit_id: string;
+  coach_id: string;
+  email_id: string | null;
+  rigor_grade: RigorGrade;
+  rigor_score: number;
+  confidence: ConfidenceLevel;
+  transcript_readable: boolean;
+  honors_ap_ib_count: number;
+  total_academic_courses: number;
+  rigor_ratio: number;
+  strongest_subjects: string[];
+  weakest_subjects: string[];
+  notable_courses: string[];
+  grade_trend: GradeTrend | null;
+  freshman_gpa_estimate: number | null;
+  senior_gpa_estimate: number | null;
+  grade_trend_notes: string | null;
+  red_flags: string[];
+  strengths: string[];
+  schedule_assessment: string | null;
+  admissions_notes: string | null;
+  cumulative_gpa_from_transcript: number | null;
+  raw_analysis: Record<string, unknown>;
+  analyzed_at: string;
 }
 
 /** Recruit joined with its DQS score and flag for dashboard display */

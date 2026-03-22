@@ -1,4 +1,4 @@
-import type { Recruit, ProgramConfig } from "@/types/database";
+import type { Recruit, ProgramConfig, TranscriptAnalysis } from "@/types/database";
 import { checkThresholds } from "./thresholds";
 import {
   scoreAcademic,
@@ -69,7 +69,8 @@ function normalizeWeights(
  */
 export function calculateDQS(
   recruit: Recruit,
-  config: ProgramConfig
+  config: ProgramConfig,
+  transcriptAnalysis?: TranscriptAnalysis | null
 ): DQSResult {
   // Step 1: Threshold check
   const thresholdResult = checkThresholds(recruit, config);
@@ -80,7 +81,7 @@ export function calculateDQS(
       isQualified: false,
       disqualificationReasons: thresholdResult.reasons,
       componentScores: {
-        academic: scoreAcademic(recruit),
+        academic: scoreAcademic(recruit, transcriptAnalysis),
         competition: scoreCompetition(recruit),
         physical: scorePhysical(recruit, config),
         positionFit: scorePositionFit(recruit, config),
@@ -95,7 +96,7 @@ export function calculateDQS(
 
   // Step 2: Calculate component scores
   const componentScores = {
-    academic: scoreAcademic(recruit),
+    academic: scoreAcademic(recruit, transcriptAnalysis),
     competition: scoreCompetition(recruit),
     physical: scorePhysical(recruit, config),
     positionFit: scorePositionFit(recruit, config),

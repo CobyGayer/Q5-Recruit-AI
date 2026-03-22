@@ -1,4 +1,4 @@
-import type { Recruit, ProgramConfig, ClubLevel } from "@/types/database";
+import type { Recruit, ProgramConfig, ClubLevel, TranscriptAnalysis } from "@/types/database";
 import { lookupClubLevel } from "@/lib/data/club-directory";
 
 /** Club level tier scores */
@@ -14,8 +14,12 @@ const CLUB_LEVEL_SCORES: Record<ClubLevel, number> = {
 /**
  * Score academic strength (0-100).
  * GPA is primary (70%), test scores are secondary (30%) if available.
+ * When a transcript analysis exists, applies a rigor modifier (±15%) to the base score.
  */
-export function scoreAcademic(recruit: Recruit): number | null {
+export function scoreAcademic(
+  recruit: Recruit,
+  transcriptAnalysis?: TranscriptAnalysis | null
+): number | null {
   if (recruit.gpa == null && recruit.sat_score == null && recruit.act_score == null) {
     return null; // No academic data at all
   }
@@ -44,10 +48,21 @@ export function scoreAcademic(recruit: Recruit): number | null {
   }
 
   // Blend: 70% GPA, 30% test if both available
+  let baseScore: number;
   if (gpaScore != null && testScore != null) {
-    return gpaScore * 0.7 + testScore * 0.3;
+    baseScore = gpaScore * 0.7 + testScore * 0.3;
+  } else {
+    baseScore = gpaScore ?? testScore ?? 0;
   }
-  return gpaScore ?? testScore ?? 0;
+
+  // Apply rigor modifier if transcript was analyzed
+  // Range: 0.85 (rigor_score=0) to 1.15 (rigor_score=100), neutral at 50
+  if (transcriptAnalysis?.transcript_readable && transcriptAnalysis.rigor_score != null) {
+    const modifier = 0.85 + (transcriptAnalysis.rigor_score / 100) * 0.30;
+    baseScore = Math.min(100, Math.max(0, baseScore * modifier));
+  }
+
+  return baseScore;
 }
 
 /**

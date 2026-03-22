@@ -6,7 +6,8 @@ import { IngestPayloadSchema } from "@/lib/extraction/schema";
 import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
-import type { Recruit, ProgramConfig, ConfidenceLevel } from "@/types/database";
+import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
+import type { Recruit, ProgramConfig, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
 
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
@@ -194,12 +195,71 @@ export async function POST(request: NextRequest) {
       recruitId = newRecruit.id;
     }
 
+    // Step 5.5: Transcript analysis (non-blocking)
+    let transcriptAnalysis: TranscriptAnalysis | null = null;
+    if (payload.attachments && payload.attachments.length > 0) {
+      try {
+        const pdfAttachment = await findFirstPdfAttachment(payload.attachments);
+        if (pdfAttachment) {
+          const analysis = await analyzeTranscript(pdfAttachment.base64);
+          if (analysis) {
+            const { data: transcriptRow } = await supabase
+              .from("transcript_analyses")
+              .upsert(
+                {
+                  recruit_id: recruitId,
+                  coach_id: coach.id,
+                  email_id: emailRecord.id,
+                  rigor_grade: analysis.rigorGrade,
+                  rigor_score: analysis.result.rigor_score,
+                  confidence: analysis.result.confidence,
+                  transcript_readable: analysis.result.transcript_readable,
+                  honors_ap_ib_count: analysis.result.course_analysis.honors_ap_ib_count,
+                  total_academic_courses: analysis.result.course_analysis.total_academic_courses,
+                  rigor_ratio: analysis.result.course_analysis.rigor_ratio,
+                  strongest_subjects: analysis.result.course_analysis.strongest_subjects,
+                  weakest_subjects: analysis.result.course_analysis.weakest_subjects,
+                  notable_courses: analysis.result.course_analysis.notable_courses,
+                  grade_trend: analysis.result.grade_trends.direction,
+                  freshman_gpa_estimate: analysis.result.grade_trends.freshman_gpa_estimate,
+                  senior_gpa_estimate: analysis.result.grade_trends.senior_gpa_estimate,
+                  grade_trend_notes: analysis.result.grade_trends.notes,
+                  red_flags: analysis.result.red_flags,
+                  strengths: analysis.result.strengths,
+                  schedule_assessment: analysis.result.schedule_assessment,
+                  admissions_notes: analysis.result.admissions_notes,
+                  cumulative_gpa_from_transcript: analysis.result.cumulative_gpa_from_transcript,
+                  raw_analysis: analysis.result as unknown as Record<string, unknown>,
+                },
+                { onConflict: "recruit_id" }
+              )
+              .select()
+              .single();
+
+            transcriptAnalysis = transcriptRow as TranscriptAnalysis | null;
+          }
+        }
+      } catch (err) {
+        console.warn("[transcript] Non-blocking analysis error:", err);
+      }
+    }
+
     // Step 6: Calculate DQS score
     const { data: config } = await supabase
       .from("program_config")
       .select("*")
       .eq("coach_id", coach.id)
       .single();
+
+    // If no transcript analysis from this email, check for existing one
+    if (!transcriptAnalysis) {
+      const { data: existingAnalysis } = await supabase
+        .from("transcript_analyses")
+        .select("*")
+        .eq("recruit_id", recruitId)
+        .single();
+      transcriptAnalysis = existingAnalysis as TranscriptAnalysis | null;
+    }
 
     if (config) {
       const { data: recruit } = await supabase
@@ -211,7 +271,8 @@ export async function POST(request: NextRequest) {
       if (recruit) {
         const dqsResult = calculateDQS(
           recruit as Recruit,
-          config as ProgramConfig
+          config as ProgramConfig,
+          transcriptAnalysis
         );
 
         const aiSummary = await generateDQSSummary(
