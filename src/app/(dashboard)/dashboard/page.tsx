@@ -10,13 +10,12 @@ import { RecruitListView } from "@/components/recruits/recruit-list-view";
 import { RecruitFilterBar } from "@/components/recruits/recruit-filter-bar";
 import { ActiveFilterChips } from "@/components/recruits/active-filter-chips";
 import { BulkEmailDialog } from "@/components/email/bulk-email-dialog";
-import { ExportDialog } from "@/components/recruits/export-dialog";
 import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit";
 import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import type { RecruitWithScore } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, X, Download } from "lucide-react";
+import { Mail, X } from "lucide-react";
 
 function applyFilters(
   recruits: RecruitWithScore[],
@@ -271,7 +270,6 @@ function DashboardContent() {
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("q5r_view_mode");
@@ -419,20 +417,6 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* Export toolbar */}
-      {recruits.length > 0 && (
-        <div className="mb-4 flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setExportOpen(true)}
-          >
-            <Download className="h-4 w-4 mr-1.5" />
-            Export All Recruits
-          </Button>
-        </div>
-      )}
-
       {/* Bulk email dialog */}
       <BulkEmailDialog
         open={bulkEmailOpen}
@@ -442,13 +426,6 @@ function DashboardContent() {
         }}
         selectedRecruits={selectedRecruits}
         coachEmail={coachEmail}
-      />
-
-      {/* Export dialog */}
-      <ExportDialog
-        open={exportOpen}
-        onClose={() => setExportOpen(false)}
-        recruitCount={recruits.length}
       />
 
       <div className="flex gap-6">
