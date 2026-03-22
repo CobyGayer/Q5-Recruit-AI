@@ -27,7 +27,6 @@ export function useRecruits() {
     const { data: recruitData, error: recruitError } = await supabase
       .from("recruits")
       .select("*")
-      .eq("coach_id", user.id)
       .order("created_at", { ascending: false });
 
     if (recruitError) {
@@ -39,14 +38,12 @@ export function useRecruits() {
     // Fetch scores
     const { data: scores } = await supabase
       .from("recruit_dqs_scores")
-      .select("*")
-      .eq("coach_id", user.id);
+      .select("*");
 
     // Fetch flags
     const { data: flags } = await supabase
       .from("coach_recruit_flags")
-      .select("*")
-      .eq("coach_id", user.id);
+      .select("*");
 
     // Join data
     const scoresMap = new Map(scores?.map((s) => [s.recruit_id, s]) ?? []);

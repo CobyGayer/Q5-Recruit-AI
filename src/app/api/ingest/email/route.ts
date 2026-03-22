@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   const hashedKey = hashApiKey(apiKey);
   const { data: coach, error: coachError } = await supabase
     .from("coaches")
-    .select("id, status, email")
+    .select("id, status, email, program_id")
     .eq("api_key", hashedKey)
     .single();
 
@@ -34,6 +34,13 @@ export async function POST(request: NextRequest) {
   if (coach.status !== "approved") {
     return NextResponse.json(
       { error: "Coach account not approved" },
+      { status: 403 }
+    );
+  }
+
+  if (!coach.program_id) {
+    return NextResponse.json(
+      { error: "Coach is not assigned to a program" },
       { status: 403 }
     );
   }
@@ -68,6 +75,7 @@ export async function POST(request: NextRequest) {
     .from("ingested_emails")
     .insert({
       coach_id: coach.id,
+      program_id: coach.program_id,
       sender_email: payload.sender_email,
       sender_name: payload.sender_name,
       subject: payload.subject,
@@ -115,7 +123,7 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("coach_id", coach.id)
+        .eq("program_id", coach.program_id)
         .eq("email", extractedEmail)
         .single();
       existing = data;
@@ -125,7 +133,7 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("coach_id", coach.id)
+        .eq("program_id", coach.program_id)
         .eq("email", senderEmail)
         .single();
       existing = data;
@@ -181,6 +189,7 @@ export async function POST(request: NextRequest) {
         .from("recruits")
         .insert({
           coach_id: coach.id,
+          program_id: coach.program_id,
           ...extraction.recruitData,
         })
         .select()
@@ -198,7 +207,7 @@ export async function POST(request: NextRequest) {
     const { data: config } = await supabase
       .from("program_config")
       .select("*")
-      .eq("coach_id", coach.id)
+      .eq("program_id", coach.program_id)
       .single();
 
     if (config) {
@@ -224,6 +233,7 @@ export async function POST(request: NextRequest) {
           {
             recruit_id: recruitId,
             coach_id: coach.id,
+            program_id: coach.program_id,
             overall_score: dqsResult.score,
             is_qualified: dqsResult.isQualified,
             disqualification_reasons: dqsResult.disqualificationReasons,

@@ -26,7 +26,6 @@ export function useQueue() {
     const { data, error: fetchError } = await supabase
       .from("ingested_emails")
       .select("*")
-      .eq("coach_id", user.id)
       .order("created_at", { ascending: false })
       .limit(100);
 

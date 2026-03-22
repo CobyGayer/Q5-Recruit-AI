@@ -19,7 +19,6 @@ export async function GET(
     .from("recruits")
     .select("*")
     .eq("id", id)
-    .eq("coach_id", user.id)
     .single();
 
   if (error) {
@@ -48,7 +47,6 @@ export async function PUT(
     .from("recruits")
     .update(body)
     .eq("id", id)
-    .eq("coach_id", user.id)
     .select()
     .single();
 
@@ -76,8 +74,7 @@ export async function DELETE(
   const { error } = await supabase
     .from("recruits")
     .delete()
-    .eq("id", id)
-    .eq("coach_id", user.id);
+    .eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -82,24 +82,28 @@ export default function OnboardingPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Save program selection
-    if (selectedProgramId) {
-      await supabase
-        .from("coaches")
-        .update({ program_id: selectedProgramId })
-        .eq("id", user.id);
+    if (!selectedProgramId) {
+      setLoading(false);
+      return;
     }
+
+    // Save program selection
+    await supabase
+      .from("coaches")
+      .update({ program_id: selectedProgramId })
+      .eq("id", user.id);
 
     // Save config
     const configData = {
       coach_id: user.id,
+      program_id: selectedProgramId,
       ...thresholds,
       ...weights,
       ...roster,
     };
 
     await supabase.from("program_config").upsert(configData, {
-      onConflict: "coach_id",
+      onConflict: "program_id",
     });
 
     // Mark onboarding completed, pipeline awaiting admin setup

@@ -1,0 +1,1 @@
+update public.coaches set status='approved' where email='megli27@amherst.edu'

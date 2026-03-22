@@ -128,7 +128,6 @@ export default function RecruitDetailPage() {
           .from("coach_recruit_flags")
           .select("*")
           .eq("recruit_id", id)
-          .eq("coach_id", user.id)
           .single();
         setFlag(flagData as CoachRecruitFlag | null);
       }

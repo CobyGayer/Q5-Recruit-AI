@@ -14,7 +14,6 @@ export async function GET() {
   const { data, error } = await supabase
     .from("ingested_emails")
     .select("*")
-    .eq("coach_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
 
