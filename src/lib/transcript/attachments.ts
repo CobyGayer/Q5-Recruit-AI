@@ -14,23 +14,44 @@ interface ResolvedAttachment {
 
 /**
  * Extract a URL string from an attachment value.
- * Handles: plain strings, Zapier file objects ({ url: "..." }), and other formats.
+ * Handles:
+ *   - Plain URL strings
+ *   - Zapier file objects ({ url: "..." })
+ *   - Zapier multi-line metadata strings ("attachment: https://...\nattachment_id: ...\nmime_type: ...")
  */
 function extractUrl(attachment: unknown): string | null {
   if (typeof attachment === "string") {
-    return attachment.trim();
+    const trimmed = attachment.trim();
+
+    // Plain URL
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return trimmed.split(/\s/)[0]; // Take URL before any whitespace
+    }
+
+    // Zapier multi-line format: "attachment: https://...\nattachment_id: ..."
+    const attachmentMatch = trimmed.match(/^attachment:\s*(https?:\/\/\S+)/m);
+    if (attachmentMatch) {
+      return attachmentMatch[1];
+    }
+
+    // Base64 content
+    if (trimmed.startsWith("JVBER") || trimmed.startsWith("data:")) {
+      return trimmed;
+    }
+
+    console.log("[transcript] Unknown string attachment format:", trimmed.substring(0, 200));
+    return trimmed;
   }
 
   // Zapier file objects: { url: "...", filename: "...", content_type: "..." }
   if (attachment && typeof attachment === "object") {
     const obj = attachment as Record<string, unknown>;
     // Try common URL field names
-    for (const key of ["url", "href", "download_url", "file", "link"]) {
+    for (const key of ["url", "href", "download_url", "attachment", "file", "link"]) {
       if (typeof obj[key] === "string" && obj[key]) {
         return (obj[key] as string).trim();
       }
     }
-    // Log the object shape so we can debug
     console.log("[transcript] Unknown attachment object shape:", JSON.stringify(obj).substring(0, 500));
   }
 

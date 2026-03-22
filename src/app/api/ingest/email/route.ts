@@ -67,6 +67,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Normalize attachments into an array (Zapier may send a string, object, or array)
+  let normalizedAttachments: unknown[] = [];
+  if (payload.attachments) {
+    if (Array.isArray(payload.attachments)) {
+      normalizedAttachments = payload.attachments;
+    } else {
+      normalizedAttachments = [payload.attachments];
+    }
+  }
+
   // Step 4: Create ingested_emails record
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
@@ -78,7 +88,7 @@ export async function POST(request: NextRequest) {
       body_plain: payload.body_plain,
       body_html: payload.body_html,
       received_at: payload.received_at,
-      attachments: payload.attachments ?? [],
+      attachments: normalizedAttachments,
       processing_status: "processing",
     })
     .select()
@@ -200,9 +210,9 @@ export async function POST(request: NextRequest) {
 
     // Step 5.5: Transcript analysis (non-blocking)
     let transcriptAnalysis: TranscriptAnalysis | null = null;
-    if (payload.attachments && payload.attachments.length > 0) {
+    if (normalizedAttachments.length > 0) {
       try {
-        const pdfAttachment = await findFirstPdfAttachment(payload.attachments);
+        const pdfAttachment = await findFirstPdfAttachment(normalizedAttachments);
         if (pdfAttachment) {
           const analysis = await analyzeTranscript(pdfAttachment.base64);
           if (analysis) {
