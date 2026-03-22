@@ -17,6 +17,7 @@ CREATE TABLE programs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   institution TEXT NOT NULL,
+  domain TEXT NOT NULL,
   division TEXT,
   conference TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -246,5 +247,5 @@ CREATE TRIGGER on_auth_user_created
 -- ==========================================
 -- Seed data: Amherst College program
 -- ==========================================
-INSERT INTO programs (name, institution, division, conference)
-VALUES ('Amherst College Men''s Soccer', 'Amherst College', 'D3', 'NESCAC');
+INSERT INTO programs (name, institution, domain, division, conference)
+VALUES ('Amherst College Men''s Soccer', 'Amherst College', 'amherst.edu', 'D3', 'NESCAC');

@@ -22,6 +22,7 @@ export interface Program {
   id: string;
   name: string;
   institution: string;
+  domain: string;
   division: string | null;
   conference: string | null;
   created_at: string;
