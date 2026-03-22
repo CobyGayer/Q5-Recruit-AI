@@ -13,20 +13,47 @@ interface ResolvedAttachment {
 }
 
 /**
- * Attempt to resolve an attachment string into base64 PDF content.
+ * Extract a URL string from an attachment value.
+ * Handles: plain strings, Zapier file objects ({ url: "..." }), and other formats.
+ */
+function extractUrl(attachment: unknown): string | null {
+  if (typeof attachment === "string") {
+    return attachment.trim();
+  }
+
+  // Zapier file objects: { url: "...", filename: "...", content_type: "..." }
+  if (attachment && typeof attachment === "object") {
+    const obj = attachment as Record<string, unknown>;
+    // Try common URL field names
+    for (const key of ["url", "href", "download_url", "file", "link"]) {
+      if (typeof obj[key] === "string" && obj[key]) {
+        return (obj[key] as string).trim();
+      }
+    }
+    // Log the object shape so we can debug
+    console.log("[transcript] Unknown attachment object shape:", JSON.stringify(obj).substring(0, 500));
+  }
+
+  return null;
+}
+
+/**
+ * Attempt to resolve an attachment into base64 PDF content.
+ * Accepts strings, URLs, or Zapier file objects.
  * Returns null if the attachment is not a PDF, too large, or unreachable.
  */
 export async function resolveAttachmentAsBase64(
-  attachment: string
+  attachment: unknown
 ): Promise<ResolvedAttachment | null> {
   try {
-    const trimmed = attachment.trim();
+    const value = extractUrl(attachment);
+    if (!value) return null;
 
-    if (isUrl(trimmed)) {
-      return await fetchAsBase64(trimmed);
+    if (isUrl(value)) {
+      return await fetchAsBase64(value);
     }
 
-    return parseBase64(trimmed);
+    return parseBase64(value);
   } catch (err) {
     console.warn("[transcript] Failed to resolve attachment:", err);
     return null;
@@ -34,10 +61,11 @@ export async function resolveAttachmentAsBase64(
 }
 
 /**
- * Find the first PDF attachment from an array of attachment strings.
+ * Find the first PDF attachment from an array of attachments.
+ * Accepts mixed types (strings, objects, etc.)
  */
 export async function findFirstPdfAttachment(
-  attachments: string[]
+  attachments: unknown[]
 ): Promise<ResolvedAttachment | null> {
   for (const attachment of attachments) {
     const resolved = await resolveAttachmentAsBase64(attachment);

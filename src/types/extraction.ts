@@ -37,5 +37,5 @@ export interface IngestEmailPayload {
   body_plain: string;
   body_html?: string;
   received_at?: string;
-  attachments?: string[];
+  attachments?: unknown[];
 }
