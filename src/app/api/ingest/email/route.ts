@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashApiKey, isValidApiKeyFormat } from "@/lib/utils/api-key";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
@@ -7,6 +8,8 @@ import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
 import type { Recruit, ProgramConfig, ConfidenceLevel } from "@/types/database";
+
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
       body_html: payload.body_html,
       received_at: payload.received_at,
       attachments: payload.attachments ?? [],
-      processing_status: "processing",
+      processing_status: "queued",
     })
     .select()
     .single();
@@ -87,8 +90,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 5: Extract data with Claude API
+  // Step 5: Queue background processing and return immediately
+  after(processEmail(emailRecord.id, coach.id, coach.email as string, payload));
+
+  return NextResponse.json({ success: true, queued: true }, { status: 202 });
+}
+
+async function processEmail(
+  emailId: string,
+  coachId: string,
+  coachEmailRaw: string,
+  payload: z.infer<typeof IngestPayloadSchema>
+) {
+  const supabase = createAdminClient();
+
   try {
+    await supabase
+      .from("ingested_emails")
+      .update({ processing_status: "processing" })
+      .eq("id", emailId);
+
     const extraction = await extractRecruitData(
       payload.subject,
       payload.sender_name,
@@ -115,7 +136,7 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("coach_id", coach.id)
+        .eq("coach_id", coachId)
         .eq("email", extractedEmail)
         .single();
       existing = data;
@@ -125,7 +146,7 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("coach_id", coach.id)
+        .eq("coach_id", coachId)
         .eq("email", senderEmail)
         .single();
       existing = data;
@@ -141,7 +162,7 @@ export async function POST(request: NextRequest) {
     // Guard: if sender is the coach themselves (outbound email processed by
     // Zapier due to thread-level labeling), skip creation of a new recruit.
     // Updates to existing recruits are still allowed (via extracted email match).
-    const coachEmail = (coach.email as string)?.toLowerCase().trim() ?? null;
+    const coachEmail = coachEmailRaw?.toLowerCase().trim() ?? null;
     const senderIsCoach = coachEmail && senderEmail === coachEmail;
 
     if (existing) {
@@ -168,19 +189,14 @@ export async function POST(request: NextRequest) {
           processing_status: "failed",
           extraction_error: "Skipped: sender is the coach (outbound email)",
         })
-        .eq("id", emailRecord.id);
-
-      return NextResponse.json({
-        success: true,
-        skipped: true,
-        reason: "Sender matches coach email — outbound email ignored",
-      });
+        .eq("id", emailId);
+      return;
     } else {
       // Create new recruit
       const { data: newRecruit, error: recruitError } = await supabase
         .from("recruits")
         .insert({
-          coach_id: coach.id,
+          coach_id: coachId,
           ...extraction.recruitData,
         })
         .select()
@@ -194,11 +210,11 @@ export async function POST(request: NextRequest) {
       recruitId = newRecruit.id;
     }
 
-    // Step 6: Calculate DQS score
+    // Calculate DQS score
     const { data: config } = await supabase
       .from("program_config")
       .select("*")
-      .eq("coach_id", coach.id)
+      .eq("coach_id", coachId)
       .single();
 
     if (config) {
@@ -223,7 +239,7 @@ export async function POST(request: NextRequest) {
         await supabase.from("recruit_dqs_scores").upsert(
           {
             recruit_id: recruitId,
-            coach_id: coach.id,
+            coach_id: coachId,
             overall_score: dqsResult.score,
             is_qualified: dqsResult.isQualified,
             disqualification_reasons: dqsResult.disqualificationReasons,
@@ -244,7 +260,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 7: Update email record with results
+    // Update email record with results
     await supabase
       .from("ingested_emails")
       .update({
@@ -252,15 +268,7 @@ export async function POST(request: NextRequest) {
         processing_status: extraction.processingStatus,
         extracted_data: extraction.extractedData as unknown as Record<string, unknown>,
       })
-      .eq("id", emailRecord.id);
-
-    return NextResponse.json({
-      success: true,
-      profile_id: recruitId,
-      status: extraction.processingStatus,
-      fields_extracted: extraction.fieldsExtracted,
-      fields_missing: extraction.fieldsMissing,
-    });
+      .eq("id", emailId);
   } catch (err) {
     // Update email record with failure
     await supabase
@@ -269,15 +277,7 @@ export async function POST(request: NextRequest) {
         processing_status: "failed",
         extraction_error: String(err),
       })
-      .eq("id", emailRecord.id);
-
-    return NextResponse.json(
-      {
-        error: "Extraction failed",
-        details: String(err),
-      },
-      { status: 422 }
-    );
+      .eq("id", emailId);
   }
 }
 
