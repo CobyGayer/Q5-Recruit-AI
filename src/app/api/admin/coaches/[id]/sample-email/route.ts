@@ -40,7 +40,7 @@ export async function POST(
   // Verify target coach exists, is approved, and get their email
   const { data: coach, error: coachError } = await adminSupabase
     .from("coaches")
-    .select("id, status, email")
+    .select("id, status, email, program_id")
     .eq("id", coachId)
     .single();
 
@@ -62,11 +62,11 @@ export async function POST(
     );
   }
 
-  // Fetch config so we can tailor the sample to the coach's thresholds
+  // Fetch config so we can tailor the sample to the program's thresholds
   const { data: config } = await adminSupabase
     .from("program_config")
     .select("*")
-    .eq("coach_id", coachId)
+    .eq("program_id", coach.program_id)
     .single();
 
   const payload = buildSampleEmailPayload(config as ProgramConfig | null);

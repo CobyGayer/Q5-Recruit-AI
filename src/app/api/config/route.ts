@@ -60,7 +60,7 @@ export async function PUT(request: NextRequest) {
   const { data, error } = await supabase
     .from("program_config")
     .upsert(
-      { coach_id: user.id, program_id: coach.program_id, ...body },
+      { updated_by_coach_id: user.id, program_id: coach.program_id, ...body },
       { onConflict: "program_id" }
     )
     .select()

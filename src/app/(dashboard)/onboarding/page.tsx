@@ -168,7 +168,7 @@ export default function OnboardingPage() {
 
     // Save config
     const configData = {
-      coach_id: user.id,
+      updated_by_coach_id: user.id,
       program_id: selectedProgramId,
       ...thresholds,
       ...weights,
