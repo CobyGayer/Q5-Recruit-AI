@@ -364,13 +364,16 @@ async function processEmail(
     if (finalUpdateError) throw new Error(`Failed to update final email status: ${finalUpdateError.message}`);
   } catch (err) {
     // Update email record with failure
-    await supabase
+    const { error: failureUpdateError } = await supabase
       .from("ingested_emails")
       .update({
         processing_status: "failed",
         extraction_error: String(err),
       })
       .eq("id", emailId);
+    if (failureUpdateError) {
+      console.error("[processEmail] Failed to update email status to failed:", failureUpdateError.message);
+    }
   }
 }
 
