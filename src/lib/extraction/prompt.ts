@@ -33,26 +33,5 @@ From: ${senderName || "Unknown"} <${senderEmail || "unknown"}>
 Body:
 ${bodyPlain}
 
-Respond with ONLY a valid JSON object matching this exact structure (no markdown, no explanation, just the JSON):
-{
-  "full_name": { "value": "string or null", "confidence": "high|medium|low" },
-  "email": { "value": "string or null", "confidence": "high|medium|low" },
-  "phone": { "value": "string or null", "confidence": "high|medium|low" },
-  "graduation_year": { "value": "number or null", "confidence": "high|medium|low" },
-  "current_school": { "value": "string or null", "confidence": "high|medium|low" },
-  "city": { "value": "string or null", "confidence": "high|medium|low" },
-  "state": { "value": "string or null", "confidence": "high|medium|low" },
-  "country": { "value": "string or null", "confidence": "high|medium|low" },
-  "positions": { "value": ["array of position abbreviations"] or null, "confidence": "high|medium|low" },
-  "preferred_foot": { "value": "string or null", "confidence": "high|medium|low" },
-  "height_inches": { "value": "number or null", "confidence": "high|medium|low" },
-  "weight_lbs": { "value": "number or null", "confidence": "high|medium|low" },
-  "gpa": { "value": "number or null", "confidence": "high|medium|low" },
-  "sat_score": { "value": "number or null", "confidence": "high|medium|low" },
-  "act_score": { "value": "number or null", "confidence": "high|medium|low" },
-  "club_team": { "value": "string or null", "confidence": "high|medium|low" },
-  "club_level": { "value": "mls_next|ecnl|ga|regional|other|unknown or null", "confidence": "high|medium|low" },
-  "high_school_team": { "value": "string or null", "confidence": "high|medium|low" },
-  "video_url": { "value": "string or null", "confidence": "high|medium|low" }
-}`;
+Extract all available recruit information from this email using the extract_recruit_data tool.`;
 }

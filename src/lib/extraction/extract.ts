@@ -40,6 +40,143 @@ const EXTRACTABLE_FIELDS = [
   "video_url",
 ] as const;
 
+const EXTRACT_RECRUIT_TOOL: Anthropic.Tool = {
+  name: "extract_recruit_data",
+  description: "Extract structured recruit information from a soccer recruiting email.",
+  input_schema: {
+    type: "object",
+    properties: {
+      full_name: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      email: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      phone: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      graduation_year: {
+        type: "object",
+        properties: { value: { type: ["number", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      current_school: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      city: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      state: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      country: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      positions: {
+        type: "object",
+        properties: {
+          value: { type: ["array", "null"], items: { type: "string" } },
+          confidence: { type: "string", enum: ["high", "medium", "low"] },
+        },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      preferred_foot: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      height_inches: {
+        type: "object",
+        properties: { value: { type: ["number", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      weight_lbs: {
+        type: "object",
+        properties: { value: { type: ["number", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      gpa: {
+        type: "object",
+        properties: { value: { type: ["number", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      sat_score: {
+        type: "object",
+        properties: { value: { type: ["number", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      act_score: {
+        type: "object",
+        properties: { value: { type: ["number", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      club_team: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      club_level: {
+        type: "object",
+        properties: {
+          value: { type: ["string", "null"], enum: ["mls_next", "ecnl", "ga", "regional", "other", "unknown", null] },
+          confidence: { type: "string", enum: ["high", "medium", "low"] },
+        },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      high_school_team: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+      video_url: {
+        type: "object",
+        properties: { value: { type: ["string", "null"] }, confidence: { type: "string", enum: ["high", "medium", "low"] } },
+        required: ["value", "confidence"],
+        additionalProperties: false,
+      },
+    },
+    required: [
+      "full_name", "email", "phone", "graduation_year", "current_school",
+      "city", "state", "country", "positions", "preferred_foot",
+      "height_inches", "weight_lbs", "gpa", "sat_score", "act_score",
+      "club_team", "club_level", "high_school_team", "video_url",
+    ],
+    additionalProperties: false,
+  },
+};
+
 /**
  * Extract structured recruit data from an email using Claude API.
  */
@@ -54,30 +191,18 @@ export async function extractRecruitData(
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-5-20250929",
     max_tokens: 2000,
+    tools: [EXTRACT_RECRUIT_TOOL],
+    tool_choice: { type: "tool", name: "extract_recruit_data" },
     messages: [{ role: "user", content: prompt }],
   });
 
-  // Extract text from response
-  const textBlock = message.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("No text response from Claude API");
-  }
-
-  // Parse JSON response
-  let rawJson: unknown;
-  try {
-    // Handle potential markdown code block wrapping
-    let jsonText = textBlock.text.trim();
-    if (jsonText.startsWith("```")) {
-      jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    }
-    rawJson = JSON.parse(jsonText);
-  } catch {
-    throw new Error(`Failed to parse extraction response as JSON: ${textBlock.text.substring(0, 200)}`);
+  const toolBlock = message.content.find((block) => block.type === "tool_use");
+  if (!toolBlock || toolBlock.type !== "tool_use") {
+    throw new Error("No tool_use response from Claude API");
   }
 
   // Validate with Zod schema
-  const parsed = ExtractionResultSchema.parse(rawJson);
+  const parsed = ExtractionResultSchema.parse(toolBlock.input);
 
   // Override club_level from authoritative directory when club_team is known
   if (parsed.club_team.value) {
