@@ -579,13 +579,13 @@ export default function RecruitDetailPage() {
           )}
 
           {transcriptAnalysis && transcriptAnalysis.transcript_readable && (
-            <Card className="border-primary/10">
+            <Card className="border-primary/10 overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-sm flex items-center justify-between">
                   Transcript Analysis
                   <Badge
                     variant="secondary"
-                    className={
+                    className={`shrink-0 ${
                       transcriptAnalysis.rigor_grade.startsWith("A")
                         ? "bg-emerald-100 text-emerald-800"
                         : transcriptAnalysis.rigor_grade.startsWith("B")
@@ -593,7 +593,7 @@ export default function RecruitDetailPage() {
                         : transcriptAnalysis.rigor_grade === "C+" || transcriptAnalysis.rigor_grade === "C"
                         ? "bg-amber-100 text-amber-800"
                         : "bg-red-100 text-red-800"
-                    }
+                    }`}
                   >
                     Rigor: {transcriptAnalysis.rigor_grade}
                   </Badge>
@@ -601,41 +601,41 @@ export default function RecruitDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {transcriptAnalysis.admissions_notes && (
-                  <p className="text-sm text-muted-foreground italic">
+                  <p className="text-sm text-muted-foreground italic break-words">
                     {transcriptAnalysis.admissions_notes}
                   </p>
                 )}
                 {transcriptAnalysis.strengths.length > 0 && (
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Strengths</p>
-                    <div className="flex flex-wrap gap-1">
+                    <ul className="space-y-1">
                       {transcriptAnalysis.strengths.map((s, i) => (
-                        <Badge key={i} variant="secondary" className="bg-emerald-50 text-emerald-700 text-xs">
+                        <li key={i} className="text-xs text-emerald-700 break-words">
                           {s}
-                        </Badge>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
                 {transcriptAnalysis.red_flags.length > 0 && (
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Red Flags</p>
-                    <div className="flex flex-wrap gap-1">
+                    <ul className="space-y-1">
                       {transcriptAnalysis.red_flags.map((f, i) => (
-                        <Badge key={i} variant="secondary" className="bg-red-50 text-red-700 text-xs">
+                        <li key={i} className="text-xs text-red-700 break-words">
                           {f}
-                        </Badge>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   </div>
                 )}
                 {transcriptAnalysis.grade_trend && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground break-words">
                     <span className="font-medium">
                       Grade Trend: {transcriptAnalysis.grade_trend.charAt(0).toUpperCase() + transcriptAnalysis.grade_trend.slice(1)}
                     </span>
                     {transcriptAnalysis.grade_trend_notes && (
-                      <span>— {transcriptAnalysis.grade_trend_notes}</span>
+                      <span> — {transcriptAnalysis.grade_trend_notes}</span>
                     )}
                   </div>
                 )}
