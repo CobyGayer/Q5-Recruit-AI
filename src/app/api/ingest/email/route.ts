@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Step 5: Queue background processing and return immediately
-  after(processEmail(emailRecord.id, coach.id, coach.email as string, payload));
+  after(processEmail(emailRecord.id, coach.id, coach.email as string, payload).catch((err) => console.error("[processEmail] unhandled:", err)));
 
   return NextResponse.json({ success: true, queued: true }, { status: 202 });
 }

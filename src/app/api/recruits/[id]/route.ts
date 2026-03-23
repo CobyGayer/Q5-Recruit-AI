@@ -4,9 +4,9 @@ import { z } from "zod";
 
 const RecruitUpdateSchema = z.object({
   full_name: z.string().nullable().optional(),
-  email: z.string().email().nullable().optional(),
+  email: z.string().nullable().optional().refine((v) => v == null || v === "" || z.string().email().safeParse(v).success, { message: "Invalid email" }),
   phone: z.string().nullable().optional(),
-  graduation_year: z.number().int().min(2020).max(2035).nullable().optional(),
+  graduation_year: z.number().int().min(2015).max(2035).nullable().optional(),
   current_school: z.string().nullable().optional(),
   city: z.string().nullable().optional(),
   state: z.string().nullable().optional(),
