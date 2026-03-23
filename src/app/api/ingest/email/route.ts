@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       body_html: payload.body_html,
       received_at: payload.received_at,
       attachments: payload.attachments ?? [],
-      processing_status: "queued",
+      processing_status: "pending",
     })
     .select()
     .single();
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Step 5: Queue background processing and return immediately
-  after(processEmail(emailRecord.id, coach.id, coach.email as string, payload).catch((err) => console.error("[processEmail] unhandled:", err)));
+  after(() => processEmail(emailRecord.id, coach.id, coach.email as string, payload).catch((err) => console.error("[processEmail] unhandled:", err)));
 
   return NextResponse.json({ success: true, queued: true }, { status: 202 });
 }
@@ -105,10 +105,11 @@ async function processEmail(
   const supabase = createAdminClient();
 
   try {
-    await supabase
+    const { error: statusError } = await supabase
       .from("ingested_emails")
       .update({ processing_status: "processing" })
       .eq("id", emailId);
+    if (statusError) throw new Error(`Failed to update status to processing: ${statusError.message}`);
 
     const extraction = await extractRecruitData(
       payload.subject,
@@ -261,7 +262,7 @@ async function processEmail(
     }
 
     // Update email record with results
-    await supabase
+    const { error: finalUpdateError } = await supabase
       .from("ingested_emails")
       .update({
         recruit_id: recruitId,
@@ -269,6 +270,7 @@ async function processEmail(
         extracted_data: extraction.extractedData as unknown as Record<string, unknown>,
       })
       .eq("id", emailId);
+    if (finalUpdateError) throw new Error(`Failed to update final email status: ${finalUpdateError.message}`);
   } catch (err) {
     // Update email record with failure
     await supabase
