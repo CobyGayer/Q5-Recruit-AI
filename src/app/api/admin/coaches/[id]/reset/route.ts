@@ -54,9 +54,7 @@ export async function POST(
   await adminSupabase.from("ingested_emails").delete().eq("coach_id", coachId);
   await adminSupabase.from("recruits").delete().eq("coach_id", coachId);
 
-  if (level === "full" || level === "pre_onboarding") {
-    await adminSupabase.from("program_config").delete().eq("coach_id", coachId);
-  }
+  // Shared config is program-scoped and should not be removed when resetting one coach.
 
   // Update coach row based on reset level
   const coachUpdate: Record<string, unknown> =

@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Logged in → check coach status for dashboard/admin routes
+  // Logged in → check coach approval/onboarding/admin role for app routes
   if (user && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/onboarding") || pathname.startsWith("/settings") || pathname.startsWith("/queue") || pathname.startsWith("/recruits"))) {
     const { data: coach } = await supabase
       .from("coaches")
@@ -56,13 +56,19 @@ export async function middleware(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
+    if (!coach) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+
     // Admin users always have access to /admin, regardless of coach status
     if (pathname.startsWith("/admin") && coach?.role === "admin") {
       return supabaseResponse;
     }
 
     // Coach not approved yet
-    if (coach?.status !== "approved") {
+    if (coach.status !== "approved") {
       if (!pathname.startsWith("/pending-approval")) {
         const url = request.nextUrl.clone();
         url.pathname = "/pending-approval";
@@ -71,7 +77,7 @@ export async function middleware(request: NextRequest) {
       return supabaseResponse;
     }
 
-    // Coach approved but hasn't completed onboarding
+    // Coaches who have not finished onboarding are routed to onboarding.
     if (!coach.onboarding_completed && !pathname.startsWith("/onboarding")) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { useQueue } from "@/hooks/use-queue";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,8 +96,8 @@ export default function QueuePage() {
                 const isExpanded = expandedId === email.id;
 
                 return (
-                  <>
-                    <TableRow key={email.id} className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : email.id)}>
+                  <React.Fragment key={email.id}>
+                    <TableRow className="cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : email.id)}>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -154,7 +155,7 @@ export default function QueuePage() {
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
-                      <TableRow key={`${email.id}-expanded`}>
+                      <TableRow>
                         <TableCell colSpan={6}>
                           <div className="p-4 bg-muted rounded-lg">
                             {email.extraction_error && (
@@ -177,7 +178,7 @@ export default function QueuePage() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
             </TableBody>

@@ -11,10 +11,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: coach } = await supabase
+    .from("coaches")
+    .select("program_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from("recruits")
     .select("*")
-    .eq("coach_id", user.id)
+    .eq("program_id", coach.program_id)
     .order("created_at", { ascending: false });
 
   if (error) {

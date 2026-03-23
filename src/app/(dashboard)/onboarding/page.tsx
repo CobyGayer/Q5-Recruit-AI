@@ -34,6 +34,30 @@ const STEPS = [
   "Complete",
 ];
 
+const DEFAULT_THRESHOLDS: ThresholdFormData = {
+  min_gpa: null,
+  min_sat: null,
+  min_act: null,
+  min_height_by_position: {},
+  accepted_grad_years: [],
+  accepted_positions: [],
+};
+
+const DEFAULT_WEIGHTS: WeightFormData = {
+  weight_academic: 70,
+  weight_competition: 70,
+  weight_physical: 50,
+  weight_position_fit: 80,
+  weight_grad_year: 50,
+  weight_completeness: 20,
+};
+
+const DEFAULT_ROSTER: RosterContextFormData = {
+  high_need_positions: {},
+  priority_grad_years: [],
+  roster_spots: {},
+};
+
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -42,37 +66,86 @@ export default function OnboardingPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [thresholds, setThresholds] = useState<ThresholdFormData>({
-    min_gpa: null,
-    min_sat: null,
-    min_act: null,
-    min_height_by_position: {},
-    accepted_grad_years: [],
-    accepted_positions: [],
-  });
+  const [thresholds, setThresholds] = useState<ThresholdFormData>(DEFAULT_THRESHOLDS);
 
-  const [weights, setWeights] = useState<WeightFormData>({
-    weight_academic: 70,
-    weight_competition: 70,
-    weight_physical: 50,
-    weight_position_fit: 80,
-    weight_grad_year: 50,
-    weight_completeness: 20,
-  });
+  const [weights, setWeights] = useState<WeightFormData>(DEFAULT_WEIGHTS);
 
-  const [roster, setRoster] = useState<RosterContextFormData>({
-    high_need_positions: {},
-    priority_grad_years: [],
-    roster_spots: {},
-  });
+  const [roster, setRoster] = useState<RosterContextFormData>(DEFAULT_ROSTER);
 
   useEffect(() => {
     async function loadPrograms() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) return;
+
+      // Extract email domain
+      const emailDomain = user.email.split("@")[1];
+
+      // Load all programs
       const { data } = await supabase.from("programs").select("*").order("name");
-      if (data) setPrograms(data);
+      
+      if (data) {
+        // Filter to only programs matching the user's email domain
+        const matchingPrograms = data.filter(p => p.domain === emailDomain);
+        setPrograms(matchingPrograms);
+        
+        // Auto-select if only one matching program
+        if (matchingPrograms.length === 1) {
+          setSelectedProgramId(matchingPrograms[0].id);
+        }
+      }
     }
     loadPrograms();
   }, [supabase]);
+
+  useEffect(() => {
+    async function loadProgramConfig() {
+      if (!selectedProgramId) {
+        setThresholds(DEFAULT_THRESHOLDS);
+        setWeights(DEFAULT_WEIGHTS);
+        setRoster(DEFAULT_ROSTER);
+        return;
+      }
+
+      const { data: existingConfig } = await supabase
+        .from("program_config")
+        .select("*")
+        .eq("program_id", selectedProgramId)
+        .maybeSingle();
+
+      if (!existingConfig) {
+        setThresholds(DEFAULT_THRESHOLDS);
+        setWeights(DEFAULT_WEIGHTS);
+        setRoster(DEFAULT_ROSTER);
+        return;
+      }
+
+      setThresholds({
+        min_gpa: existingConfig.min_gpa,
+        min_sat: existingConfig.min_sat,
+        min_act: existingConfig.min_act,
+        min_height_by_position: existingConfig.min_height_by_position ?? {},
+        accepted_grad_years: existingConfig.accepted_grad_years ?? [],
+        accepted_positions: existingConfig.accepted_positions ?? [],
+      });
+
+      setWeights({
+        weight_academic: existingConfig.weight_academic ?? DEFAULT_WEIGHTS.weight_academic,
+        weight_competition: existingConfig.weight_competition ?? DEFAULT_WEIGHTS.weight_competition,
+        weight_physical: existingConfig.weight_physical ?? DEFAULT_WEIGHTS.weight_physical,
+        weight_position_fit: existingConfig.weight_position_fit ?? DEFAULT_WEIGHTS.weight_position_fit,
+        weight_grad_year: existingConfig.weight_grad_year ?? DEFAULT_WEIGHTS.weight_grad_year,
+        weight_completeness: existingConfig.weight_completeness ?? DEFAULT_WEIGHTS.weight_completeness,
+      });
+
+      setRoster({
+        high_need_positions: existingConfig.high_need_positions ?? {},
+        priority_grad_years: existingConfig.priority_grad_years ?? [],
+        roster_spots: existingConfig.roster_spots ?? {},
+      });
+    }
+
+    loadProgramConfig();
+  }, [selectedProgramId, supabase]);
 
   async function handleComplete() {
     setLoading(true);
@@ -82,24 +155,28 @@ export default function OnboardingPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Save program selection
-    if (selectedProgramId) {
-      await supabase
-        .from("coaches")
-        .update({ program_id: selectedProgramId })
-        .eq("id", user.id);
+    if (!selectedProgramId) {
+      setLoading(false);
+      return;
     }
+
+    // Save program selection
+    await supabase
+      .from("coaches")
+      .update({ program_id: selectedProgramId })
+      .eq("id", user.id);
 
     // Save config
     const configData = {
-      coach_id: user.id,
+      updated_by_coach_id: user.id,
+      program_id: selectedProgramId,
       ...thresholds,
       ...weights,
       ...roster,
     };
 
     await supabase.from("program_config").upsert(configData, {
-      onConflict: "coach_id",
+      onConflict: "program_id",
     });
 
     // Mark onboarding completed, pipeline awaiting admin setup

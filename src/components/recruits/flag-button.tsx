@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
 import type { FlagType } from "@/types/database";
 import { Star, ThumbsDown } from "lucide-react";
 
@@ -19,7 +18,6 @@ export function FlagButton({
 }: FlagButtonProps) {
   const [flag, setFlag] = useState<FlagType | null>(currentFlag);
   const [loading, setLoading] = useState(false);
-  const supabase = createClient();
 
   async function handleFlag(e: React.MouseEvent, newFlag: FlagType) {
     e.preventDefault();
@@ -29,25 +27,16 @@ export function FlagButton({
 
     if (targetFlag === null) {
       // Remove flag
-      await supabase
-        .from("coach_recruit_flags")
-        .delete()
-        .eq("recruit_id", recruitId);
+      await fetch(`/api/recruits/${recruitId}/flag`, {
+        method: "DELETE",
+      });
     } else {
       // Upsert flag
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from("coach_recruit_flags").upsert(
-          {
-            coach_id: user.id,
-            recruit_id: recruitId,
-            flag: targetFlag,
-          },
-          { onConflict: "coach_id,recruit_id" }
-        );
-      }
+      await fetch(`/api/recruits/${recruitId}/flag`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flag: targetFlag }),
+      });
     }
 
     setFlag(targetFlag);
