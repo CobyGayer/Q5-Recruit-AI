@@ -49,7 +49,7 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="min_gpa">Minimum GPA (required)</Label>
+          <Label htmlFor="min_gpa">Minimum GPA (optional)</Label>
           <Input
             id="min_gpa"
             type="number"

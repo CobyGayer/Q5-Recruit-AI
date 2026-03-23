@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashApiKey, isValidApiKeyFormat } from "@/lib/utils/api-key";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { normalizeEmail } from "@/lib/utils/email";
 import { IngestPayloadSchema } from "@/lib/extraction/schema";
 import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
@@ -9,10 +11,11 @@ import { generateDQSSummary } from "@/lib/scoring/summary";
 import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
 import type { Recruit, ProgramConfig, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
 
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
-  // Step 1: Authenticate via API key
   const apiKey = request.headers.get("x-api-key");
   if (!apiKey || !isValidApiKeyFormat(apiKey)) {
     return NextResponse.json(
@@ -46,7 +49,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 2: Rate limiting
   const rateResult = checkRateLimit(coach.id);
   if (!rateResult.allowed) {
     return NextResponse.json(
@@ -59,7 +61,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 3: Validate payload
   let payload;
   try {
     const body = await request.json();
@@ -84,7 +85,6 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Step 4: Create ingested_emails record
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
     .insert({
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       body_html: payload.body_html,
       received_at: payload.received_at,
       attachments: normalizedAttachments,
-      processing_status: "processing",
+      processing_status: "pending",
     })
     .select()
     .single();
@@ -109,8 +109,37 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 5: Extract data with Claude API
+  after(() => processEmail(emailRecord.id, coach.id, coach.email as string, coach.program_id as string, payload).catch((err) => console.error("[processEmail] unhandled:", err)));
+
+  return NextResponse.json({ success: true, queued: true }, { status: 202 });
+}
+
+async function processEmail(
+  emailId: string,
+  coachId: string,
+  coachEmailRaw: string,
+  programId: string,
+  payload: z.infer<typeof IngestPayloadSchema>
+) {
+  const supabase = createAdminClient();
+
+  // Normalize attachments (same logic as POST, since payload is re-used here)
+  let normalizedAttachments: unknown[] = [];
+  if (payload.attachments) {
+    if (Array.isArray(payload.attachments)) {
+      normalizedAttachments = payload.attachments;
+    } else {
+      normalizedAttachments = [payload.attachments];
+    }
+  }
+
   try {
+    const { error: statusError } = await supabase
+      .from("ingested_emails")
+      .update({ processing_status: "processing" })
+      .eq("id", emailId);
+    if (statusError) throw new Error(`Failed to update status to processing: ${statusError.message}`);
+
     const extraction = await extractRecruitData(
       payload.subject,
       payload.sender_name,
@@ -119,17 +148,14 @@ export async function POST(request: NextRequest) {
     );
 
     // Normalize emails for dedup comparison
-    const extractedEmail =
-      ((extraction.recruitData.email as string) || null)
-        ?.toLowerCase()
-        .trim() ?? null;
-    const senderEmail =
-      (payload.sender_email || null)?.toLowerCase().trim() ?? null;
+    const extractedEmail = normalizeEmail(extraction.recruitData.email as string);
+    const senderEmail = normalizeEmail(payload.sender_email);
 
     // Store the normalized email in recruitData
     extraction.recruitData.email = extractedEmail ?? senderEmail;
 
     let recruitId: string;
+    let recruitForDQS: Record<string, unknown> | null = null;
     let existing: Record<string, unknown> | null = null;
 
     // Two-pass dedup: check extracted email first, then sender_email
@@ -137,7 +163,7 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("program_id", coach.program_id)
+        .eq("program_id", programId)
         .eq("email", extractedEmail)
         .single();
       existing = data;
@@ -147,7 +173,7 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("program_id", coach.program_id)
+        .eq("program_id", programId)
         .eq("email", senderEmail)
         .single();
       existing = data;
@@ -163,7 +189,7 @@ export async function POST(request: NextRequest) {
     // Guard: if sender is the coach themselves (outbound email processed by
     // Zapier due to thread-level labeling), skip creation of a new recruit.
     // Updates to existing recruits are still allowed (via extracted email match).
-    const coachEmail = (coach.email as string)?.toLowerCase().trim() ?? null;
+    const coachEmail = normalizeEmail(coachEmailRaw);
     const senderIsCoach = coachEmail && senderEmail === coachEmail;
 
     if (existing) {
@@ -174,14 +200,16 @@ export async function POST(request: NextRequest) {
         extraction.confidence
       );
 
-      await supabase
+      const { data: updatedRecruit, error: updateError } = await supabase
         .from("recruits")
         .update(updateData)
         .eq("id", existing.id)
         .select()
         .single();
+      if (updateError) throw new Error(`Failed to update recruit: ${updateError.message}`);
 
       recruitId = existing.id as string;
+      recruitForDQS = updatedRecruit;
     } else if (senderIsCoach) {
       // Coach's own outbound email — don't create a duplicate recruit
       await supabase
@@ -190,20 +218,15 @@ export async function POST(request: NextRequest) {
           processing_status: "failed",
           extraction_error: "Skipped: sender is the coach (outbound email)",
         })
-        .eq("id", emailRecord.id);
-
-      return NextResponse.json({
-        success: true,
-        skipped: true,
-        reason: "Sender matches coach email — outbound email ignored",
-      });
+        .eq("id", emailId);
+      return;
     } else {
       // Create new recruit
       const { data: newRecruit, error: recruitError } = await supabase
         .from("recruits")
         .insert({
-          coach_id: coach.id,
-          program_id: coach.program_id,
+          coach_id: coachId,
+          program_id: programId,
           ...extraction.recruitData,
         })
         .select()
@@ -215,9 +238,10 @@ export async function POST(request: NextRequest) {
         );
       }
       recruitId = newRecruit.id;
+      recruitForDQS = newRecruit;
     }
 
-    // Step 5.5: Transcript analysis (non-blocking)
+    // Transcript analysis (non-blocking)
     let transcriptAnalysis: TranscriptAnalysis | null = null;
     if (normalizedAttachments.length > 0) {
       try {
@@ -230,8 +254,8 @@ export async function POST(request: NextRequest) {
               .upsert(
                 {
                   recruit_id: recruitId,
-                  coach_id: coach.id,
-                  email_id: emailRecord.id,
+                  coach_id: coachId,
+                  email_id: emailId,
                   rigor_grade: analysis.rigorGrade,
                   rigor_score: analysis.result.rigor_score,
                   confidence: analysis.result.confidence,
@@ -266,11 +290,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 6: Calculate DQS score
+    // Calculate DQS score
     const { data: config } = await supabase
       .from("program_config")
       .select("*")
-      .eq("program_id", coach.program_id)
+      .eq("program_id", programId)
       .single();
 
     // If no transcript analysis from this email, check for existing one
@@ -283,7 +307,7 @@ export async function POST(request: NextRequest) {
       transcriptAnalysis = existingAnalysis as TranscriptAnalysis | null;
     }
 
-    if (config) {
+    if (config && recruitForDQS) {
       const { data: recruit } = await supabase
         .from("recruits")
         .select("*")
@@ -306,8 +330,8 @@ export async function POST(request: NextRequest) {
         await supabase.from("recruit_dqs_scores").upsert(
           {
             recruit_id: recruitId,
-            coach_id: coach.id,
-            program_id: coach.program_id,
+            coach_id: coachId,
+            program_id: programId,
             overall_score: dqsResult.score,
             is_qualified: dqsResult.isQualified,
             disqualification_reasons: dqsResult.disqualificationReasons,
@@ -328,40 +352,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 7: Update email record with results
-    await supabase
+    // Update email record with results
+    const { error: finalUpdateError } = await supabase
       .from("ingested_emails")
       .update({
         recruit_id: recruitId,
         processing_status: extraction.processingStatus,
         extracted_data: extraction.extractedData as unknown as Record<string, unknown>,
       })
-      .eq("id", emailRecord.id);
-
-    return NextResponse.json({
-      success: true,
-      profile_id: recruitId,
-      status: extraction.processingStatus,
-      fields_extracted: extraction.fieldsExtracted,
-      fields_missing: extraction.fieldsMissing,
-    });
+      .eq("id", emailId);
+    if (finalUpdateError) throw new Error(`Failed to update final email status: ${finalUpdateError.message}`);
   } catch (err) {
     // Update email record with failure
-    await supabase
+    const { error: failureUpdateError } = await supabase
       .from("ingested_emails")
       .update({
         processing_status: "failed",
         extraction_error: String(err),
       })
-      .eq("id", emailRecord.id);
-
-    return NextResponse.json(
-      {
-        error: "Extraction failed",
-        details: String(err),
-      },
-      { status: 422 }
-    );
+      .eq("id", emailId);
+    if (failureUpdateError) {
+      console.error("[processEmail] Failed to update email status to failed:", failureUpdateError.message);
+    }
   }
 }
 
