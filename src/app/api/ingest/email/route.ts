@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashApiKey, isValidApiKeyFormat } from "@/lib/utils/api-key";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { normalizeEmail } from "@/lib/utils/email";
 import { IngestPayloadSchema } from "@/lib/extraction/schema";
 import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
@@ -14,7 +15,6 @@ export const maxDuration = 300;
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
-  // Step 1: Authenticate via API key
   const apiKey = request.headers.get("x-api-key");
   if (!apiKey || !isValidApiKeyFormat(apiKey)) {
     return NextResponse.json(
@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 2: Rate limiting
   const rateResult = checkRateLimit(coach.id);
   if (!rateResult.allowed) {
     return NextResponse.json(
@@ -54,7 +53,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 3: Validate payload
   let payload;
   try {
     const body = await request.json();
@@ -66,7 +64,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 4: Create ingested_emails record
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
     .insert({
@@ -90,7 +87,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 5: Queue background processing and return immediately
   after(() => processEmail(emailRecord.id, coach.id, coach.email as string, payload).catch((err) => console.error("[processEmail] unhandled:", err)));
 
   return NextResponse.json({ success: true, queued: true }, { status: 202 });
@@ -119,17 +115,14 @@ async function processEmail(
     );
 
     // Normalize emails for dedup comparison
-    const extractedEmail =
-      ((extraction.recruitData.email as string) || null)
-        ?.toLowerCase()
-        .trim() ?? null;
-    const senderEmail =
-      (payload.sender_email || null)?.toLowerCase().trim() ?? null;
+    const extractedEmail = normalizeEmail(extraction.recruitData.email as string);
+    const senderEmail = normalizeEmail(payload.sender_email);
 
     // Store the normalized email in recruitData
     extraction.recruitData.email = extractedEmail ?? senderEmail;
 
     let recruitId: string;
+    let recruitForDQS: Record<string, unknown> | null = null;
     let existing: Record<string, unknown> | null = null;
 
     // Two-pass dedup: check extracted email first, then sender_email
@@ -163,7 +156,7 @@ async function processEmail(
     // Guard: if sender is the coach themselves (outbound email processed by
     // Zapier due to thread-level labeling), skip creation of a new recruit.
     // Updates to existing recruits are still allowed (via extracted email match).
-    const coachEmail = coachEmailRaw?.toLowerCase().trim() ?? null;
+    const coachEmail = normalizeEmail(coachEmailRaw);
     const senderIsCoach = coachEmail && senderEmail === coachEmail;
 
     if (existing) {
@@ -174,14 +167,16 @@ async function processEmail(
         extraction.confidence
       );
 
-      await supabase
+      const { data: updatedRecruit, error: updateError } = await supabase
         .from("recruits")
         .update(updateData)
         .eq("id", existing.id)
         .select()
         .single();
+      if (updateError) throw new Error(`Failed to update recruit: ${updateError.message}`);
 
       recruitId = existing.id as string;
+      recruitForDQS = updatedRecruit;
     } else if (senderIsCoach) {
       // Coach's own outbound email — don't create a duplicate recruit
       await supabase
@@ -209,6 +204,7 @@ async function processEmail(
         );
       }
       recruitId = newRecruit.id;
+      recruitForDQS = newRecruit;
     }
 
     // Calculate DQS score
@@ -218,47 +214,39 @@ async function processEmail(
       .eq("coach_id", coachId)
       .single();
 
-    if (config) {
-      const { data: recruit } = await supabase
-        .from("recruits")
-        .select("*")
-        .eq("id", recruitId)
-        .single();
+    if (config && recruitForDQS) {
+      const dqsResult = calculateDQS(
+        recruitForDQS as Recruit,
+        config as ProgramConfig
+      );
 
-      if (recruit) {
-        const dqsResult = calculateDQS(
-          recruit as Recruit,
-          config as ProgramConfig
-        );
+      const aiSummary = await generateDQSSummary(
+        recruitForDQS as Recruit,
+        config as ProgramConfig,
+        dqsResult
+      );
 
-        const aiSummary = await generateDQSSummary(
-          recruit as Recruit,
-          config as ProgramConfig,
-          dqsResult
-        );
-
-        await supabase.from("recruit_dqs_scores").upsert(
-          {
-            recruit_id: recruitId,
-            coach_id: coachId,
-            overall_score: dqsResult.score,
-            is_qualified: dqsResult.isQualified,
-            disqualification_reasons: dqsResult.disqualificationReasons,
-            academic_score: dqsResult.componentScores.academic,
-            competition_score: dqsResult.componentScores.competition,
-            physical_score: dqsResult.componentScores.physical,
-            position_fit_score: dqsResult.componentScores.positionFit,
-            grad_year_score: dqsResult.componentScores.gradYear,
-            completeness_score: dqsResult.componentScores.completeness,
-            bonus_points: dqsResult.bonusPoints,
-            completeness_penalty: dqsResult.completenessPenalty,
-            score_breakdown: dqsResult.breakdown,
-            ai_summary: aiSummary,
-            calculated_at: new Date().toISOString(),
-          },
-          { onConflict: "recruit_id" }
-        );
-      }
+      await supabase.from("recruit_dqs_scores").upsert(
+        {
+          recruit_id: recruitId,
+          coach_id: coachId,
+          overall_score: dqsResult.score,
+          is_qualified: dqsResult.isQualified,
+          disqualification_reasons: dqsResult.disqualificationReasons,
+          academic_score: dqsResult.componentScores.academic,
+          competition_score: dqsResult.componentScores.competition,
+          physical_score: dqsResult.componentScores.physical,
+          position_fit_score: dqsResult.componentScores.positionFit,
+          grad_year_score: dqsResult.componentScores.gradYear,
+          completeness_score: dqsResult.componentScores.completeness,
+          bonus_points: dqsResult.bonusPoints,
+          completeness_penalty: dqsResult.completenessPenalty,
+          score_breakdown: dqsResult.breakdown,
+          ai_summary: aiSummary,
+          calculated_at: new Date().toISOString(),
+        },
+        { onConflict: "recruit_id" }
+      );
     }
 
     // Update email record with results

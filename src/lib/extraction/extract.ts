@@ -3,6 +3,7 @@ import { ExtractionResultSchema, type ExtractionResultType } from "./schema";
 import { buildExtractionPrompt } from "./prompt";
 import type { ProcessingStatus, ClubLevel, ConfidenceLevel } from "@/types/database";
 import { lookupClubLevel } from "@/lib/data/club-directory";
+import { normalizeEmail } from "@/lib/utils/email";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -256,7 +257,7 @@ export async function extractRecruitData(
   // Build flat recruit data for database insertion
   const recruitData: Record<string, unknown> = {
     full_name: parsed.full_name.value,
-    email: (parsed.email.value ?? senderEmail)?.toLowerCase().trim() ?? null,
+    email: normalizeEmail(parsed.email.value ?? senderEmail),
     phone: parsed.phone.value,
     graduation_year: parsed.graduation_year.value,
     current_school: parsed.current_school.value,
