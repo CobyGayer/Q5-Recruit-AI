@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { Logo } from "@/components/brand/logo";
 export default function PendingApprovalPage() {
   const router = useRouter();
   const supabase = createClient();
+  const [checkingStatus, setCheckingStatus] = useState(false);
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -24,6 +26,33 @@ export default function PendingApprovalPage() {
   }
 
   async function handleCheckStatus() {
+    setCheckingStatus(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setCheckingStatus(false);
+      router.push("/login");
+      router.refresh();
+      return;
+    }
+
+    const { data: coach, error } = await supabase
+      .from("coaches")
+      .select("status")
+      .eq("id", user.id)
+      .single();
+
+    if (!error && coach?.status === "approved") {
+      setCheckingStatus(false);
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    setCheckingStatus(false);
     router.refresh();
   }
 
@@ -48,8 +77,13 @@ export default function PendingApprovalPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Button onClick={handleCheckStatus} className="w-full" variant="outline">
-            Check Status
+          <Button
+            onClick={handleCheckStatus}
+            className="w-full"
+            variant="outline"
+            disabled={checkingStatus}
+          >
+            {checkingStatus ? "Checking..." : "Check Status"}
           </Button>
           <Button onClick={handleSignOut} variant="ghost" className="w-full">
             Sign Out

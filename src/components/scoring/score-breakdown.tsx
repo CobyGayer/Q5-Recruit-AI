@@ -1,10 +1,24 @@
 "use client";
 
-import type { RecruitDqsScore } from "@/types/database";
+import type { RecruitDqsScore, RigorGrade } from "@/types/database";
 import { getScoreBarClass } from "@/lib/scoring/colors";
+
+const RIGOR_GRADE_COLORS: Record<string, string> = {
+  "A+": "bg-emerald-100 text-emerald-800",
+  A: "bg-emerald-100 text-emerald-800",
+  "A-": "bg-emerald-100 text-emerald-800",
+  "B+": "bg-blue-100 text-blue-800",
+  B: "bg-blue-100 text-blue-800",
+  "B-": "bg-blue-100 text-blue-800",
+  "C+": "bg-amber-100 text-amber-800",
+  C: "bg-amber-100 text-amber-800",
+  "C-": "bg-red-100 text-red-800",
+  D: "bg-red-100 text-red-800",
+};
 
 interface ScoreBreakdownProps {
   score: RecruitDqsScore;
+  rigorGrade?: RigorGrade | null;
 }
 
 const COMPONENT_LABELS: Record<string, string> = {
@@ -16,7 +30,7 @@ const COMPONENT_LABELS: Record<string, string> = {
   completeness: "Completeness",
 };
 
-function ScoreBar({ label, score }: { label: string; score: number | null }) {
+function ScoreBar({ label, score, badge }: { label: string; score: number | null; badge?: React.ReactNode }) {
   const displayScore = score ?? 0;
   const barWidth = Math.max(0, Math.min(100, displayScore));
 
@@ -25,7 +39,10 @@ function ScoreBar({ label, score }: { label: string; score: number | null }) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-sm">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          {label}
+          {badge}
+        </span>
         <span className="font-medium">
           {score != null ? Math.round(score) : "N/A"}
         </span>
@@ -40,7 +57,7 @@ function ScoreBar({ label, score }: { label: string; score: number | null }) {
   );
 }
 
-export function ScoreBreakdown({ score }: ScoreBreakdownProps) {
+export function ScoreBreakdown({ score, rigorGrade }: ScoreBreakdownProps) {
   const components = [
     { key: "academic", score: score.academic_score },
     { key: "competition", score: score.competition_score },
@@ -58,6 +75,16 @@ export function ScoreBreakdown({ score }: ScoreBreakdownProps) {
             key={comp.key}
             label={COMPONENT_LABELS[comp.key]}
             score={comp.score}
+            badge={
+              comp.key === "academic" && rigorGrade ? (
+                <span
+                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold leading-none ${RIGOR_GRADE_COLORS[rigorGrade]}`}
+                  title="Transcript rigor grade"
+                >
+                  {rigorGrade}
+                </span>
+              ) : undefined
+            }
           />
         ))}
       </div>

@@ -15,6 +15,8 @@ export type ClubLevel =
   | "unknown";
 export type ConfidenceLevel = "high" | "medium" | "low";
 export type FlagType = "interested" | "not_a_fit";
+export type RigorGrade = "A+" | "A" | "A-" | "B+" | "B" | "B-" | "C+" | "C" | "C-" | "D";
+export type GradeTrend = "improving" | "declining" | "stable" | "inconsistent";
 export type EmailMethod = "gmail" | "outlook" | "mailto" | "clipboard";
 export type EmailPipelineStatus = "not_started" | "pending_setup" | "active";
 
@@ -22,6 +24,7 @@ export interface Program {
   id: string;
   name: string;
   institution: string;
+  domain: string;
   division: string | null;
   conference: string | null;
   created_at: string;
@@ -44,7 +47,8 @@ export interface Coach {
 
 export interface ProgramConfig {
   id: string;
-  coach_id: string;
+  updated_by_coach_id: string | null;
+  program_id: string;
   // Section A: Minimum Thresholds
   min_gpa: number | null;
   min_sat: number | null;
@@ -70,6 +74,7 @@ export interface ProgramConfig {
 export interface IngestedEmail {
   id: string;
   coach_id: string;
+  program_id: string;
   recruit_id: string | null;
   sender_email: string | null;
   sender_name: string | null;
@@ -87,6 +92,7 @@ export interface IngestedEmail {
 export interface Recruit {
   id: string;
   coach_id: string;
+  program_id: string;
   email: string | null;
   full_name: string | null;
   phone: string | null;
@@ -118,6 +124,7 @@ export interface RecruitDqsScore {
   id: string;
   recruit_id: string;
   coach_id: string;
+  program_id: string;
   overall_score: number | null;
   is_qualified: boolean;
   disqualification_reasons: string[];
@@ -137,6 +144,7 @@ export interface RecruitDqsScore {
 export interface CoachRecruitFlag {
   id: string;
   coach_id: string;
+  program_id: string;
   recruit_id: string;
   flag: FlagType;
   created_at: string;
@@ -150,6 +158,34 @@ export interface EmailLog {
   body: string;
   method: EmailMethod;
   created_at: string;
+}
+
+export interface TranscriptAnalysis {
+  id: string;
+  recruit_id: string;
+  coach_id: string;
+  email_id: string | null;
+  rigor_grade: RigorGrade;
+  rigor_score: number;
+  confidence: ConfidenceLevel;
+  transcript_readable: boolean;
+  honors_ap_ib_count: number;
+  total_academic_courses: number;
+  rigor_ratio: number;
+  strongest_subjects: string[];
+  weakest_subjects: string[];
+  notable_courses: string[];
+  grade_trend: GradeTrend | null;
+  freshman_gpa_estimate: number | null;
+  senior_gpa_estimate: number | null;
+  grade_trend_notes: string | null;
+  red_flags: string[];
+  strengths: string[];
+  schedule_assessment: string | null;
+  admissions_notes: string | null;
+  cumulative_gpa_from_transcript: number | null;
+  raw_analysis: Record<string, unknown>;
+  analyzed_at: string;
 }
 
 /** Recruit joined with its DQS score and flag for dashboard display */

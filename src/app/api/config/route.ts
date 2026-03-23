@@ -32,10 +32,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: coach, error: coachError } = await supabase
+    .from("coaches")
+    .select("program_id")
+    .eq("id", user.id)
+    .single();
+
+  if (coachError || !coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from("program_config")
     .select("*")
-    .eq("coach_id", user.id)
+    .eq("program_id", coach.program_id)
     .single();
 
   if (error) {
@@ -55,6 +65,16 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: coach, error: coachError } = await supabase
+    .from("coaches")
+    .select("program_id")
+    .eq("id", user.id)
+    .single();
+
+  if (coachError || !coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
   const raw = await request.json();
   const parsed = ProgramConfigUpdateSchema.safeParse(raw);
   if (!parsed.success) {
@@ -67,8 +87,8 @@ export async function PUT(request: NextRequest) {
   const { data, error } = await supabase
     .from("program_config")
     .upsert(
-      { coach_id: user.id, ...parsed.data },
-      { onConflict: "coach_id" }
+      { updated_by_coach_id: user.id, program_id: coach.program_id, ...parsed.data },
+      { onConflict: "program_id" }
     )
     .select()
     .single();

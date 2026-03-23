@@ -8,7 +8,8 @@ import { IngestPayloadSchema } from "@/lib/extraction/schema";
 import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
-import type { Recruit, ProgramConfig, ConfidenceLevel } from "@/types/database";
+import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
+import type { Recruit, ProgramConfig, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
 
 export const maxDuration = 300;
 
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
   const hashedKey = hashApiKey(apiKey);
   const { data: coach, error: coachError } = await supabase
     .from("coaches")
-    .select("id, status, email")
+    .select("id, status, email, program_id")
     .eq("api_key", hashedKey)
     .single();
 
@@ -37,6 +38,13 @@ export async function POST(request: NextRequest) {
   if (coach.status !== "approved") {
     return NextResponse.json(
       { error: "Coach account not approved" },
+      { status: 403 }
+    );
+  }
+
+  if (!coach.program_id) {
+    return NextResponse.json(
+      { error: "Coach is not assigned to a program" },
       { status: 403 }
     );
   }
@@ -56,25 +64,39 @@ export async function POST(request: NextRequest) {
   let payload;
   try {
     const body = await request.json();
+    console.log("[ingest] Raw payload keys:", Object.keys(body));
+    console.log("[ingest] Attachments field:", JSON.stringify(body.attachments)?.substring(0, 500));
     payload = IngestPayloadSchema.parse(body);
   } catch (err) {
+    console.error("[ingest] Payload validation failed:", err);
     return NextResponse.json(
       { error: "Invalid payload", details: String(err) },
       { status: 422 }
     );
   }
 
+  // Normalize attachments into an array (Zapier may send a string, object, or array)
+  let normalizedAttachments: unknown[] = [];
+  if (payload.attachments) {
+    if (Array.isArray(payload.attachments)) {
+      normalizedAttachments = payload.attachments;
+    } else {
+      normalizedAttachments = [payload.attachments];
+    }
+  }
+
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
     .insert({
       coach_id: coach.id,
+      program_id: coach.program_id,
       sender_email: payload.sender_email,
       sender_name: payload.sender_name,
       subject: payload.subject,
       body_plain: payload.body_plain,
       body_html: payload.body_html,
       received_at: payload.received_at,
-      attachments: payload.attachments ?? [],
+      attachments: normalizedAttachments,
       processing_status: "pending",
     })
     .select()
@@ -87,7 +109,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  after(() => processEmail(emailRecord.id, coach.id, coach.email as string, payload).catch((err) => console.error("[processEmail] unhandled:", err)));
+  after(() => processEmail(emailRecord.id, coach.id, coach.email as string, coach.program_id as string, payload).catch((err) => console.error("[processEmail] unhandled:", err)));
 
   return NextResponse.json({ success: true, queued: true }, { status: 202 });
 }
@@ -96,9 +118,20 @@ async function processEmail(
   emailId: string,
   coachId: string,
   coachEmailRaw: string,
+  programId: string,
   payload: z.infer<typeof IngestPayloadSchema>
 ) {
   const supabase = createAdminClient();
+
+  // Normalize attachments (same logic as POST, since payload is re-used here)
+  let normalizedAttachments: unknown[] = [];
+  if (payload.attachments) {
+    if (Array.isArray(payload.attachments)) {
+      normalizedAttachments = payload.attachments;
+    } else {
+      normalizedAttachments = [payload.attachments];
+    }
+  }
 
   try {
     const { error: statusError } = await supabase
@@ -130,7 +163,7 @@ async function processEmail(
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("coach_id", coachId)
+        .eq("program_id", programId)
         .eq("email", extractedEmail)
         .single();
       existing = data;
@@ -140,7 +173,7 @@ async function processEmail(
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("coach_id", coachId)
+        .eq("program_id", programId)
         .eq("email", senderEmail)
         .single();
       existing = data;
@@ -193,6 +226,7 @@ async function processEmail(
         .from("recruits")
         .insert({
           coach_id: coachId,
+          program_id: programId,
           ...extraction.recruitData,
         })
         .select()
@@ -207,46 +241,115 @@ async function processEmail(
       recruitForDQS = newRecruit;
     }
 
+    // Transcript analysis (non-blocking)
+    let transcriptAnalysis: TranscriptAnalysis | null = null;
+    if (normalizedAttachments.length > 0) {
+      try {
+        const pdfAttachment = await findFirstPdfAttachment(normalizedAttachments);
+        if (pdfAttachment) {
+          const analysis = await analyzeTranscript(pdfAttachment.base64);
+          if (analysis) {
+            const { data: transcriptRow } = await supabase
+              .from("transcript_analyses")
+              .upsert(
+                {
+                  recruit_id: recruitId,
+                  coach_id: coachId,
+                  email_id: emailId,
+                  rigor_grade: analysis.rigorGrade,
+                  rigor_score: analysis.result.rigor_score,
+                  confidence: analysis.result.confidence,
+                  transcript_readable: analysis.result.transcript_readable,
+                  honors_ap_ib_count: analysis.result.course_analysis.honors_ap_ib_count,
+                  total_academic_courses: analysis.result.course_analysis.total_academic_courses,
+                  rigor_ratio: analysis.result.course_analysis.rigor_ratio,
+                  strongest_subjects: analysis.result.course_analysis.strongest_subjects,
+                  weakest_subjects: analysis.result.course_analysis.weakest_subjects,
+                  notable_courses: analysis.result.course_analysis.notable_courses,
+                  grade_trend: analysis.result.grade_trends.direction,
+                  freshman_gpa_estimate: analysis.result.grade_trends.freshman_gpa_estimate,
+                  senior_gpa_estimate: analysis.result.grade_trends.senior_gpa_estimate,
+                  grade_trend_notes: analysis.result.grade_trends.notes,
+                  red_flags: analysis.result.red_flags,
+                  strengths: analysis.result.strengths,
+                  schedule_assessment: analysis.result.schedule_assessment,
+                  admissions_notes: analysis.result.admissions_notes,
+                  cumulative_gpa_from_transcript: analysis.result.cumulative_gpa_from_transcript,
+                  raw_analysis: analysis.result as unknown as Record<string, unknown>,
+                },
+                { onConflict: "recruit_id" }
+              )
+              .select()
+              .single();
+
+            transcriptAnalysis = transcriptRow as TranscriptAnalysis | null;
+          }
+        }
+      } catch (err) {
+        console.warn("[transcript] Non-blocking analysis error:", err);
+      }
+    }
+
     // Calculate DQS score
     const { data: config } = await supabase
       .from("program_config")
       .select("*")
-      .eq("coach_id", coachId)
+      .eq("program_id", programId)
       .single();
 
+    // If no transcript analysis from this email, check for existing one
+    if (!transcriptAnalysis) {
+      const { data: existingAnalysis } = await supabase
+        .from("transcript_analyses")
+        .select("*")
+        .eq("recruit_id", recruitId)
+        .single();
+      transcriptAnalysis = existingAnalysis as TranscriptAnalysis | null;
+    }
+
     if (config && recruitForDQS) {
-      const dqsResult = calculateDQS(
-        recruitForDQS as Recruit,
-        config as ProgramConfig
-      );
+      const { data: recruit } = await supabase
+        .from("recruits")
+        .select("*")
+        .eq("id", recruitId)
+        .single();
 
-      const aiSummary = await generateDQSSummary(
-        recruitForDQS as Recruit,
-        config as ProgramConfig,
-        dqsResult
-      );
+      if (recruit) {
+        const dqsResult = calculateDQS(
+          recruit as Recruit,
+          config as ProgramConfig,
+          transcriptAnalysis
+        );
 
-      await supabase.from("recruit_dqs_scores").upsert(
-        {
-          recruit_id: recruitId,
-          coach_id: coachId,
-          overall_score: dqsResult.score,
-          is_qualified: dqsResult.isQualified,
-          disqualification_reasons: dqsResult.disqualificationReasons,
-          academic_score: dqsResult.componentScores.academic,
-          competition_score: dqsResult.componentScores.competition,
-          physical_score: dqsResult.componentScores.physical,
-          position_fit_score: dqsResult.componentScores.positionFit,
-          grad_year_score: dqsResult.componentScores.gradYear,
-          completeness_score: dqsResult.componentScores.completeness,
-          bonus_points: dqsResult.bonusPoints,
-          completeness_penalty: dqsResult.completenessPenalty,
-          score_breakdown: dqsResult.breakdown,
-          ai_summary: aiSummary,
-          calculated_at: new Date().toISOString(),
-        },
-        { onConflict: "recruit_id" }
-      );
+        const aiSummary = await generateDQSSummary(
+          recruit as Recruit,
+          config as ProgramConfig,
+          dqsResult
+        );
+
+        await supabase.from("recruit_dqs_scores").upsert(
+          {
+            recruit_id: recruitId,
+            coach_id: coachId,
+            program_id: programId,
+            overall_score: dqsResult.score,
+            is_qualified: dqsResult.isQualified,
+            disqualification_reasons: dqsResult.disqualificationReasons,
+            academic_score: dqsResult.componentScores.academic,
+            competition_score: dqsResult.componentScores.competition,
+            physical_score: dqsResult.componentScores.physical,
+            position_fit_score: dqsResult.componentScores.positionFit,
+            grad_year_score: dqsResult.componentScores.gradYear,
+            completeness_score: dqsResult.componentScores.completeness,
+            bonus_points: dqsResult.bonusPoints,
+            completeness_penalty: dqsResult.completenessPenalty,
+            score_breakdown: dqsResult.breakdown,
+            ai_summary: aiSummary,
+            calculated_at: new Date().toISOString(),
+          },
+          { onConflict: "recruit_id" }
+        );
+      }
     }
 
     // Update email record with results

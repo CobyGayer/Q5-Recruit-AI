@@ -52,5 +52,5 @@ export const IngestPayloadSchema = z.object({
   body_plain: z.string().min(1, "Email body is required"),
   body_html: z.string().optional(),
   received_at: z.string().optional(),
-  attachments: z.array(z.string()).optional(),
+  attachments: z.union([z.array(z.any()), z.string(), z.any()]).optional(),
 });
