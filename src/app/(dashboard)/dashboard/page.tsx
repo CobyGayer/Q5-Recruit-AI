@@ -436,11 +436,11 @@ function DashboardContent() {
           </Button>
           <Button
             variant="destructive"
-            size="sm"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setBulkDeleteOpen(true)}
           >
-            <Trash2 className="h-4 w-4 mr-1.5" />
-            Delete Selected
+            <Trash2 className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
