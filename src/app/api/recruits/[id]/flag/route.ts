@@ -64,7 +64,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("coach_recruit_flags")
     .delete()
     .eq("recruit_id", recruitId);
@@ -73,5 +73,12 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  if (!count || count === 0) {
+    return NextResponse.json(
+      { success: true, message: "No flag found to delete" },
+      { status: 200 }
+    );
+  }
+
+  return NextResponse.json({ success: true, deleted: count });
 }

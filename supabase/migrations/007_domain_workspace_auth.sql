@@ -39,9 +39,10 @@ WITH missing_domains AS (
   WHERE c.program_id IS NULL
     AND public.email_domain(c.email) <> ''
 ), inserted AS (
-  INSERT INTO public.programs (name, institution)
+  INSERT INTO public.programs (name, institution, domain)
   SELECT
     initcap(replace(split_part(md.domain, '.', 1), '-', ' ')) || ' Program',
+    md.domain,
     md.domain
   FROM missing_domains md
   RETURNING id, institution
