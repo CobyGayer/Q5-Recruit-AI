@@ -140,7 +140,7 @@ export default function AdminPage() {
   function getZapierCopilotPrompt() {
     if (!generatedKey) return "";
     const webhookUrl = `${window.location.origin}/api/ingest/email`;
-    return `Create a Zap: When a new email arrives in Gmail matching the search "label:Q5 Recruit AI", send a POST request to ${webhookUrl}. Add a custom header "x-api-key" with value "${generatedKey.key}". Send the following fields as JSON in the request body: "sender_email" mapped to the sender's email address, "subject" mapped to the email subject line, "body_plain" mapped to the plain text body of the email, and "received_at" mapped to the date the email was received.`;
+    return `Create a Zap: When a new email arrives in Gmail matching the search "label:Q5 Recruit AI", send a POST request to ${webhookUrl}. Add a custom header "x-api-key" with value "${generatedKey.key}". Send the following fields as JSON in the request body: "sender_email" mapped to the sender's email address, "subject" mapped to the email subject line, "body_plain" mapped to the plain text body of the email, "received_at" mapped to the date the email was received, and "attachments" mapped to an array of the email's attachment download URLs. If there are no attachments, send an empty array for "attachments".`;
   }
 
   function copySetupInfo() {

@@ -68,18 +68,21 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
     "direction": "<improving|declining|stable|inconsistent>",
     "freshman_gpa_estimate": <number|null>,
     "senior_gpa_estimate": <number|null>,
-    "notes": "<1-2 sentence summary of grade trajectory>"
+    "notes": "<one concise sentence on grade trajectory>"
   },
-  "red_flags": [<string>, ...],
-  "strengths": [<string>, ...],
-  "schedule_assessment": "<1-2 sentence assessment of overall schedule rigor>",
-  "admissions_notes": "<2-3 sentence holistic read, written as if you're an admissions officer writing a brief evaluation note>",
+  "red_flags": [<string max 8 words each>, ...],
+  "strengths": [<string max 8 words each>, ...],
+  "schedule_assessment": "<one concise sentence on schedule rigor>",
+  "admissions_notes": "<1-2 sentences max — a brief coaching-relevant takeaway, not a full admissions review>",
   "cumulative_gpa_from_transcript": <number|null>,
   "transcript_readable": <boolean>,
   "confidence": "<high|medium|low>"
 }
 
 ## Important Rules
+- Be concise — coaches skim this. Every string field should be short and actionable. Avoid filler language.
+- Strengths and red flags should each be a punchy phrase (max 8 words), not a full sentence
+- admissions_notes should read like a quick note a coach can act on, not an essay
 - If the document is NOT a transcript (e.g., it's a resume, letter, or unrelated document), set "transcript_readable" to false and "confidence" to "low"
 - If the transcript is too blurry, cropped, or otherwise unreadable, set "transcript_readable" to false
 - Empty arrays are fine for red_flags, strengths, etc. if none apply

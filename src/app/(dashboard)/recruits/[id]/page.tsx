@@ -587,6 +587,7 @@ export default function RecruitDetailPage() {
                 <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     Transcript Analysis
+                    <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground/60">Beta</span>
                     <Badge
                       variant="secondary"
                       className={`shrink-0 ${
