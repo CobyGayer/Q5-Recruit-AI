@@ -152,7 +152,6 @@ export async function POST(request: NextRequest) {
     .from("ingested_emails")
     .insert({
       coach_id: coach.id,
-      program_id: coach.program_id,
       sender_email: payload.sender_email,
       sender_name: payload.sender_name,
       subject: payload.subject,
@@ -233,7 +232,6 @@ async function handleBulkForward(
       .from("ingested_emails")
       .insert({
         coach_id: coach.id,
-        program_id: coach.program_id,
         sender_email: parsed.senderEmail,
         sender_name: parsed.senderName,
         subject: parsed.subject,
