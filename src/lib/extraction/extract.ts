@@ -185,9 +185,10 @@ export async function extractRecruitData(
   subject: string | undefined,
   senderName: string | undefined,
   senderEmail: string | undefined,
-  bodyPlain: string
+  bodyPlain: string,
+  isForwarded?: boolean
 ): Promise<ExtractionOutput> {
-  const prompt = buildExtractionPrompt(subject, senderName, senderEmail, bodyPlain);
+  const prompt = buildExtractionPrompt(subject, senderName, senderEmail, bodyPlain, isForwarded);
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-5-20250929",
@@ -257,7 +258,7 @@ export async function extractRecruitData(
   // Build flat recruit data for database insertion
   const recruitData: Record<string, unknown> = {
     full_name: parsed.full_name.value,
-    email: normalizeEmail(parsed.email.value ?? senderEmail),
+    email: normalizeEmail(parsed.email.value ?? (isForwarded ? null : senderEmail)),
     phone: parsed.phone.value,
     graduation_year: parsed.graduation_year.value,
     current_school: parsed.current_school.value,

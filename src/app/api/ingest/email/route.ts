@@ -9,29 +9,103 @@ import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
 import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
+import { findAndParseEmlAttachments, looksLikeEml, type ParsedEmail } from "@/lib/email/parse-eml";
 import type { Recruit, ProgramConfig, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
 
 export const maxDuration = 300;
 
+/** Detect inline-forwarded email by checking for common forward markers */
+function isForwardedEmail(body: string): boolean {
+  return /---------- Forwarded message ----------/.test(body) ||
+    /^Begin forwarded message:/m.test(body) ||
+    /^----- Original Message -----/m.test(body);
+}
+
+/** Normalize attachments into an array (Zapier may send a string, object, or array) */
+function normalizeAttachments(attachments: unknown): unknown[] {
+  if (!attachments) return [];
+  if (Array.isArray(attachments)) return attachments;
+  return [attachments];
+}
+
+interface ResolvedCoach {
+  id: string;
+  status: string;
+  email: string;
+  program_id: string;
+  isIntakeForward: boolean;
+}
+
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
-  const apiKey = request.headers.get("x-api-key");
-  if (!apiKey || !isValidApiKeyFormat(apiKey)) {
+  // --- Parse payload first (needed for intake auth) ---
+  let payload;
+  let body;
+  try {
+    body = await request.json();
+    console.log("[ingest] Raw payload keys:", Object.keys(body));
+    console.log("[ingest] Attachments field:", JSON.stringify(body.attachments)?.substring(0, 500));
+    payload = IngestPayloadSchema.parse(body);
+  } catch (err) {
+    console.error("[ingest] Payload validation failed:", err);
     return NextResponse.json(
-      { error: "Missing or invalid API key" },
+      { error: "Invalid payload", details: String(err) },
+      { status: 422 }
+    );
+  }
+
+  // --- Dual-auth: per-coach API key OR shared intake secret ---
+  const apiKey = request.headers.get("x-api-key");
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "Missing API key" },
       { status: 401 }
     );
   }
 
-  const hashedKey = hashApiKey(apiKey);
-  const { data: coach, error: coachError } = await supabase
-    .from("coaches")
-    .select("id, status, email, program_id")
-    .eq("api_key", hashedKey)
-    .single();
+  let coach: ResolvedCoach;
 
-  if (coachError || !coach) {
+  if (isValidApiKeyFormat(apiKey)) {
+    // Legacy path: per-coach API key
+    const hashedKey = hashApiKey(apiKey);
+    const { data, error } = await supabase
+      .from("coaches")
+      .select("id, status, email, program_id")
+      .eq("api_key", hashedKey)
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+    }
+
+    coach = { ...data, isIntakeForward: false };
+  } else if (apiKey === process.env.INTAKE_WEBHOOK_SECRET) {
+    // Intake path: shared secret + coach identified by sender_email
+    const senderEmail = normalizeEmail(payload.sender_email);
+    if (!senderEmail) {
+      return NextResponse.json(
+        { error: "Intake mode requires sender_email" },
+        { status: 422 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("coaches")
+      .select("id, status, email, program_id")
+      .eq("email", senderEmail)
+      .single();
+
+    if (error || !data) {
+      console.warn(`[ingest] No coach found for intake sender: ${senderEmail}`);
+      return NextResponse.json(
+        { error: "No coach account found for this email address" },
+        { status: 403 }
+      );
+    }
+
+    coach = { ...data, isIntakeForward: true };
+  } else {
     return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
   }
 
@@ -49,6 +123,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // --- Check for Mode B: .eml attachments (bulk forward) ---
+  const normalizedAttachments = normalizeAttachments(payload.attachments);
+  const hasEmlFiles = normalizedAttachments.some(looksLikeEml);
+
+  if (coach.isIntakeForward && hasEmlFiles) {
+    // Mode B: parse each .eml and process separately
+    return handleBulkForward(supabase, coach, payload, normalizedAttachments);
+  }
+
+  // --- Rate limit (single email) ---
   const rateResult = checkRateLimit(coach.id);
   if (!rateResult.allowed) {
     return NextResponse.json(
@@ -61,29 +145,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let payload;
-  try {
-    const body = await request.json();
-    console.log("[ingest] Raw payload keys:", Object.keys(body));
-    console.log("[ingest] Attachments field:", JSON.stringify(body.attachments)?.substring(0, 500));
-    payload = IngestPayloadSchema.parse(body);
-  } catch (err) {
-    console.error("[ingest] Payload validation failed:", err);
-    return NextResponse.json(
-      { error: "Invalid payload", details: String(err) },
-      { status: 422 }
-    );
-  }
-
-  // Normalize attachments into an array (Zapier may send a string, object, or array)
-  let normalizedAttachments: unknown[] = [];
-  if (payload.attachments) {
-    if (Array.isArray(payload.attachments)) {
-      normalizedAttachments = payload.attachments;
-    } else {
-      normalizedAttachments = [payload.attachments];
-    }
-  }
+  // --- Mode A (inline forward) or legacy: store and process single email ---
+  const isForwarded = coach.isIntakeForward && isForwardedEmail(payload.body_plain);
 
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
@@ -109,9 +172,106 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  after(() => processEmail(emailRecord.id, coach.id, coach.email as string, coach.program_id as string, payload).catch((err) => console.error("[processEmail] unhandled:", err)));
+  after(() => processEmail(emailRecord.id, coach.id, coach.email, coach.program_id, payload, normalizedAttachments, isForwarded).catch((err) => console.error("[processEmail] unhandled:", err)));
 
   return NextResponse.json({ success: true, queued: true }, { status: 202 });
+}
+
+/**
+ * Mode B: Handle bulk-forwarded emails with .eml attachments.
+ * Parses each .eml, creates a separate ingested_emails record, and processes independently.
+ */
+async function handleBulkForward(
+  supabase: ReturnType<typeof createAdminClient>,
+  coach: ResolvedCoach,
+  originalPayload: z.infer<typeof IngestPayloadSchema>,
+  attachments: unknown[]
+) {
+  let parsedEmails: ParsedEmail[];
+  try {
+    parsedEmails = await findAndParseEmlAttachments(attachments);
+  } catch (err) {
+    console.error("[ingest] Failed to parse .eml attachments:", err);
+    return NextResponse.json(
+      { error: "Failed to parse .eml attachments", details: String(err) },
+      { status: 422 }
+    );
+  }
+
+  if (parsedEmails.length === 0) {
+    return NextResponse.json(
+      { error: "No valid .eml attachments found" },
+      { status: 422 }
+    );
+  }
+
+  // Rate limit: check if we have enough headroom for all emails
+  const rateResult = checkRateLimit(coach.id);
+  if (!rateResult.allowed) {
+    return NextResponse.json(
+      {
+        error: "Rate limit exceeded",
+        remaining: rateResult.remaining,
+        reset_at: new Date(rateResult.resetAt).toISOString(),
+      },
+      { status: 429 }
+    );
+  }
+
+  // Create an ingested_emails record for each parsed .eml and queue processing
+  const queuedIds: string[] = [];
+
+  for (const parsed of parsedEmails) {
+    // Convert nested .eml attachments to the format our pipeline expects
+    const emlAttachments = parsed.attachments.map((att) => ({
+      url: `data:${att.contentType};base64,${att.content}`,
+      filename: att.filename,
+      content_type: att.contentType,
+    }));
+
+    const { data: emailRecord, error: emailError } = await supabase
+      .from("ingested_emails")
+      .insert({
+        coach_id: coach.id,
+        program_id: coach.program_id,
+        sender_email: parsed.senderEmail,
+        sender_name: parsed.senderName,
+        subject: parsed.subject,
+        body_plain: parsed.bodyPlain,
+        body_html: parsed.bodyHtml,
+        received_at: parsed.receivedAt,
+        attachments: emlAttachments,
+        processing_status: "pending",
+      })
+      .select()
+      .single();
+
+    if (emailError || !emailRecord) {
+      console.error("[ingest] Failed to store parsed .eml:", emailError?.message);
+      continue;
+    }
+
+    // Build a synthetic payload from the parsed .eml data
+    const syntheticPayload: z.infer<typeof IngestPayloadSchema> = {
+      sender_email: parsed.senderEmail ?? undefined,
+      sender_name: parsed.senderName ?? undefined,
+      subject: parsed.subject ?? undefined,
+      body_plain: parsed.bodyPlain,
+      body_html: parsed.bodyHtml ?? undefined,
+      received_at: parsed.receivedAt ?? undefined,
+      attachments: emlAttachments,
+    };
+
+    // .eml bodies are already the original recruit email — no forwarding inversion needed
+    after(() => processEmail(emailRecord.id, coach.id, coach.email, coach.program_id, syntheticPayload, emlAttachments, false).catch((err) => console.error("[processEmail] unhandled:", err)));
+
+    queuedIds.push(emailRecord.id);
+  }
+
+  return NextResponse.json(
+    { success: true, queued: queuedIds.length, email_ids: queuedIds },
+    { status: 202 }
+  );
 }
 
 async function processEmail(
@@ -119,19 +279,11 @@ async function processEmail(
   coachId: string,
   coachEmailRaw: string,
   programId: string,
-  payload: z.infer<typeof IngestPayloadSchema>
+  payload: z.infer<typeof IngestPayloadSchema>,
+  attachments: unknown[],
+  isForwarded: boolean
 ) {
   const supabase = createAdminClient();
-
-  // Normalize attachments (same logic as POST, since payload is re-used here)
-  let normalizedAttachments: unknown[] = [];
-  if (payload.attachments) {
-    if (Array.isArray(payload.attachments)) {
-      normalizedAttachments = payload.attachments;
-    } else {
-      normalizedAttachments = [payload.attachments];
-    }
-  }
 
   try {
     const { error: statusError } = await supabase
@@ -144,7 +296,8 @@ async function processEmail(
       payload.subject,
       payload.sender_name,
       payload.sender_email,
-      payload.body_plain
+      payload.body_plain,
+      isForwarded
     );
 
     // Normalize emails for dedup comparison
@@ -152,7 +305,12 @@ async function processEmail(
     const senderEmail = normalizeEmail(payload.sender_email);
 
     // Store the normalized email in recruitData
-    extraction.recruitData.email = extractedEmail ?? senderEmail;
+    // For forwarded emails, senderEmail is the coach — don't use as recruit email fallback
+    if (isForwarded) {
+      extraction.recruitData.email = extractedEmail ?? null;
+    } else {
+      extraction.recruitData.email = extractedEmail ?? senderEmail;
+    }
 
     let recruitId: string;
     let recruitForDQS: Record<string, unknown> | null = null;
@@ -169,7 +327,8 @@ async function processEmail(
       existing = data;
     }
 
-    if (!existing && senderEmail && senderEmail !== extractedEmail) {
+    // For forwarded emails, skip sender-based dedup (sender is the coach)
+    if (!existing && !isForwarded && senderEmail && senderEmail !== extractedEmail) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
@@ -179,18 +338,15 @@ async function processEmail(
       existing = data;
 
       if (data) {
-        // Matched via sender_email — the extracted email was wrong.
-        // Override recruitData.email to prevent buildUpdateData from
-        // overwriting the recruit's correct email with the bad extraction.
         extraction.recruitData.email = senderEmail;
       }
     }
 
     // Guard: if sender is the coach themselves (outbound email processed by
     // Zapier due to thread-level labeling), skip creation of a new recruit.
-    // Updates to existing recruits are still allowed (via extracted email match).
+    // For intake forwards, the sender IS the coach by definition — skip this guard.
     const coachEmail = normalizeEmail(coachEmailRaw);
-    const senderIsCoach = coachEmail && senderEmail === coachEmail;
+    const senderIsCoach = !isForwarded && coachEmail && senderEmail === coachEmail;
 
     if (existing) {
       // Update existing recruit (only overwrite if new confidence >= existing)
@@ -243,9 +399,9 @@ async function processEmail(
 
     // Transcript analysis (non-blocking)
     let transcriptAnalysis: TranscriptAnalysis | null = null;
-    if (normalizedAttachments.length > 0) {
+    if (attachments.length > 0) {
       try {
-        const pdfAttachment = await findFirstPdfAttachment(normalizedAttachments);
+        const pdfAttachment = await findFirstPdfAttachment(attachments);
         if (pdfAttachment) {
           const analysis = await analyzeTranscript(pdfAttachment.base64);
           if (analysis) {

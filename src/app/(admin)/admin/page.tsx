@@ -186,7 +186,7 @@ export default function AdminPage() {
         setSampleResult({
           coachId,
           success: true,
-          message: data.message || "Sample email sent. The coach should move it to their \"Q5 Recruit AI\" Gmail label to trigger the pipeline.",
+          message: data.message || "Sample email sent. The coach should forward it to intake@q5recruit.ai to trigger the pipeline.",
         });
       } else {
         setSampleResult({
@@ -438,7 +438,23 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="pipeline">
           <div className="space-y-4">
-            {/* Setup card — shown after generating a key */}
+            {/* Shared intake info */}
+            <Card className="border-primary/10 bg-primary/5">
+              <CardContent className="p-4 space-y-2">
+                <p className="text-sm font-medium">Shared Intake Email</p>
+                <p className="text-sm text-muted-foreground">
+                  Coaches forward recruit emails to{" "}
+                  <code className="bg-background px-1.5 py-0.5 rounded text-xs font-mono">intake@q5recruit.ai</code>.
+                  The system identifies the coach by their sender email address.
+                  Bulk forwards (multiple emails as attachments) are supported.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Legacy per-coach API keys still work for existing Zapier integrations.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Setup card — shown after generating a key (legacy) */}
             {generatedKey && (
               <Card className="border-amber-200 bg-amber-50">
                 <CardHeader className="pb-3">

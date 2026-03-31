@@ -285,19 +285,23 @@ export default function OnboardingPage() {
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold">You&apos;re all set!</h3>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    We&apos;ll handle the email pipeline setup for you.
-                    You&apos;ll receive a notification when it&apos;s active
-                    and ready to start processing recruit emails.
+                    Your email pipeline is ready to go. Forward recruit
+                    emails to the address below and they&apos;ll be
+                    automatically processed and scored.
                   </p>
                 </div>
-                <div className="bg-primary/10 rounded-lg p-4 text-left">
+                <div className="bg-primary/10 rounded-lg p-4 text-left space-y-3">
                   <p className="text-sm text-primary">
-                    <strong>What happens next:</strong> Our team will configure
-                    your Gmail integration within 24 hours. Once active, simply
-                    apply the &quot;Q5 Recruit AI&quot; label to any
-                    recruit email in Gmail and it will automatically appear
-                    in your dashboard, scored and ready for review.
+                    <strong>How it works:</strong> Forward any recruit email to:
                   </p>
+                  <p className="text-center font-mono text-sm bg-background rounded px-3 py-2 select-all">
+                    intake@q5recruit.ai
+                  </p>
+                  <ul className="text-sm text-primary space-y-1 list-disc list-inside">
+                    <li>You can forward multiple emails at once — each will be processed separately</li>
+                    <li>Recruits will automatically appear in your dashboard, scored and ready for review</li>
+                    <li>PDF transcripts attached to emails will be analyzed automatically</li>
+                  </ul>
                 </div>
               </div>
             )}
