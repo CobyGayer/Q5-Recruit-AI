@@ -204,9 +204,9 @@ async function handleBulkForward(
     );
   }
 
-  // Rate limit: check if we have enough headroom for all emails
+  // Rate limit: check if we have enough headroom for all emails in this batch
   const rateResult = checkRateLimit(coach.id);
-  if (!rateResult.allowed) {
+  if (!rateResult.allowed || rateResult.remaining < parsedEmails.length) {
     return NextResponse.json(
       {
         error: "Rate limit exceeded",
