@@ -148,6 +148,13 @@ export async function POST(request: NextRequest) {
   // --- Mode A (inline forward) or legacy: store and process single email ---
   const isForwarded = coach.isIntakeForward && isForwardedEmail(payload.body_plain);
 
+  if (coach.isIntakeForward && !isForwarded) {
+    console.warn(
+      `[ingest] isIntakeForward=true but no forwarding marker detected in body (email_id pending, coach=${coach.id}). ` +
+      "Unrecognized mail client? Recruit email fallback and dedup will use sender_email (coach's address)."
+    );
+  }
+
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
     .insert({
