@@ -204,6 +204,17 @@ async function handleBulkForward(
     );
   }
 
+  const MAX_EML_ATTACHMENTS = 50;
+  if (parsedEmails.length > MAX_EML_ATTACHMENTS) {
+    return NextResponse.json(
+      {
+        error: `Bulk request exceeds the maximum of ${MAX_EML_ATTACHMENTS} .eml attachments`,
+        count: parsedEmails.length,
+      },
+      { status: 422 }
+    );
+  }
+
   // Rate limit: check if we have enough headroom for all emails in this batch
   const rateResult = checkRateLimit(coach.id);
   if (!rateResult.allowed || rateResult.remaining < parsedEmails.length) {
