@@ -148,6 +148,13 @@ export async function POST(request: NextRequest) {
   // --- Mode A (inline forward) or legacy: store and process single email ---
   const isForwarded = coach.isIntakeForward && isForwardedEmail(payload.body_plain);
 
+  if (coach.isIntakeForward && !isForwarded) {
+    console.warn(
+      `[ingest] isIntakeForward=true but no forwarding marker detected in body (email_id pending, coach=${coach.id}). ` +
+      "Unrecognized mail client? Recruit email fallback and dedup will use sender_email (coach's address)."
+    );
+  }
+
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
     .insert({
@@ -204,9 +211,20 @@ async function handleBulkForward(
     );
   }
 
-  // Rate limit: check if we have enough headroom for all emails
+  const MAX_EML_ATTACHMENTS = 50;
+  if (parsedEmails.length > MAX_EML_ATTACHMENTS) {
+    return NextResponse.json(
+      {
+        error: `Bulk request exceeds the maximum of ${MAX_EML_ATTACHMENTS} .eml attachments`,
+        count: parsedEmails.length,
+      },
+      { status: 422 }
+    );
+  }
+
+  // Rate limit: check if we have enough headroom for all emails in this batch
   const rateResult = checkRateLimit(coach.id);
-  if (!rateResult.allowed) {
+  if (!rateResult.allowed || rateResult.remaining < parsedEmails.length) {
     return NextResponse.json(
       {
         error: "Rate limit exceeded",
