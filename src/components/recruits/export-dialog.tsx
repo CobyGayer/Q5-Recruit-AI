@@ -106,7 +106,6 @@ const COLUMN_GROUPS = {
   },
 };
 
-type ColumnKey = string;
 type SelectedColumns = Record<string, boolean>;
 
 export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps) {
@@ -163,6 +162,11 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
 
   const selectedCount = Object.values(selectedColumns).filter(Boolean).length;
 
+  function handleClose() {
+    setError(null);
+    onClose();
+  }
+
   async function handleExport() {
     setError(null);
     setLoading(true);
@@ -173,7 +177,7 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           format,
-          selectedColumns: format === "csv" || format === "excel" ? selectedColumns : undefined,
+          selectedColumns,
         }),
       });
 
@@ -211,7 +215,7 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Export Recruits</DialogTitle>
@@ -250,8 +254,7 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
           </div>
 
           {/* Column Selection */}
-          {(format === "csv" || format === "excel") && (
-            <div className="space-y-3">
+          <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-base font-semibold">Columns to Include</Label>
                 <p className="text-xs text-muted-foreground">{selectedCount} selected</p>
@@ -323,7 +326,6 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
                 })}
               </div>
             </div>
-          )}
 
           {/* Error Message */}
           {error && (
@@ -335,12 +337,12 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          <Button variant="outline" onClick={handleClose} disabled={loading}>
             Cancel
           </Button>
           <Button 
             onClick={handleExport} 
-            disabled={loading || ((format === "csv" || format === "excel") && selectedCount === 0)}
+            disabled={loading || selectedCount === 0}
           >
             {loading ? (
               <>

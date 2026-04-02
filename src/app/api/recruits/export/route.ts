@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
 
       const filename = `recruits_${new Date().toISOString().split("T")[0]}.xlsx`;
 
+      // exceljs writeBuffer() returns Buffer | Uint8Array; cast needed for NextResponse compat
       return new NextResponse(buffer as unknown as BodyInit, {
         headers: {
           "Content-Type":

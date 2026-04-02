@@ -9,6 +9,7 @@ import {
   formatScore,
   formatArray,
   formatClubLevel,
+  shouldIncludeColumn,
 } from "./formatters";
 
 export interface ExportOptions {
@@ -29,7 +30,7 @@ interface CSVRow {
   [key: string]: string | number | null;
 }
 
-function escapeCSVValue(value: any): string {
+function escapeCSVValue(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
@@ -42,11 +43,6 @@ function escapeCSVValue(value: any): string {
   }
 
   return stringValue;
-}
-
-function shouldIncludeColumn(columnKey: string, selectedColumns?: Record<string, boolean>): boolean {
-  if (!selectedColumns) return true;
-  return selectedColumns[columnKey] === true;
 }
 
 function recruitsToCSVRows(
@@ -98,6 +94,7 @@ function recruitsToCSVRows(
 
     if (includeConfidence) {
       if (shouldIncludeColumn("fieldsExtracted", sel)) row["Fields Extracted"] = recruit.fields_extracted;
+      if (shouldIncludeColumn("fieldsTotal", sel)) row["Fields Total"] = recruit.fields_total;
     }
 
     if (shouldIncludeColumn("flag", sel)) row["Flag"] = recruit.flag ? (recruit.flag.flag === "interested" ? "Interested" : "Not a Fit") : "";
@@ -127,18 +124,4 @@ export function generateCSV(
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
   const rows = recruitsToCSVRows(recruits, mergedOptions);
   return csvRowsToString(rows);
-}
-
-export function downloadCSV(content: string, filename: string = "recruits.csv"): void {
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-
-  link.setAttribute("href", url);
-  link.setAttribute("download", filename);
-  link.style.visibility = "hidden";
-
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }

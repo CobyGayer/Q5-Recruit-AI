@@ -10,6 +10,7 @@ import {
   formatScore,
   formatArray,
   formatClubLevel,
+  shouldIncludeColumn,
 } from "./formatters";
 
 export interface ExcelExportOptions {
@@ -30,11 +31,6 @@ const DEFAULT_OPTIONS: ExcelExportOptions = {
 
 interface ExcelRow {
   [key: string]: string | number | boolean | null;
-}
-
-function shouldIncludeColumn(columnKey: string, selectedColumns?: Record<string, boolean>): boolean {
-  if (!selectedColumns) return true;
-  return selectedColumns[columnKey] === true;
 }
 
 function recruitsToExcelRows(
@@ -171,6 +167,7 @@ export async function generateExcel(
   if (recruits.length === 0) {
     worksheet.addRow(["No recruits to export"]);
     const buffer = await workbook.xlsx.writeBuffer();
+    // exceljs writeBuffer() returns Buffer | Uint8Array; cast needed for Uint8Array compat
     return buffer as unknown as Uint8Array;
   }
 
@@ -199,32 +196,6 @@ export async function generateExcel(
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
+  // exceljs writeBuffer() returns Buffer | Uint8Array; cast needed for Uint8Array compat
   return buffer as unknown as Uint8Array;
-}
-
-export async function downloadExcel(
-  recruits: RecruitWithScore[],
-  filename: string = "recruits.xlsx",
-  options?: ExcelExportOptions
-): Promise<void> {
-  // Client-side only
-  if (typeof window === "undefined") {
-    throw new Error("downloadExcel can only be called on the client side");
-  }
-
-  const buffer = await generateExcel(recruits, options);
-  const blob = new Blob([new Uint8Array(buffer as any).buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-
-  link.setAttribute("href", url);
-  link.setAttribute("download", filename);
-  link.style.visibility = "hidden";
-
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 }

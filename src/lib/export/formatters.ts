@@ -40,3 +40,8 @@ export function formatClubLevel(level: string | null): string {
   if (!level) return "";
   return CLUB_LEVEL_LABELS[level] || level;
 }
+
+export function shouldIncludeColumn(columnKey: string, selectedColumns?: Record<string, boolean>): boolean {
+  if (!selectedColumns) return true;
+  return selectedColumns[columnKey] === true;
+}
