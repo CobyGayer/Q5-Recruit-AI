@@ -94,7 +94,7 @@ const COLUMN_GROUPS = {
     columns: {
       completeness: { label: "Data Completeness %", default: true },
       fieldsExtracted: { label: "Fields Extracted Count", default: false },
-      confidence: { label: "Extraction Confidence", default: false },
+      fieldsTotal: { label: "Fields Total Count", default: false },
     },
   },
   status: {
@@ -272,9 +272,9 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
                           className="flex-shrink-0"
                         >
                           {isExpanded ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
                             <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
                           )}
                         </button>
                         <Checkbox

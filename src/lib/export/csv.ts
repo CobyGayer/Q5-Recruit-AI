@@ -44,6 +44,11 @@ function escapeCSVValue(value: any): string {
   return stringValue;
 }
 
+function shouldIncludeColumn(columnKey: string, selectedColumns?: Record<string, boolean>): boolean {
+  if (!selectedColumns) return true;
+  return selectedColumns[columnKey] === true;
+}
+
 function recruitsToCSVRows(
   recruits: RecruitWithScore[],
   options: ExportOptions
@@ -51,64 +56,54 @@ function recruitsToCSVRows(
   const includeScores = options.includeScores !== false;
   const includeConfidence = options.includeConfidence !== false;
   const includeContactInfo = options.includeContactInfo !== false;
-  const selectedColumns = options.selectedColumns;
-
-  // If selectedColumns is provided, only include those columns
-  const useColumnSelection = selectedColumns && Object.keys(selectedColumns).length > 0;
+  const sel = options.selectedColumns;
 
   return recruits.map((recruit) => {
     const completenessPercent =
       recruit.fields_total > 0 ? (recruit.fields_extracted / recruit.fields_total) * 100 : 0;
+    const row: CSVRow = {};
 
-    // Build the full row with all possible columns
-    const fullRow: CSVRow = {
-      name: recruit.full_name || "",
-      email: recruit.email || "",
-      phone: recruit.phone || "",
-      graduationYear: recruit.graduation_year || "",
-      positions: formatArray(recruit.positions),
-      height: formatHeight(recruit.height_inches),
-      weight: recruit.weight_lbs || "",
-      gpa: formatScore(recruit.gpa),
-      satScore: recruit.sat_score || "",
-      actScore: recruit.act_score || "",
-      currentSchool: recruit.current_school || "",
-      city: recruit.city || "",
-      state: recruit.state || "",
-      country: recruit.country || "",
-      clubTeam: recruit.club_team || "",
-      clubLevel: formatClubLevel(recruit.club_level),
-      highSchool: recruit.high_school_team || "",
-      preferredFoot: recruit.preferred_foot || "",
-      videoUrl: recruit.video_url || "",
-      completeness: formatPercentage(completenessPercent),
-      dqsScore: includeScores && recruit.dqs_score ? formatScore(recruit.dqs_score.overall_score) : "",
-      qualified: includeScores && recruit.dqs_score ? (recruit.dqs_score.is_qualified ? "Yes" : "No") : "",
-      academicScore: includeScores && recruit.dqs_score ? formatScore(recruit.dqs_score.academic_score) : "",
-      competitionScore: includeScores && recruit.dqs_score ? formatScore(recruit.dqs_score.competition_score) : "",
-      physicalScore: includeScores && recruit.dqs_score ? formatScore(recruit.dqs_score.physical_score) : "",
-      positionFitScore: includeScores && recruit.dqs_score ? formatScore(recruit.dqs_score.position_fit_score) : "",
-      gradYearScore: includeScores && recruit.dqs_score ? formatScore(recruit.dqs_score.grad_year_score) : "",
-      completenessScore: includeScores && recruit.dqs_score ? formatScore(recruit.dqs_score.completeness_score) : "",
-      disqualificationReasons: includeScores && recruit.dqs_score ? formatArray(recruit.dqs_score.disqualification_reasons) : "",
-      fieldsExtracted: includeConfidence ? recruit.fields_extracted : "",
-      confidence: includeConfidence && recruit.flag ? (recruit.flag.flag === "interested" ? "Interested" : "Not a Fit") : "",
-      flag: recruit.flag ? (recruit.flag.flag === "interested" ? "Interested" : "Not a Fit") : "",
-      createdDate: recruit.created_at || "",
-    };
+    if (shouldIncludeColumn("name", sel)) row["Name"] = recruit.full_name || "";
+    if (shouldIncludeColumn("email", sel) && includeContactInfo) row["Email"] = recruit.email || "";
+    if (shouldIncludeColumn("phone", sel) && includeContactInfo) row["Phone"] = recruit.phone || "";
+    if (shouldIncludeColumn("graduationYear", sel)) row["Grad Year"] = recruit.graduation_year || "";
+    if (shouldIncludeColumn("positions", sel)) row["Position"] = formatArray(recruit.positions);
+    if (shouldIncludeColumn("height", sel)) row["Height"] = formatHeight(recruit.height_inches);
+    if (shouldIncludeColumn("weight", sel)) row["Weight"] = recruit.weight_lbs || "";
+    if (shouldIncludeColumn("preferredFoot", sel)) row["Preferred Foot"] = recruit.preferred_foot || "";
+    if (shouldIncludeColumn("gpa", sel)) row["GPA"] = formatScore(recruit.gpa);
+    if (shouldIncludeColumn("satScore", sel)) row["SAT"] = recruit.sat_score || "";
+    if (shouldIncludeColumn("actScore", sel)) row["ACT"] = recruit.act_score || "";
+    if (shouldIncludeColumn("currentSchool", sel)) row["Current School"] = recruit.current_school || "";
+    if (shouldIncludeColumn("city", sel)) row["City"] = recruit.city || "";
+    if (shouldIncludeColumn("state", sel)) row["State"] = recruit.state || "";
+    if (shouldIncludeColumn("country", sel)) row["Country"] = recruit.country || "";
+    if (shouldIncludeColumn("clubTeam", sel)) row["Club Team"] = recruit.club_team || "";
+    if (shouldIncludeColumn("clubLevel", sel)) row["Club Level"] = formatClubLevel(recruit.club_level);
+    if (shouldIncludeColumn("highSchool", sel)) row["High School"] = recruit.high_school_team || "";
+    if (shouldIncludeColumn("videoUrl", sel)) row["Video URL"] = recruit.video_url || "";
+    if (shouldIncludeColumn("completeness", sel)) row["Data Completeness %"] = formatPercentage(completenessPercent);
 
-    // If column selection is active, filter to selected columns
-    if (useColumnSelection) {
-      const filtered: CSVRow = {};
-      Object.keys(selectedColumns).forEach((key) => {
-        if (selectedColumns[key] && key in fullRow) {
-          filtered[key] = fullRow[key];
-        }
-      });
-      return filtered;
+    if (includeScores && recruit.dqs_score) {
+      if (shouldIncludeColumn("dqsScore", sel)) row["DQS Score"] = formatScore(recruit.dqs_score.overall_score);
+      if (shouldIncludeColumn("qualified", sel)) row["Qualified"] = recruit.dqs_score.is_qualified ? "Yes" : "No";
+      if (shouldIncludeColumn("academicScore", sel)) row["Academic Score"] = formatScore(recruit.dqs_score.academic_score);
+      if (shouldIncludeColumn("competitionScore", sel)) row["Competition Score"] = formatScore(recruit.dqs_score.competition_score);
+      if (shouldIncludeColumn("physicalScore", sel)) row["Physical Score"] = formatScore(recruit.dqs_score.physical_score);
+      if (shouldIncludeColumn("positionFitScore", sel)) row["Position Fit Score"] = formatScore(recruit.dqs_score.position_fit_score);
+      if (shouldIncludeColumn("gradYearScore", sel)) row["Grad Year Score"] = formatScore(recruit.dqs_score.grad_year_score);
+      if (shouldIncludeColumn("completenessScore", sel)) row["Completeness Score"] = formatScore(recruit.dqs_score.completeness_score);
+      if (shouldIncludeColumn("disqualificationReasons", sel)) row["Disqualification Reasons"] = formatArray(recruit.dqs_score.disqualification_reasons);
     }
 
-    return fullRow;
+    if (includeConfidence) {
+      if (shouldIncludeColumn("fieldsExtracted", sel)) row["Fields Extracted"] = recruit.fields_extracted;
+    }
+
+    if (shouldIncludeColumn("flag", sel)) row["Flag"] = recruit.flag ? (recruit.flag.flag === "interested" ? "Interested" : "Not a Fit") : "";
+    if (shouldIncludeColumn("createdDate", sel)) row["Date Added"] = recruit.created_at || "";
+
+    return row;
   });
 }
 

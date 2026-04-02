@@ -34,7 +34,7 @@ interface ExcelRow {
 
 function shouldIncludeColumn(columnKey: string, selectedColumns?: Record<string, boolean>): boolean {
   if (!selectedColumns) return true;
-  return selectedColumns[columnKey] !== false;
+  return selectedColumns[columnKey] === true;
 }
 
 function recruitsToExcelRows(
@@ -89,11 +89,12 @@ function recruitsToExcelRows(
       if (shouldIncludeColumn("positionFitScore", options.selectedColumns)) row["Position Fit Score"] = recruit.dqs_score.position_fit_score || "";
       if (shouldIncludeColumn("gradYearScore", options.selectedColumns)) row["Grad Year Score"] = recruit.dqs_score.grad_year_score || "";
       if (shouldIncludeColumn("completenessScore", options.selectedColumns)) row["Completeness Score"] = recruit.dqs_score.completeness_score || "";
+      if (shouldIncludeColumn("disqualificationReasons", options.selectedColumns)) row["Disqualification Reasons"] = formatArray(recruit.dqs_score.disqualification_reasons);
     }
 
     if (options.includeConfidence) {
       if (shouldIncludeColumn("fieldsExtracted", options.selectedColumns)) row["Fields Extracted"] = recruit.fields_extracted;
-      if (shouldIncludeColumn("fieldsExtracted", options.selectedColumns)) row["Fields Total"] = recruit.fields_total;
+      if (shouldIncludeColumn("fieldsTotal", options.selectedColumns)) row["Fields Total"] = recruit.fields_total;
     }
 
     if (recruit.flag) {
