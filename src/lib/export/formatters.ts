@@ -12,7 +12,7 @@ export const CLUB_LEVEL_LABELS: Record<string, string> = {
 };
 
 export function formatHeight(inches: number | null): string {
-  if (!inches) return "";
+  if (inches === null || inches === undefined) return "";
   return `${Math.floor(inches / 12)}'${inches % 12}"`;
 }
 

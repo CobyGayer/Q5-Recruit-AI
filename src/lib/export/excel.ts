@@ -93,9 +93,9 @@ function recruitsToExcelRows(
       if (shouldIncludeColumn("fieldsTotal", options.selectedColumns)) row["Fields Total"] = recruit.fields_total;
     }
 
-    if (recruit.flag) {
-      if (shouldIncludeColumn("flag", options.selectedColumns)) row["Flag"] = recruit.flag.flag === "interested" ? "Interested" : "Not a Fit";
-    }
+    if (shouldIncludeColumn("flag", options.selectedColumns))
+      row["Flag"] = recruit.flag ? (recruit.flag.flag === "interested" ? "Interested" : "Not a Fit") : "";
+    if (shouldIncludeColumn("createdDate", options.selectedColumns)) row["Date Added"] = recruit.created_at || "";
 
     return row;
   });

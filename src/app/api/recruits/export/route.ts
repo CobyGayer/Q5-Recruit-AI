@@ -26,12 +26,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid format" }, { status: 400 });
     }
 
+    const EXPORT_LIMIT = 5000;
+
     // Fetch all recruits for this coach
     const { data: recruits, error: recruitsError } = await supabase
       .from("recruits")
       .select("*")
       .eq("coach_id", user.id)
-      .order("full_name", { ascending: true });
+      .order("full_name", { ascending: true })
+      .limit(EXPORT_LIMIT + 1);
 
     if (recruitsError) {
       console.error("Error fetching recruits:", recruitsError);
@@ -45,6 +48,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "No recruits found to export" },
         { status: 404 }
+      );
+    }
+
+    if (recruits.length > EXPORT_LIMIT) {
+      return NextResponse.json(
+        { error: `Export is limited to ${EXPORT_LIMIT} recruits. Please contact support for larger exports.` },
+        { status: 400 }
       );
     }
 
