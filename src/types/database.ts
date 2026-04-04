@@ -24,6 +24,7 @@ export interface Program {
   id: string;
   name: string;
   institution: string;
+  domain: string;
   division: string | null;
   conference: string | null;
   created_at: string;
@@ -46,7 +47,8 @@ export interface Coach {
 
 export interface ProgramConfig {
   id: string;
-  coach_id: string;
+  updated_by_coach_id: string | null;
+  program_id: string;
   // Section A: Minimum Thresholds
   min_gpa: number | null;
   min_sat: number | null;
@@ -72,6 +74,7 @@ export interface ProgramConfig {
 export interface IngestedEmail {
   id: string;
   coach_id: string;
+  program_id: string;
   recruit_id: string | null;
   sender_email: string | null;
   sender_name: string | null;
@@ -89,6 +92,7 @@ export interface IngestedEmail {
 export interface Recruit {
   id: string;
   coach_id: string;
+  program_id: string;
   email: string | null;
   full_name: string | null;
   phone: string | null;
@@ -120,6 +124,7 @@ export interface RecruitDqsScore {
   id: string;
   recruit_id: string;
   coach_id: string;
+  program_id: string;
   overall_score: number | null;
   is_qualified: boolean;
   disqualification_reasons: string[];
@@ -139,6 +144,7 @@ export interface RecruitDqsScore {
 export interface CoachRecruitFlag {
   id: string;
   coach_id: string;
+  program_id: string;
   recruit_id: string;
   flag: FlagType;
   created_at: string;

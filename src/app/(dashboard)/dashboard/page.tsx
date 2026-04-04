@@ -16,7 +16,15 @@ import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import type { RecruitWithScore } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, X, Download } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Mail, Trash2, X, Download } from "lucide-react";
 
 function applyFilters(
   recruits: RecruitWithScore[],
@@ -252,7 +260,7 @@ function getDefaultForKey(key: keyof RecruitFilters): Partial<RecruitFilters> {
 
 function DashboardContent() {
   const supabase = createClient();
-  const { recruits, loading, updateRecruitFlag } = useRecruits();
+  const { recruits, loading, refetch, updateRecruitFlag } = useRecruits();
   const [coachEmail, setCoachEmail] = useState<string | undefined>();
   const {
     searchTerm,
@@ -272,6 +280,8 @@ function DashboardContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("q5r_view_mode");
@@ -342,6 +352,24 @@ function DashboardContent() {
     [sortedRecruits, selectedIds]
   );
 
+  async function handleBulkDelete() {
+    setBulkDeleting(true);
+    try {
+      const res = await fetch("/api/recruits/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (res.ok) {
+        setSelectedIds(new Set());
+        setBulkDeleteOpen(false);
+        refetch();
+      }
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   // Count only sidebar-relevant filters (exclude Year/Position/Flag which are in popovers)
   const sidebarFilterCount = useMemo(() => {
     let count = 0;
@@ -409,6 +437,14 @@ function DashboardContent() {
             Email Selected
           </Button>
           <Button
+            variant="destructive"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setBulkDeleteOpen(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button
             variant="ghost"
             size="sm"
             onClick={() => setSelectedIds(new Set())}
@@ -450,6 +486,39 @@ function DashboardContent() {
         onClose={() => setExportOpen(false)}
         recruitCount={recruits.length}
       />
+
+      {/* Bulk delete confirmation dialog */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Delete {selectedIds.size} Recruit{selectedIds.size !== 1 ? "s" : ""}?</DialogTitle>
+            <DialogDescription>
+              This will permanently delete{" "}
+              <span className="font-semibold text-foreground">
+                {selectedIds.size} recruit{selectedIds.size !== 1 ? "s" : ""}
+              </span>{" "}
+              along with their profiles, scores, and all associated data.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteOpen(false)}
+              disabled={bulkDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting ? "Deleting..." : `Delete ${selectedIds.size} Recruit${selectedIds.size !== 1 ? "s" : ""}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex gap-6">
         {/* Sidebar filter panel */}

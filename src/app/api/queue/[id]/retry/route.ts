@@ -22,12 +22,21 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: coach } = await supabase
+    .from("coaches")
+    .select("program_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
   // Get the failed email
   const { data: email } = await supabase
     .from("ingested_emails")
     .select("*")
     .eq("id", id)
-    .eq("coach_id", user.id)
     .single();
 
   if (!email) {
@@ -64,7 +73,7 @@ export async function POST(
       const { data: existing } = await adminSupabase
         .from("recruits")
         .select("id")
-        .eq("coach_id", user.id)
+        .eq("program_id", coach.program_id)
         .eq("email", recruitEmail)
         .single();
 
@@ -77,7 +86,7 @@ export async function POST(
       } else {
         const { data: newRecruit } = await adminSupabase
           .from("recruits")
-          .insert({ coach_id: user.id, ...extraction.recruitData })
+          .insert({ coach_id: user.id, program_id: coach.program_id, ...extraction.recruitData })
           .select()
           .single();
         recruitId = newRecruit!.id;
@@ -85,7 +94,7 @@ export async function POST(
     } else {
       const { data: newRecruit } = await adminSupabase
         .from("recruits")
-        .insert({ coach_id: user.id, ...extraction.recruitData })
+        .insert({ coach_id: user.id, program_id: coach.program_id, ...extraction.recruitData })
         .select()
         .single();
       recruitId = newRecruit!.id;
@@ -95,7 +104,7 @@ export async function POST(
     const { data: config } = await adminSupabase
       .from("program_config")
       .select("*")
-      .eq("coach_id", user.id)
+      .eq("program_id", coach.program_id)
       .single();
 
     if (config) {
@@ -121,6 +130,7 @@ export async function POST(
           {
             recruit_id: recruitId,
             coach_id: user.id,
+            program_id: coach.program_id,
             overall_score: dqsResult.score,
             is_qualified: dqsResult.isQualified,
             disqualification_reasons: dqsResult.disqualificationReasons,

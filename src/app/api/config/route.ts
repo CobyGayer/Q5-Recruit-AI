@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateApiKey, hashApiKey } from "@/lib/utils/api-key";
+import { z } from "zod";
+
+const ProgramConfigUpdateSchema = z.object({
+  min_gpa: z.number().min(0).max(5).nullable().optional(),
+  min_sat: z.number().int().min(400).max(1600).nullable().optional(),
+  min_act: z.number().int().min(1).max(36).nullable().optional(),
+  min_height_by_position: z.record(z.string(), z.number()).optional(),
+  accepted_grad_years: z.array(z.number().int()).optional(),
+  accepted_positions: z.array(z.string()).optional(),
+  weight_academic: z.number().int().min(0).max(100).optional(),
+  weight_competition: z.number().int().min(0).max(100).optional(),
+  weight_physical: z.number().int().min(0).max(100).optional(),
+  weight_position_fit: z.number().int().min(0).max(100).optional(),
+  weight_grad_year: z.number().int().min(0).max(100).optional(),
+  weight_completeness: z.number().int().min(0).max(100).optional(),
+  high_need_positions: z.record(z.string(), z.array(z.object({ position: z.string(), rank: z.number().int() }))).optional(),
+  priority_grad_years: z.array(z.object({ year: z.number().int(), rank: z.number().int() })).optional(),
+  roster_spots: z.record(z.string(), z.number().int()).optional(),
+}).strict();
 
 export async function GET() {
   const supabase = await createClient();
@@ -13,10 +32,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: coach, error: coachError } = await supabase
+    .from("coaches")
+    .select("program_id")
+    .eq("id", user.id)
+    .single();
+
+  if (coachError || !coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
   const { data, error } = await supabase
     .from("program_config")
     .select("*")
-    .eq("coach_id", user.id)
+    .eq("program_id", coach.program_id)
     .single();
 
   if (error) {
@@ -36,12 +65,30 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const { data: coach, error: coachError } = await supabase
+    .from("coaches")
+    .select("program_id")
+    .eq("id", user.id)
+    .single();
+
+  if (coachError || !coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
+  const raw = await request.json();
+  const parsed = ProgramConfigUpdateSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid data", details: parsed.error.flatten() },
+      { status: 422 }
+    );
+  }
+
   const { data, error } = await supabase
     .from("program_config")
     .upsert(
-      { coach_id: user.id, ...body },
-      { onConflict: "coach_id" }
+      { updated_by_coach_id: user.id, program_id: coach.program_id, ...parsed.data },
+      { onConflict: "program_id" }
     )
     .select()
     .single();

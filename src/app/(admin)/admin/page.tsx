@@ -140,7 +140,7 @@ export default function AdminPage() {
   function getZapierCopilotPrompt() {
     if (!generatedKey) return "";
     const webhookUrl = `${window.location.origin}/api/ingest/email`;
-    return `Create a Zap: When a new email arrives in Gmail matching the search "label:Q5 Recruit AI", send a POST request to ${webhookUrl}. Add a custom header "x-api-key" with value "${generatedKey.key}". Send the following fields as JSON in the request body: "sender_email" mapped to the sender's email address, "subject" mapped to the email subject line, "body_plain" mapped to the plain text body of the email, and "received_at" mapped to the date the email was received.`;
+    return `Create a Zap: When a new email arrives in Gmail matching the search "label:Q5 Recruit AI", send a POST request to ${webhookUrl}. Add a custom header "x-api-key" with value "${generatedKey.key}". Send the following fields as JSON in the request body: "sender_email" mapped to the sender's email address, "subject" mapped to the email subject line, "body_plain" mapped to the plain text body of the email, "received_at" mapped to the date the email was received, and "attachments" mapped to an array of the email's attachment download URLs. If there are no attachments, send an empty array for "attachments".`;
   }
 
   function copySetupInfo() {
@@ -186,7 +186,7 @@ export default function AdminPage() {
         setSampleResult({
           coachId,
           success: true,
-          message: data.message || "Sample email sent. The coach should move it to their \"Q5 Recruit AI\" Gmail label to trigger the pipeline.",
+          message: data.message || "Sample email sent. The coach should forward it to intake@q5recruit.ai to trigger the pipeline.",
         });
       } else {
         setSampleResult({
@@ -438,7 +438,23 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="pipeline">
           <div className="space-y-4">
-            {/* Setup card — shown after generating a key */}
+            {/* Shared intake info */}
+            <Card className="border-primary/10 bg-primary/5">
+              <CardContent className="p-4 space-y-2">
+                <p className="text-sm font-medium">Shared Intake Email</p>
+                <p className="text-sm text-muted-foreground">
+                  Coaches forward recruit emails to{" "}
+                  <code className="bg-background px-1.5 py-0.5 rounded text-xs font-mono">intake@q5recruit.ai</code>.
+                  The system identifies the coach by their sender email address.
+                  Bulk forwards (multiple emails as attachments) are supported.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Legacy per-coach API keys still work for existing Zapier integrations.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Setup card — shown after generating a key (legacy) */}
             {generatedKey && (
               <Card className="border-amber-200 bg-amber-50">
                 <CardHeader className="pb-3">

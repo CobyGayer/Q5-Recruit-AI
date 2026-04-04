@@ -15,11 +15,21 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Get coach's config
+  const { data: coach } = await supabase
+    .from("coaches")
+    .select("program_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
+  // Get shared program config
   const { data: config } = await supabase
     .from("program_config")
     .select("*")
-    .eq("coach_id", user.id)
+    .eq("program_id", coach.program_id)
     .single();
 
   if (!config) {
@@ -29,11 +39,11 @@ export async function POST() {
     );
   }
 
-  // Get all recruits for this coach
+  // Get all recruits in this shared program workspace
   const { data: recruits } = await supabase
     .from("recruits")
     .select("*")
-    .eq("coach_id", user.id);
+    .eq("program_id", coach.program_id);
 
   if (!recruits || recruits.length === 0) {
     return NextResponse.json({ recalculated: 0 });
@@ -56,6 +66,7 @@ export async function POST() {
       {
         recruit_id: recruit.id,
         coach_id: user.id,
+        program_id: coach.program_id,
         overall_score: dqsResult.score,
         is_qualified: dqsResult.isQualified,
         disqualification_reasons: dqsResult.disqualificationReasons,

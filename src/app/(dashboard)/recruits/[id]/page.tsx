@@ -95,6 +95,7 @@ export default function RecruitDetailPage() {
   const [requestInfoOpen, setRequestInfoOpen] = useState(false);
   const [coachEmail, setCoachEmail] = useState<string | undefined>();
   const [transcriptAnalysis, setTranscriptAnalysis] = useState<TranscriptAnalysis | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   useEffect(() => {
     async function loadRecruit() {
@@ -129,7 +130,6 @@ export default function RecruitDetailPage() {
           .from("coach_recruit_flags")
           .select("*")
           .eq("recruit_id", id)
-          .eq("coach_id", user.id)
           .single();
         setFlag(flagData as CoachRecruitFlag | null);
       }
@@ -579,75 +579,88 @@ export default function RecruitDetailPage() {
           )}
 
           {transcriptAnalysis && transcriptAnalysis.transcript_readable && (
-            <Card className="border-primary/10">
-              <CardHeader>
+            <Card className="border-primary/10 overflow-hidden">
+              <CardHeader
+                className="cursor-pointer"
+                onClick={() => setShowTranscript(!showTranscript)}
+              >
                 <CardTitle className="text-sm flex items-center justify-between">
-                  Transcript Analysis
-                  <Badge
-                    variant="secondary"
-                    className={
-                      transcriptAnalysis.rigor_grade.startsWith("A")
-                        ? "bg-emerald-100 text-emerald-800"
-                        : transcriptAnalysis.rigor_grade.startsWith("B")
-                        ? "bg-blue-100 text-blue-800"
-                        : transcriptAnalysis.rigor_grade === "C+" || transcriptAnalysis.rigor_grade === "C"
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-red-100 text-red-800"
-                    }
-                  >
-                    Rigor: {transcriptAnalysis.rigor_grade}
-                  </Badge>
+                  <span className="flex items-center gap-2">
+                    Transcript Analysis
+                    <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground/60">Beta</span>
+                    <Badge
+                      variant="secondary"
+                      className={`shrink-0 ${
+                        transcriptAnalysis.rigor_grade.startsWith("A")
+                          ? "bg-emerald-100 text-emerald-800"
+                          : transcriptAnalysis.rigor_grade.startsWith("B")
+                          ? "bg-blue-100 text-blue-800"
+                          : transcriptAnalysis.rigor_grade === "C+" || transcriptAnalysis.rigor_grade === "C"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      Rigor: {transcriptAnalysis.rigor_grade}
+                    </Badge>
+                  </span>
+                  {showTranscript ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {transcriptAnalysis.admissions_notes && (
-                  <p className="text-sm text-muted-foreground italic">
-                    {transcriptAnalysis.admissions_notes}
-                  </p>
-                )}
-                {transcriptAnalysis.strengths.length > 0 && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Strengths</p>
-                    <div className="flex flex-wrap gap-1">
-                      {transcriptAnalysis.strengths.map((s, i) => (
-                        <Badge key={i} variant="secondary" className="bg-emerald-50 text-emerald-700 text-xs">
-                          {s}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {transcriptAnalysis.red_flags.length > 0 && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Red Flags</p>
-                    <div className="flex flex-wrap gap-1">
-                      {transcriptAnalysis.red_flags.map((f, i) => (
-                        <Badge key={i} variant="secondary" className="bg-red-50 text-red-700 text-xs">
-                          {f}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {transcriptAnalysis.grade_trend && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-medium">
-                      Grade Trend: {transcriptAnalysis.grade_trend.charAt(0).toUpperCase() + transcriptAnalysis.grade_trend.slice(1)}
-                    </span>
-                    {transcriptAnalysis.grade_trend_notes && (
-                      <span>— {transcriptAnalysis.grade_trend_notes}</span>
-                    )}
-                  </div>
-                )}
-                {transcriptAnalysis.notable_courses.length > 0 && (
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notable Courses</p>
-                    <p className="text-xs text-muted-foreground">
-                      {transcriptAnalysis.notable_courses.join(", ")}
+              {showTranscript && (
+                <CardContent className="space-y-3">
+                  {transcriptAnalysis.admissions_notes && (
+                    <p className="text-sm text-muted-foreground italic break-words">
+                      {transcriptAnalysis.admissions_notes}
                     </p>
-                  </div>
-                )}
-              </CardContent>
+                  )}
+                  {transcriptAnalysis.strengths.length > 0 && (
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Strengths</p>
+                      <ul className="space-y-1">
+                        {transcriptAnalysis.strengths.map((s, i) => (
+                          <li key={i} className="text-xs text-emerald-700 break-words">
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {transcriptAnalysis.red_flags.length > 0 && (
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Red Flags</p>
+                      <ul className="space-y-1">
+                        {transcriptAnalysis.red_flags.map((f, i) => (
+                          <li key={i} className="text-xs text-red-700 break-words">
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {transcriptAnalysis.grade_trend && (
+                    <div className="text-xs text-muted-foreground break-words">
+                      <span className="font-medium">
+                        Grade Trend: {transcriptAnalysis.grade_trend.charAt(0).toUpperCase() + transcriptAnalysis.grade_trend.slice(1)}
+                      </span>
+                      {transcriptAnalysis.grade_trend_notes && (
+                        <span> — {transcriptAnalysis.grade_trend_notes}</span>
+                      )}
+                    </div>
+                  )}
+                  {transcriptAnalysis.notable_courses.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notable Courses</p>
+                      <p className="text-xs text-muted-foreground break-words">
+                        {transcriptAnalysis.notable_courses.join(", ")}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              )}
             </Card>
           )}
 

@@ -6,8 +6,21 @@ export function buildExtractionPrompt(
   subject: string | undefined,
   senderName: string | undefined,
   senderEmail: string | undefined,
-  bodyPlain: string
+  bodyPlain: string,
+  isForwarded?: boolean
 ): string {
+  const forwardedRules = `- IMPORTANT: This email was FORWARDED by a college coach. The recruit's original email is embedded below forwarded-message markers (e.g., "---------- Forwarded message ----------", "----- Original Message -----", "Begin forwarded message:").
+- Extract recruit information ONLY from the forwarded portion BELOW these markers.
+- If the forwarded portion contains a "From:" header (e.g., "From: John Doe <john@example.com>"), use that as the recruit's name and email.
+- IGNORE any text the coach added above the forwarded markers — it is not recruit data.
+- If there are multiple nested forwards, extract from the innermost (original) message.`;
+
+  const directRules = `- IMPORTANT: Emails may contain quoted or forwarded messages below the new content (indicated by lines starting with ">", "On ... wrote:", "---------- Forwarded message ----------", or similar markers). ONLY extract information from the NEW message content above these markers. Ignore all quoted or forwarded text — it often contains the coach's own contact information, not the recruit's.`;
+
+  const emailContextRules = isForwarded
+    ? `- The "From" header above is the COACH who forwarded this email, NOT the recruit. Do not use it as the recruit's contact info.`
+    : `- The email address from the header may be the recruit's or a parent's. If the email body mentions a different contact email for the recruit, prefer that one.`;
+
   return `You are a data extraction assistant for college soccer recruiting. Your job is to extract structured information from emails that prospective student-athletes send to college coaches.
 
 Given the following email, extract all available recruit information. Be thorough but accurate.
@@ -23,8 +36,8 @@ RULES:
 - For positions: Use standard abbreviations: GK, CB, LB, RB, CDM, CM, CAM, LM, RM, LW, RW, ST, CF. Map informal descriptions (e.g., "center back" → "CB", "striker" → "ST", "goalkeeper" → "GK").
 - For gpa: Extract as a decimal (e.g., 3.8). If they mention a weighted GPA, note it but extract the unweighted if both are given.
 - For video_url: Extract YouTube, Vimeo, Hudl, or any other video link mentioned.
-- The email address from the header may be the recruit's or a parent's. If the email body mentions a different contact email for the recruit, prefer that one.
-- IMPORTANT: Emails may contain quoted or forwarded messages below the new content (indicated by lines starting with ">", "On ... wrote:", "---------- Forwarded message ----------", or similar markers). ONLY extract information from the NEW message content above these markers. Ignore all quoted or forwarded text — it often contains the coach's own contact information, not the recruit's.
+${emailContextRules}
+${isForwarded ? forwardedRules : directRules}
 
 EMAIL:
 Subject: ${subject || "(no subject)"}
@@ -33,26 +46,5 @@ From: ${senderName || "Unknown"} <${senderEmail || "unknown"}>
 Body:
 ${bodyPlain}
 
-Respond with ONLY a valid JSON object matching this exact structure (no markdown, no explanation, just the JSON):
-{
-  "full_name": { "value": "string or null", "confidence": "high|medium|low" },
-  "email": { "value": "string or null", "confidence": "high|medium|low" },
-  "phone": { "value": "string or null", "confidence": "high|medium|low" },
-  "graduation_year": { "value": "number or null", "confidence": "high|medium|low" },
-  "current_school": { "value": "string or null", "confidence": "high|medium|low" },
-  "city": { "value": "string or null", "confidence": "high|medium|low" },
-  "state": { "value": "string or null", "confidence": "high|medium|low" },
-  "country": { "value": "string or null", "confidence": "high|medium|low" },
-  "positions": { "value": ["array of position abbreviations"] or null, "confidence": "high|medium|low" },
-  "preferred_foot": { "value": "string or null", "confidence": "high|medium|low" },
-  "height_inches": { "value": "number or null", "confidence": "high|medium|low" },
-  "weight_lbs": { "value": "number or null", "confidence": "high|medium|low" },
-  "gpa": { "value": "number or null", "confidence": "high|medium|low" },
-  "sat_score": { "value": "number or null", "confidence": "high|medium|low" },
-  "act_score": { "value": "number or null", "confidence": "high|medium|low" },
-  "club_team": { "value": "string or null", "confidence": "high|medium|low" },
-  "club_level": { "value": "mls_next|ecnl|ga|regional|other|unknown or null", "confidence": "high|medium|low" },
-  "high_school_team": { "value": "string or null", "confidence": "high|medium|low" },
-  "video_url": { "value": "string or null", "confidence": "high|medium|low" }
-}`;
+Extract all available recruit information from this email using the extract_recruit_data tool.`;
 }

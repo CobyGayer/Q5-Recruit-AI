@@ -1,34 +1,111 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
+import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashApiKey, isValidApiKeyFormat } from "@/lib/utils/api-key";
 import { checkRateLimit } from "@/lib/utils/rate-limit";
+import { normalizeEmail } from "@/lib/utils/email";
 import { IngestPayloadSchema } from "@/lib/extraction/schema";
 import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
 import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
+import { findAndParseEmlAttachments, looksLikeEml, type ParsedEmail } from "@/lib/email/parse-eml";
 import type { Recruit, ProgramConfig, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
+
+export const maxDuration = 300;
+
+/** Detect inline-forwarded email by checking for common forward markers */
+function isForwardedEmail(body: string): boolean {
+  return /---------- Forwarded message ----------/.test(body) ||
+    /^Begin forwarded message:/m.test(body) ||
+    /^----- Original Message -----/m.test(body);
+}
+
+/** Normalize attachments into an array (Zapier may send a string, object, or array) */
+function normalizeAttachments(attachments: unknown): unknown[] {
+  if (!attachments) return [];
+  if (Array.isArray(attachments)) return attachments;
+  return [attachments];
+}
+
+interface ResolvedCoach {
+  id: string;
+  status: string;
+  email: string;
+  program_id: string;
+  isIntakeForward: boolean;
+}
 
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
-  // Step 1: Authenticate via API key
-  const apiKey = request.headers.get("x-api-key");
-  if (!apiKey || !isValidApiKeyFormat(apiKey)) {
+  // --- Parse payload first (needed for intake auth) ---
+  let payload;
+  let body;
+  try {
+    body = await request.json();
+    console.log("[ingest] Raw payload keys:", Object.keys(body));
+    console.log("[ingest] Attachments field:", JSON.stringify(body.attachments)?.substring(0, 500));
+    payload = IngestPayloadSchema.parse(body);
+  } catch (err) {
+    console.error("[ingest] Payload validation failed:", err);
     return NextResponse.json(
-      { error: "Missing or invalid API key" },
+      { error: "Invalid payload", details: String(err) },
+      { status: 422 }
+    );
+  }
+
+  // --- Dual-auth: per-coach API key OR shared intake secret ---
+  const apiKey = request.headers.get("x-api-key");
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: "Missing API key" },
       { status: 401 }
     );
   }
 
-  const hashedKey = hashApiKey(apiKey);
-  const { data: coach, error: coachError } = await supabase
-    .from("coaches")
-    .select("id, status, email")
-    .eq("api_key", hashedKey)
-    .single();
+  let coach: ResolvedCoach;
 
-  if (coachError || !coach) {
+  if (isValidApiKeyFormat(apiKey)) {
+    // Legacy path: per-coach API key
+    const hashedKey = hashApiKey(apiKey);
+    const { data, error } = await supabase
+      .from("coaches")
+      .select("id, status, email, program_id")
+      .eq("api_key", hashedKey)
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+    }
+
+    coach = { ...data, isIntakeForward: false };
+  } else if (apiKey === process.env.INTAKE_WEBHOOK_SECRET) {
+    // Intake path: shared secret + coach identified by sender_email
+    const senderEmail = normalizeEmail(payload.sender_email);
+    if (!senderEmail) {
+      return NextResponse.json(
+        { error: "Intake mode requires sender_email" },
+        { status: 422 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("coaches")
+      .select("id, status, email, program_id")
+      .eq("email", senderEmail)
+      .single();
+
+    if (error || !data) {
+      console.warn(`[ingest] No coach found for intake sender: ${senderEmail}`);
+      return NextResponse.json(
+        { error: "No coach account found for this email address" },
+        { status: 403 }
+      );
+    }
+
+    coach = { ...data, isIntakeForward: true };
+  } else {
     return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
   }
 
@@ -39,7 +116,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 2: Rate limiting
+  if (!coach.program_id) {
+    return NextResponse.json(
+      { error: "Coach is not assigned to a program" },
+      { status: 403 }
+    );
+  }
+
+  // --- Check for Mode B: .eml attachments (bulk forward) ---
+  const normalizedAttachments = normalizeAttachments(payload.attachments);
+  const hasEmlFiles = normalizedAttachments.some(looksLikeEml);
+
+  if (coach.isIntakeForward && hasEmlFiles) {
+    // Mode B: parse each .eml and process separately
+    return handleBulkForward(supabase, coach, payload, normalizedAttachments);
+  }
+
+  // --- Rate limit (single email) ---
   const rateResult = checkRateLimit(coach.id);
   if (!rateResult.allowed) {
     return NextResponse.json(
@@ -52,32 +145,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 3: Validate payload
-  let payload;
-  try {
-    const body = await request.json();
-    console.log("[ingest] Raw payload keys:", Object.keys(body));
-    console.log("[ingest] Attachments field:", JSON.stringify(body.attachments)?.substring(0, 500));
-    payload = IngestPayloadSchema.parse(body);
-  } catch (err) {
-    console.error("[ingest] Payload validation failed:", err);
-    return NextResponse.json(
-      { error: "Invalid payload", details: String(err) },
-      { status: 422 }
+  // --- Mode A (inline forward) or legacy: store and process single email ---
+  const isForwarded = coach.isIntakeForward && isForwardedEmail(payload.body_plain);
+
+  if (coach.isIntakeForward && !isForwarded) {
+    console.warn(
+      `[ingest] isIntakeForward=true but no forwarding marker detected in body (email_id pending, coach=${coach.id}). ` +
+      "Unrecognized mail client? Recruit email fallback and dedup will use sender_email (coach's address)."
     );
   }
 
-  // Normalize attachments into an array (Zapier may send a string, object, or array)
-  let normalizedAttachments: unknown[] = [];
-  if (payload.attachments) {
-    if (Array.isArray(payload.attachments)) {
-      normalizedAttachments = payload.attachments;
-    } else {
-      normalizedAttachments = [payload.attachments];
-    }
-  }
-
-  // Step 4: Create ingested_emails record
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
     .insert({
@@ -89,7 +166,7 @@ export async function POST(request: NextRequest) {
       body_html: payload.body_html,
       received_at: payload.received_at,
       attachments: normalizedAttachments,
-      processing_status: "processing",
+      processing_status: "pending",
     })
     .select()
     .single();
@@ -101,27 +178,158 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Step 5: Extract data with Claude API
+  after(() => processEmail(emailRecord.id, coach.id, coach.email, coach.program_id, payload, normalizedAttachments, isForwarded).catch((err) => console.error("[processEmail] unhandled:", err)));
+
+  return NextResponse.json({ success: true, queued: true }, { status: 202 });
+}
+
+/**
+ * Mode B: Handle bulk-forwarded emails with .eml attachments.
+ * Parses each .eml, creates a separate ingested_emails record, and processes independently.
+ */
+async function handleBulkForward(
+  supabase: ReturnType<typeof createAdminClient>,
+  coach: ResolvedCoach,
+  originalPayload: z.infer<typeof IngestPayloadSchema>,
+  attachments: unknown[]
+) {
+  let parsedEmails: ParsedEmail[];
   try {
+    parsedEmails = await findAndParseEmlAttachments(attachments);
+  } catch (err) {
+    console.error("[ingest] Failed to parse .eml attachments:", err);
+    return NextResponse.json(
+      { error: "Failed to parse .eml attachments", details: String(err) },
+      { status: 422 }
+    );
+  }
+
+  if (parsedEmails.length === 0) {
+    return NextResponse.json(
+      { error: "No valid .eml attachments found" },
+      { status: 422 }
+    );
+  }
+
+  const MAX_EML_ATTACHMENTS = 50;
+  if (parsedEmails.length > MAX_EML_ATTACHMENTS) {
+    return NextResponse.json(
+      {
+        error: `Bulk request exceeds the maximum of ${MAX_EML_ATTACHMENTS} .eml attachments`,
+        count: parsedEmails.length,
+      },
+      { status: 422 }
+    );
+  }
+
+  // Rate limit: check if we have enough headroom for all emails in this batch
+  const rateResult = checkRateLimit(coach.id);
+  if (!rateResult.allowed || rateResult.remaining < parsedEmails.length) {
+    return NextResponse.json(
+      {
+        error: "Rate limit exceeded",
+        remaining: rateResult.remaining,
+        reset_at: new Date(rateResult.resetAt).toISOString(),
+      },
+      { status: 429 }
+    );
+  }
+
+  // Create an ingested_emails record for each parsed .eml and queue processing
+  const queuedIds: string[] = [];
+
+  for (const parsed of parsedEmails) {
+    // Convert nested .eml attachments to the format our pipeline expects
+    const emlAttachments = parsed.attachments.map((att) => ({
+      url: `data:${att.contentType};base64,${att.content}`,
+      filename: att.filename,
+      content_type: att.contentType,
+    }));
+
+    const { data: emailRecord, error: emailError } = await supabase
+      .from("ingested_emails")
+      .insert({
+        coach_id: coach.id,
+        sender_email: parsed.senderEmail,
+        sender_name: parsed.senderName,
+        subject: parsed.subject,
+        body_plain: parsed.bodyPlain,
+        body_html: parsed.bodyHtml,
+        received_at: parsed.receivedAt,
+        attachments: emlAttachments,
+        processing_status: "pending",
+      })
+      .select()
+      .single();
+
+    if (emailError || !emailRecord) {
+      console.error("[ingest] Failed to store parsed .eml:", emailError?.message);
+      continue;
+    }
+
+    // Build a synthetic payload from the parsed .eml data
+    const syntheticPayload: z.infer<typeof IngestPayloadSchema> = {
+      sender_email: parsed.senderEmail ?? undefined,
+      sender_name: parsed.senderName ?? undefined,
+      subject: parsed.subject ?? undefined,
+      body_plain: parsed.bodyPlain,
+      body_html: parsed.bodyHtml ?? undefined,
+      received_at: parsed.receivedAt ?? undefined,
+      attachments: emlAttachments,
+    };
+
+    // .eml bodies are already the original recruit email — no forwarding inversion needed
+    after(() => processEmail(emailRecord.id, coach.id, coach.email, coach.program_id, syntheticPayload, emlAttachments, false).catch((err) => console.error("[processEmail] unhandled:", err)));
+
+    queuedIds.push(emailRecord.id);
+  }
+
+  return NextResponse.json(
+    { success: true, queued: queuedIds.length, email_ids: queuedIds },
+    { status: 202 }
+  );
+}
+
+async function processEmail(
+  emailId: string,
+  coachId: string,
+  coachEmailRaw: string,
+  programId: string,
+  payload: z.infer<typeof IngestPayloadSchema>,
+  attachments: unknown[],
+  isForwarded: boolean
+) {
+  const supabase = createAdminClient();
+
+  try {
+    const { error: statusError } = await supabase
+      .from("ingested_emails")
+      .update({ processing_status: "processing" })
+      .eq("id", emailId);
+    if (statusError) throw new Error(`Failed to update status to processing: ${statusError.message}`);
+
     const extraction = await extractRecruitData(
       payload.subject,
       payload.sender_name,
       payload.sender_email,
-      payload.body_plain
+      payload.body_plain,
+      isForwarded
     );
 
     // Normalize emails for dedup comparison
-    const extractedEmail =
-      ((extraction.recruitData.email as string) || null)
-        ?.toLowerCase()
-        .trim() ?? null;
-    const senderEmail =
-      (payload.sender_email || null)?.toLowerCase().trim() ?? null;
+    const extractedEmail = normalizeEmail(extraction.recruitData.email as string);
+    const senderEmail = normalizeEmail(payload.sender_email);
 
     // Store the normalized email in recruitData
-    extraction.recruitData.email = extractedEmail ?? senderEmail;
+    // For forwarded emails, senderEmail is the coach — don't use as recruit email fallback
+    if (isForwarded) {
+      extraction.recruitData.email = extractedEmail ?? null;
+    } else {
+      extraction.recruitData.email = extractedEmail ?? senderEmail;
+    }
 
     let recruitId: string;
+    let recruitForDQS: Record<string, unknown> | null = null;
     let existing: Record<string, unknown> | null = null;
 
     // Two-pass dedup: check extracted email first, then sender_email
@@ -129,34 +337,32 @@ export async function POST(request: NextRequest) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("coach_id", coach.id)
+        .eq("program_id", programId)
         .eq("email", extractedEmail)
         .single();
       existing = data;
     }
 
-    if (!existing && senderEmail && senderEmail !== extractedEmail) {
+    // For forwarded emails, skip sender-based dedup (sender is the coach)
+    if (!existing && !isForwarded && senderEmail && senderEmail !== extractedEmail) {
       const { data } = await supabase
         .from("recruits")
         .select("*")
-        .eq("coach_id", coach.id)
+        .eq("program_id", programId)
         .eq("email", senderEmail)
         .single();
       existing = data;
 
       if (data) {
-        // Matched via sender_email — the extracted email was wrong.
-        // Override recruitData.email to prevent buildUpdateData from
-        // overwriting the recruit's correct email with the bad extraction.
         extraction.recruitData.email = senderEmail;
       }
     }
 
     // Guard: if sender is the coach themselves (outbound email processed by
     // Zapier due to thread-level labeling), skip creation of a new recruit.
-    // Updates to existing recruits are still allowed (via extracted email match).
-    const coachEmail = (coach.email as string)?.toLowerCase().trim() ?? null;
-    const senderIsCoach = coachEmail && senderEmail === coachEmail;
+    // For intake forwards, the sender IS the coach by definition — skip this guard.
+    const coachEmail = normalizeEmail(coachEmailRaw);
+    const senderIsCoach = !isForwarded && coachEmail && senderEmail === coachEmail;
 
     if (existing) {
       // Update existing recruit (only overwrite if new confidence >= existing)
@@ -166,14 +372,16 @@ export async function POST(request: NextRequest) {
         extraction.confidence
       );
 
-      await supabase
+      const { data: updatedRecruit, error: updateError } = await supabase
         .from("recruits")
         .update(updateData)
         .eq("id", existing.id)
         .select()
         .single();
+      if (updateError) throw new Error(`Failed to update recruit: ${updateError.message}`);
 
       recruitId = existing.id as string;
+      recruitForDQS = updatedRecruit;
     } else if (senderIsCoach) {
       // Coach's own outbound email — don't create a duplicate recruit
       await supabase
@@ -182,19 +390,15 @@ export async function POST(request: NextRequest) {
           processing_status: "failed",
           extraction_error: "Skipped: sender is the coach (outbound email)",
         })
-        .eq("id", emailRecord.id);
-
-      return NextResponse.json({
-        success: true,
-        skipped: true,
-        reason: "Sender matches coach email — outbound email ignored",
-      });
+        .eq("id", emailId);
+      return;
     } else {
       // Create new recruit
       const { data: newRecruit, error: recruitError } = await supabase
         .from("recruits")
         .insert({
-          coach_id: coach.id,
+          coach_id: coachId,
+          program_id: programId,
           ...extraction.recruitData,
         })
         .select()
@@ -206,13 +410,14 @@ export async function POST(request: NextRequest) {
         );
       }
       recruitId = newRecruit.id;
+      recruitForDQS = newRecruit;
     }
 
-    // Step 5.5: Transcript analysis (non-blocking)
+    // Transcript analysis (non-blocking)
     let transcriptAnalysis: TranscriptAnalysis | null = null;
-    if (normalizedAttachments.length > 0) {
+    if (attachments.length > 0) {
       try {
-        const pdfAttachment = await findFirstPdfAttachment(normalizedAttachments);
+        const pdfAttachment = await findFirstPdfAttachment(attachments);
         if (pdfAttachment) {
           const analysis = await analyzeTranscript(pdfAttachment.base64);
           if (analysis) {
@@ -221,8 +426,8 @@ export async function POST(request: NextRequest) {
               .upsert(
                 {
                   recruit_id: recruitId,
-                  coach_id: coach.id,
-                  email_id: emailRecord.id,
+                  coach_id: coachId,
+                  email_id: emailId,
                   rigor_grade: analysis.rigorGrade,
                   rigor_score: analysis.result.rigor_score,
                   confidence: analysis.result.confidence,
@@ -257,11 +462,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 6: Calculate DQS score
+    // Calculate DQS score
     const { data: config } = await supabase
       .from("program_config")
       .select("*")
-      .eq("coach_id", coach.id)
+      .eq("program_id", programId)
       .single();
 
     // If no transcript analysis from this email, check for existing one
@@ -274,7 +479,7 @@ export async function POST(request: NextRequest) {
       transcriptAnalysis = existingAnalysis as TranscriptAnalysis | null;
     }
 
-    if (config) {
+    if (config && recruitForDQS) {
       const { data: recruit } = await supabase
         .from("recruits")
         .select("*")
@@ -297,7 +502,8 @@ export async function POST(request: NextRequest) {
         await supabase.from("recruit_dqs_scores").upsert(
           {
             recruit_id: recruitId,
-            coach_id: coach.id,
+            coach_id: coachId,
+            program_id: programId,
             overall_score: dqsResult.score,
             is_qualified: dqsResult.isQualified,
             disqualification_reasons: dqsResult.disqualificationReasons,
@@ -318,40 +524,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 7: Update email record with results
-    await supabase
+    // Update email record with results
+    const { error: finalUpdateError } = await supabase
       .from("ingested_emails")
       .update({
         recruit_id: recruitId,
         processing_status: extraction.processingStatus,
         extracted_data: extraction.extractedData as unknown as Record<string, unknown>,
       })
-      .eq("id", emailRecord.id);
-
-    return NextResponse.json({
-      success: true,
-      profile_id: recruitId,
-      status: extraction.processingStatus,
-      fields_extracted: extraction.fieldsExtracted,
-      fields_missing: extraction.fieldsMissing,
-    });
+      .eq("id", emailId);
+    if (finalUpdateError) throw new Error(`Failed to update final email status: ${finalUpdateError.message}`);
   } catch (err) {
     // Update email record with failure
-    await supabase
+    const { error: failureUpdateError } = await supabase
       .from("ingested_emails")
       .update({
         processing_status: "failed",
         extraction_error: String(err),
       })
-      .eq("id", emailRecord.id);
-
-    return NextResponse.json(
-      {
-        error: "Extraction failed",
-        details: String(err),
-      },
-      { status: 422 }
-    );
+      .eq("id", emailId);
+    if (failureUpdateError) {
+      console.error("[processEmail] Failed to update email status to failed:", failureUpdateError.message);
+    }
   }
 }
 
