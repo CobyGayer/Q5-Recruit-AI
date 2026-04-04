@@ -34,74 +34,74 @@ const COLUMN_GROUPS = {
   basic: {
     label: "Basic Information",
     columns: {
-      name: { label: "Name", default: true },
-      email: { label: "Email", default: true },
-      phone: { label: "Phone", default: false },
-      graduationYear: { label: "Graduation Year", default: true },
-      positions: { label: "Position(s)", default: true },
+      name: { label: "Name" },
+      email: { label: "Email" },
+      phone: { label: "Phone" },
+      graduationYear: { label: "Graduation Year" },
+      positions: { label: "Position(s)" },
     },
   },
   physical: {
     label: "Physical Attributes",
     columns: {
-      height: { label: "Height", default: true },
-      weight: { label: "Weight", default: false },
-      preferredFoot: { label: "Preferred Foot", default: false },
+      height: { label: "Height" },
+      weight: { label: "Weight" },
+      preferredFoot: { label: "Preferred Foot" },
     },
   },
   academic: {
     label: "Academic Scores",
     columns: {
-      gpa: { label: "GPA", default: true },
-      satScore: { label: "SAT Score", default: true },
-      actScore: { label: "ACT Score", default: true },
+      gpa: { label: "GPA" },
+      satScore: { label: "SAT Score" },
+      actScore: { label: "ACT Score" },
     },
   },
   athletic: {
     label: "Athletic Background",
     columns: {
-      clubTeam: { label: "Club Team", default: true },
-      clubLevel: { label: "Club Level", default: true },
-      highSchool: { label: "High School Team", default: false },
-      videoUrl: { label: "Video URL", default: false },
+      clubTeam: { label: "Club Team" },
+      clubLevel: { label: "Club Level" },
+      highSchool: { label: "High School Team" },
+      videoUrl: { label: "Video URL" },
     },
   },
   location: {
     label: "Location",
     columns: {
-      currentSchool: { label: "Current School", default: false },
-      city: { label: "City", default: false },
-      state: { label: "State", default: false },
-      country: { label: "Country", default: false },
+      currentSchool: { label: "Current School" },
+      city: { label: "City" },
+      state: { label: "State" },
+      country: { label: "Country" },
     },
   },
   dqs: {
     label: "DQS Scoring",
     columns: {
-      dqsScore: { label: "Overall DQS Score", default: true },
-      qualified: { label: "Qualified (Yes/No)", default: true },
-      academicScore: { label: "Academic Score", default: false },
-      competitionScore: { label: "Competition Score", default: false },
-      physicalScore: { label: "Physical Score", default: false },
-      positionFitScore: { label: "Position Fit Score", default: false },
-      gradYearScore: { label: "Grad Year Score", default: false },
-      completenessScore: { label: "Completeness Score", default: false },
-      disqualificationReasons: { label: "Disqualification Reasons", default: false },
+      dqsScore: { label: "Overall DQS Score" },
+      qualified: { label: "Qualified (Yes/No)" },
+      academicScore: { label: "Academic Score" },
+      competitionScore: { label: "Competition Score" },
+      physicalScore: { label: "Physical Score" },
+      positionFitScore: { label: "Position Fit Score" },
+      gradYearScore: { label: "Grad Year Score" },
+      completenessScore: { label: "Completeness Score" },
+      disqualificationReasons: { label: "Disqualification Reasons" },
     },
   },
   quality: {
     label: "Data Quality",
     columns: {
-      completeness: { label: "Data Completeness %", default: true },
-      fieldsExtracted: { label: "Fields Extracted Count", default: false },
-      fieldsTotal: { label: "Fields Total Count", default: false },
+      completeness: { label: "Data Completeness %" },
+      fieldsExtracted: { label: "Fields Extracted Count" },
+      fieldsTotal: { label: "Fields Total Count" },
     },
   },
   status: {
     label: "Status & Flags",
     columns: {
-      flag: { label: "Flag (Interested/Not a Fit)", default: false },
-      createdDate: { label: "Date Added", default: false },
+      flag: { label: "Flag (Interested/Not a Fit)" },
+      createdDate: { label: "Date Added" },
     },
   },
 };
@@ -123,16 +123,40 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
     status: false,
   });
 
-  // Initialize selected columns based on defaults
   const [selectedColumns, setSelectedColumns] = useState<SelectedColumns>(() => {
     const selected: SelectedColumns = {};
     Object.entries(COLUMN_GROUPS).forEach(([, group]) => {
-      Object.entries(group.columns).forEach(([key, col]) => {
-        selected[key] = col.default;
+      Object.entries(group.columns).forEach(([key]) => {
+        selected[key] = true;
       });
     });
     return selected;
   });
+
+  const totalColumns = Object.values(COLUMN_GROUPS).reduce(
+    (sum, group) => sum + Object.keys(group.columns).length,
+    0
+  );
+
+  function selectAll() {
+    const allSelected: SelectedColumns = {};
+    Object.entries(COLUMN_GROUPS).forEach(([, group]) => {
+      Object.entries(group.columns).forEach(([key]) => {
+        allSelected[key] = true;
+      });
+    });
+    setSelectedColumns(allSelected);
+  }
+
+  function deselectAll() {
+    const noneSelected: SelectedColumns = {};
+    Object.entries(COLUMN_GROUPS).forEach(([, group]) => {
+      Object.entries(group.columns).forEach(([key]) => {
+        noneSelected[key] = false;
+      });
+    });
+    setSelectedColumns(noneSelected);
+  }
 
   function toggleGroup(groupKey: string) {
     setExpandedGroups((prev) => ({
@@ -260,10 +284,14 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
                   <Label className="text-base font-semibold">Columns to Include</Label>
                   <p className="text-xs text-muted-foreground">Applies to both Excel and CSV formats</p>
                 </div>
-                <p className="text-xs text-muted-foreground">{selectedCount} selected</p>
+                <Button variant="ghost" size="sm" onClick={selectedCount === totalColumns ? deselectAll : selectAll} className="h-7 text-xs">
+                  {selectedCount === totalColumns ? "Deselect All" : "Select All"}
+                </Button>
               </div>
 
-              <div className="space-y-2 bg-muted/30 rounded-lg p-3 max-h-96 overflow-y-auto">
+              <p className="text-xs text-muted-foreground">{selectedCount}/{totalColumns} columns selected</p>
+
+              <div className="space-y-2 bg-muted/30 rounded-lg p-3">
                 {Object.entries(COLUMN_GROUPS).map(([groupKey, group]) => {
                   const isExpanded = expandedGroups[groupKey];
                   const groupColumns = Object.entries(group.columns);
