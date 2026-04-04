@@ -245,7 +245,7 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
                   <div>
                     <div className="font-medium">CSV (.csv)</div>
                     <div className="text-xs text-muted-foreground">
-                      Choose which columns to include
+                      Plain text, universally compatible
                     </div>
                   </div>
                 </SelectItem>
@@ -256,7 +256,10 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
           {/* Column Selection */}
           <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">Columns to Include</Label>
+                <div>
+                  <Label className="text-base font-semibold">Columns to Include</Label>
+                  <p className="text-xs text-muted-foreground">Applies to both Excel and CSV formats</p>
+                </div>
                 <p className="text-xs text-muted-foreground">{selectedCount} selected</p>
               </div>
 

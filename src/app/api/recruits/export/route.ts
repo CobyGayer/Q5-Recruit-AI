@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
       .select("*")
       .eq("coach_id", user.id)
       .order("full_name", { ascending: true })
+      // Fetch one extra row as a sentinel: if we get EXPORT_LIMIT+1 results,
+      // the dataset exceeds the limit and we reject rather than silently truncating.
       .limit(EXPORT_LIMIT + 1);
 
     if (recruitsError) {

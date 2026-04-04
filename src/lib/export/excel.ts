@@ -6,8 +6,6 @@ import ExcelJS from "exceljs";
 import type { RecruitWithScore } from "@/types/database";
 import {
   formatHeight,
-  formatPercentage,
-  formatScore,
   formatArray,
   formatClubLevel,
   shouldIncludeColumn,
@@ -20,14 +18,6 @@ export interface ExcelExportOptions {
   includeSummarySheet?: boolean;
   selectedColumns?: Record<string, boolean>;
 }
-
-const DEFAULT_OPTIONS: ExcelExportOptions = {
-  includeScores: true,
-  includeConfidence: true,
-  includeContactInfo: true,
-  includeSummarySheet: true,
-  selectedColumns: undefined,
-};
 
 interface ExcelRow {
   [key: string]: string | number | boolean | null;
@@ -56,7 +46,7 @@ function recruitsToExcelRows(
     if (shouldIncludeColumn("preferredFoot", options.selectedColumns)) row["Preferred Foot"] = recruit.preferred_foot || "";
 
     // Academic
-    if (shouldIncludeColumn("gpa", options.selectedColumns)) row["GPA"] = recruit.gpa || "";
+    if (shouldIncludeColumn("gpa", options.selectedColumns)) row["GPA"] = recruit.gpa ?? "";
     if (shouldIncludeColumn("satScore", options.selectedColumns)) row["SAT"] = recruit.sat_score || "";
     if (shouldIncludeColumn("actScore", options.selectedColumns)) row["ACT"] = recruit.act_score || "";
 

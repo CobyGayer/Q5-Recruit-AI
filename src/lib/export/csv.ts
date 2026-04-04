@@ -114,7 +114,7 @@ function csvRowsToString(rows: CSVRow[]): string {
 
   const dataLines = rows.map((row) => headers.map((h) => escapeCSVValue(row[h])).join(","));
 
-  return [headerLine, ...dataLines].join("\n");
+  return [headerLine, ...dataLines].join("\r\n");
 }
 
 export function generateCSV(
