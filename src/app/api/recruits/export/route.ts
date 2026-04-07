@@ -7,6 +7,7 @@ import { generateCSV } from "@/lib/export/csv";
 export interface ExportRequest {
   format: "excel" | "csv";
   selectedColumns?: Record<string, boolean>;
+  recruitIds?: string[];
 }
 
 export async function POST(request: NextRequest) {
@@ -28,8 +29,9 @@ export async function POST(request: NextRequest) {
 
     const EXPORT_LIMIT = 5000;
 
-    // Fetch all recruits for this coach
-    const { data: recruits, error: recruitsError } = await supabase
+    // Fetch recruits for this coach (optionally filtered to specific IDs)
+    const selectedIds = body.recruitIds && body.recruitIds.length > 0 ? body.recruitIds : null;
+    let query = supabase
       .from("recruits")
       .select("*")
       .eq("coach_id", user.id)
@@ -37,6 +39,10 @@ export async function POST(request: NextRequest) {
       // Fetch one extra row as a sentinel: if we get EXPORT_LIMIT+1 results,
       // the dataset exceeds the limit and we reject rather than silently truncating.
       .limit(EXPORT_LIMIT + 1);
+    if (selectedIds) {
+      query = query.in("id", selectedIds);
+    }
+    const { data: recruits, error: recruitsError } = await query;
 
     if (recruitsError) {
       console.error("Error fetching recruits:", recruitsError);

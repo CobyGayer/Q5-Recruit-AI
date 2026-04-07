@@ -25,6 +25,7 @@ interface ExportDialogProps {
   open: boolean;
   onClose: () => void;
   recruitCount: number;
+  selectedIds?: string[];
 }
 
 type ExportFormat = "excel" | "csv";
@@ -108,7 +109,7 @@ const COLUMN_GROUPS = {
 
 type SelectedColumns = Record<string, boolean>;
 
-export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps) {
+export function ExportDialog({ open, onClose, recruitCount, selectedIds }: ExportDialogProps) {
   const [format, setFormat] = useState<ExportFormat>("excel");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -202,6 +203,7 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
         body: JSON.stringify({
           format,
           selectedColumns,
+          ...(selectedIds && selectedIds.length > 0 ? { recruitIds: selectedIds } : {}),
         }),
       });
 
@@ -244,7 +246,9 @@ export function ExportDialog({ open, onClose, recruitCount }: ExportDialogProps)
         <DialogHeader>
           <DialogTitle>Export Recruits</DialogTitle>
           <DialogDescription>
-            Download data for {recruitCount} recruit{recruitCount !== 1 ? "s" : ""}
+            {selectedIds && selectedIds.length > 0
+              ? `Download data for ${selectedIds.length} selected recruit${selectedIds.length !== 1 ? "s" : ""}`
+              : `Download data for all ${recruitCount} recruit${recruitCount !== 1 ? "s" : ""}`}
           </DialogDescription>
         </DialogHeader>
 

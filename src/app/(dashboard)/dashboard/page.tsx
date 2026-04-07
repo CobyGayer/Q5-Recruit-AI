@@ -464,7 +464,7 @@ function DashboardContent() {
             onClick={() => setExportOpen(true)}
           >
             <Download className="h-4 w-4 mr-1.5" />
-            Export All Recruits
+            {selectedIds.size > 0 ? `Export Selected (${selectedIds.size})` : "Export All Recruits"}
           </Button>
         </div>
       )}
@@ -485,6 +485,7 @@ function DashboardContent() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         recruitCount={recruits.length}
+        selectedIds={selectedIds.size > 0 ? [...selectedIds] : undefined}
       />
 
       {/* Bulk delete confirmation dialog */}
