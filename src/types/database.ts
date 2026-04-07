@@ -48,6 +48,7 @@ export interface Coach {
 export interface ProgramConfig {
   id: string;
   program_id: string;
+  coach_id: string;
   // Section A: Minimum Thresholds
   min_gpa: number | null;
   min_sat: number | null;
