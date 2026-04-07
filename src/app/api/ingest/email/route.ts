@@ -16,7 +16,7 @@ export const maxDuration = 300;
 
 /** Detect inline-forwarded email by checking for common forward markers */
 function isForwardedEmail(body: string): boolean {
-  return /---------- Forwarded message ----------/.test(body) ||
+  return /---------- Forwarded message -+/.test(body) ||
     /^Begin forwarded message:/m.test(body) ||
     /^----- Original Message -----/m.test(body);
 }
