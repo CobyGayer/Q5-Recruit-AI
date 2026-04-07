@@ -534,12 +534,16 @@ async function processEmail(
     }
 
     // Update email record with results
+    const recruitEmail = extraction.recruitData.email as string | null;
+    const recruitName = extraction.recruitData.full_name as string | null;
     const { error: finalUpdateError } = await supabase
       .from("ingested_emails")
       .update({
         recruit_id: recruitId,
         processing_status: extraction.processingStatus,
         extracted_data: extraction.extractedData as unknown as Record<string, unknown>,
+        // Overwrite sender fields with recruit's info (forwarded email sender is the coach)
+        ...(isForwarded && recruitEmail ? { sender_email: recruitEmail, sender_name: recruitName } : {}),
       })
       .eq("id", emailId);
     if (finalUpdateError) throw new Error(`Failed to update final email status: ${finalUpdateError.message}`);
