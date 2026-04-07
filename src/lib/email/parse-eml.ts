@@ -140,15 +140,48 @@ async function parseEmlBuffer(buffer: Buffer): Promise<ParsedEmail> {
 }
 
 /**
+ * Extract all attachment URLs from a Zapier multi-line attachment string.
+ * Zapier may encode several attachments as one newline-delimited block:
+ *   attachment: https://.../email1.eml\nmime_type: message/rfc822\n\nattachment: https://.../email2.eml\n...
+ */
+function extractAllUrlsFromMultiline(s: string): string[] {
+  const urls: string[] = [];
+  const regex = /^attachment:\s*(https?:\/\/\S+)/gm;
+  let match;
+  while ((match = regex.exec(s)) !== null) {
+    urls.push(match[1]);
+  }
+  return urls;
+}
+
+/**
  * Find and parse all .eml attachments from an attachment list.
  * Returns an array of parsed emails (one per .eml file).
+ *
+ * Handles Zapier's multi-line string format where several .eml URLs may be
+ * packed into a single string attachment — each URL is expanded and parsed
+ * independently so all forwarded emails appear in the queue.
  */
 export async function findAndParseEmlAttachments(attachments: unknown[]): Promise<ParsedEmail[]> {
   const emlAttachments = attachments.filter(looksLikeEml);
   if (emlAttachments.length === 0) return [];
 
-  const results: ParsedEmail[] = [];
+  // Expand multi-URL string attachments into individual URL strings so that
+  // each .eml is downloaded and inserted as its own ingested_emails record.
+  const expanded: unknown[] = [];
   for (const att of emlAttachments) {
+    if (typeof att === "string") {
+      const urls = extractAllUrlsFromMultiline(att);
+      if (urls.length > 1) {
+        expanded.push(...urls);
+        continue;
+      }
+    }
+    expanded.push(att);
+  }
+
+  const results: ParsedEmail[] = [];
+  for (const att of expanded) {
     const parsed = await parseEmlAttachment(att);
     if (parsed && parsed.bodyPlain) {
       results.push(parsed);
