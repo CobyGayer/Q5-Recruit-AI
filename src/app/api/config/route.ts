@@ -84,7 +84,9 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  // Use admin client to bypass RLS for program_config writes
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase
     .from("program_config")
     .upsert(
       { updated_by_coach_id: user.id, program_id: coach.program_id, ...parsed.data },

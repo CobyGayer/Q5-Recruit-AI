@@ -25,6 +25,8 @@ import { Check, Copy, RefreshCw } from "lucide-react";
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
@@ -91,17 +93,29 @@ export default function SettingsPage() {
 
   async function handleSave() {
     setSaving(true);
-    await fetch("/api/config", {
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    const res = await fetch("/api/config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...thresholds, ...weights, ...roster }),
     });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSaveError(data.error ?? "Failed to save preferences. Please try again.");
+      setSaving(false);
+      return;
+    }
 
     // Trigger DQS recalculation
     setRecalculating(true);
     await fetch("/api/config/recalculate", { method: "POST" });
     setRecalculating(false);
 
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
     setSaving(false);
   }
 
@@ -152,11 +166,22 @@ export default function SettingsPage() {
             ) : (
               "Saving..."
             )
+          ) : saveSuccess ? (
+            <>
+              <Check className="h-4 w-4 mr-2" />
+              Saved
+            </>
           ) : (
             "Save & Recalculate"
           )}
         </Button>
       </div>
+
+      {saveError && (
+        <div className="mb-4 rounded-md bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          {saveError}
+        </div>
+      )}
 
       <Tabs defaultValue="thresholds">
         <TabsList className="mb-6">

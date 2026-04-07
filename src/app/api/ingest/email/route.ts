@@ -331,7 +331,6 @@ async function processEmail(
     }
 
     let recruitId: string;
-    let recruitForDQS: Record<string, unknown> | null = null;
     let existing: Record<string, unknown> | null = null;
 
     // Two-pass dedup: check extracted email first, then sender_email
@@ -383,7 +382,9 @@ async function processEmail(
       if (updateError) throw new Error(`Failed to update recruit: ${updateError.message}`);
 
       recruitId = existing.id as string;
-      recruitForDQS = updatedRecruit;
+      if (!updatedRecruit) {
+        console.warn(`[processEmail] Update returned no data for recruit ${recruitId} — proceeding with ID only`);
+      }
     } else if (senderIsCoach) {
       // Coach's own outbound email — don't create a duplicate recruit
       await supabase
@@ -412,7 +413,6 @@ async function processEmail(
         );
       }
       recruitId = newRecruit.id;
-      recruitForDQS = newRecruit;
     }
 
     // Transcript analysis (non-blocking)
@@ -481,7 +481,9 @@ async function processEmail(
       transcriptAnalysis = existingAnalysis as TranscriptAnalysis | null;
     }
 
-    if (config && recruitForDQS) {
+    if (!config) {
+      console.warn(`[processEmail] No program_config found for program ${programId} — scoring skipped for recruit ${recruitId}`);
+    } else {
       const { data: recruit } = await supabase
         .from("recruits")
         .select("*")
@@ -501,7 +503,7 @@ async function processEmail(
           dqsResult
         );
 
-        await supabase.from("recruit_dqs_scores").upsert(
+        const { error: upsertError } = await supabase.from("recruit_dqs_scores").upsert(
           {
             recruit_id: recruitId,
             coach_id: coachId,
@@ -523,6 +525,11 @@ async function processEmail(
           },
           { onConflict: "recruit_id" }
         );
+        if (upsertError) {
+          console.error(`[processEmail] DQS upsert failed for recruit ${recruitId}:`, upsertError.message);
+        }
+      } else {
+        console.error(`[processEmail] Could not fetch recruit ${recruitId} for DQS calculation`);
       }
     }
 
