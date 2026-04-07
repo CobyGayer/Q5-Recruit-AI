@@ -47,5 +47,12 @@ export async function POST(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // When approving, confirm the coach's email so they can sign in
+  if (status === "approved") {
+    await adminSupabase.auth.admin.updateUserById(coachId, {
+      email_confirm: true,
+    });
+  }
+
   return NextResponse.json(data);
 }
