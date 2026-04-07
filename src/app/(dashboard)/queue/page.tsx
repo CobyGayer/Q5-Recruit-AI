@@ -73,8 +73,7 @@ export default function QueuePage() {
       ) : emails.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
-            No emails have been ingested yet. Set up your Zapier integration
-            and start labeling recruit emails to see them here.
+            No emails have been ingested yet.
           </CardContent>
         </Card>
       ) : (
