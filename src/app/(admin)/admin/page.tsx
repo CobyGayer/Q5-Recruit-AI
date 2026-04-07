@@ -34,8 +34,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { CheckCircle, Users, Mail, TrendingUp, BarChart3, Key, Copy, Check, AlertTriangle, RotateCcw, Wrench, Send } from "lucide-react";
-import type { Coach, CoachStatus, EmailPipelineStatus } from "@/types/database";
+import { Input } from "@/components/ui/input";
+import { CheckCircle, Users, Mail, TrendingUp, BarChart3, Key, Copy, Check, AlertTriangle, RotateCcw, Wrench, Send, Plus, School } from "lucide-react";
+import type { Coach, CoachStatus, EmailPipelineStatus, Program } from "@/types/database";
 
 interface AdminStats {
   total_coaches: number;
@@ -64,9 +65,43 @@ export default function AdminPage() {
   const [sampleLoading, setSampleLoading] = useState<string | null>(null);
   const [sampleResult, setSampleResult] = useState<{ coachId: string; success: boolean; message: string } | null>(null);
 
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [programsLoading, setProgramsLoading] = useState(false);
+  const [newProgram, setNewProgram] = useState({ name: "", institution: "", domain: "", division: "", conference: "" });
+  const [addProgramLoading, setAddProgramLoading] = useState(false);
+  const [addProgramResult, setAddProgramResult] = useState<{ success: boolean; message: string } | null>(null);
+
   useEffect(() => {
     fetchData(true);
+    fetchPrograms();
   }, []);
+
+  async function fetchPrograms() {
+    setProgramsLoading(true);
+    const res = await fetch("/api/admin/programs");
+    if (res.ok) setPrograms(await res.json());
+    setProgramsLoading(false);
+  }
+
+  async function handleAddProgram() {
+    if (!newProgram.name || !newProgram.institution || !newProgram.domain) return;
+    setAddProgramLoading(true);
+    setAddProgramResult(null);
+    const res = await fetch("/api/admin/programs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newProgram),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setAddProgramResult({ success: true, message: `Program "${data.name}" added successfully.` });
+      setNewProgram({ name: "", institution: "", domain: "", division: "", conference: "" });
+      await fetchPrograms();
+    } else {
+      setAddProgramResult({ success: false, message: data.error || "Failed to add program" });
+    }
+    setAddProgramLoading(false);
+  }
 
   async function fetchData(isInitial = false) {
     if (isInitial) setLoading(true);
@@ -312,6 +347,10 @@ export default function AdminPage() {
                 {pendingPipelineCount}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="programs">
+            <School className="h-4 w-4 mr-1" />
+            Programs
           </TabsTrigger>
           <TabsTrigger value="devtools">
             <Wrench className="h-4 w-4 mr-1" />
@@ -606,6 +645,111 @@ export default function AdminPage() {
                 {sampleResult.message}
               </div>
             )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="programs">
+          <div className="space-y-4">
+            <Card className="border-primary/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add New Program
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Program Name <span className="text-rose-500">*</span></Label>
+                    <Input
+                      placeholder="e.g. Stanford Men's Soccer"
+                      value={newProgram.name}
+                      onChange={(e) => setNewProgram({ ...newProgram, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Institution <span className="text-rose-500">*</span></Label>
+                    <Input
+                      placeholder="e.g. Stanford University"
+                      value={newProgram.institution}
+                      onChange={(e) => setNewProgram({ ...newProgram, institution: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Email Domain <span className="text-rose-500">*</span></Label>
+                    <Input
+                      placeholder="e.g. stanford.edu"
+                      value={newProgram.domain}
+                      onChange={(e) => setNewProgram({ ...newProgram, domain: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Division</Label>
+                    <Input
+                      placeholder="e.g. D1"
+                      value={newProgram.division}
+                      onChange={(e) => setNewProgram({ ...newProgram, division: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Conference</Label>
+                    <Input
+                      placeholder="e.g. Pac-12"
+                      value={newProgram.conference}
+                      onChange={(e) => setNewProgram({ ...newProgram, conference: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleAddProgram}
+                  disabled={addProgramLoading || !newProgram.name || !newProgram.institution || !newProgram.domain}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  {addProgramLoading ? "Adding..." : "Add Program"}
+                </Button>
+                {addProgramResult && (
+                  <p className={`text-sm ${addProgramResult.success ? "text-emerald-700" : "text-rose-700"}`}>
+                    {addProgramResult.message}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/10">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Existing Programs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {programsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : programs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No programs found.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-[10px] uppercase tracking-wider">Name</TableHead>
+                        <TableHead className="text-[10px] uppercase tracking-wider">Institution</TableHead>
+                        <TableHead className="text-[10px] uppercase tracking-wider">Domain</TableHead>
+                        <TableHead className="text-[10px] uppercase tracking-wider">Division</TableHead>
+                        <TableHead className="text-[10px] uppercase tracking-wider">Conference</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {programs.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium">{p.name}</TableCell>
+                          <TableCell>{p.institution}</TableCell>
+                          <TableCell className="font-mono text-xs">{p.domain}</TableCell>
+                          <TableCell>{p.division ?? "—"}</TableCell>
+                          <TableCell>{p.conference ?? "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 

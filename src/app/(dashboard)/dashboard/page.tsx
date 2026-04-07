@@ -546,7 +546,7 @@ function DashboardContent() {
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <p className="text-muted-foreground mb-2">
                 {recruits.length === 0
-                  ? "No recruits yet. Emails ingested through Zapier will appear here."
+                  ? "No recruits yet."
                   : searchTerm && activeFilterCount === 0
                   ? `No recruits match "${searchTerm}"`
                   : searchTerm
