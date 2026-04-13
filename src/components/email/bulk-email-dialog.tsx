@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +56,9 @@ export function BulkEmailDialog({
   coachEmail,
 }: BulkEmailDialogProps) {
   const isMultiple = selectedRecruits.length > 1;
-  const [mode, setMode] = useState<BulkMode>(isMultiple ? "choose" : "personalized");
+  const [mode, setMode] = useState<BulkMode>(
+    isMultiple ? "choose" : "personalized",
+  );
 
   // Announcement state
   const [annStep, setAnnStep] = useState<AnnStep>("prompt");
@@ -76,7 +78,7 @@ export function BulkEmailDialog({
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function resetAndClose() {
+  const resetState = useCallback(() => {
     setMode(isMultiple ? "choose" : "personalized");
     setAnnStep("prompt");
     setAnnPurpose("");
@@ -91,6 +93,16 @@ export function BulkEmailDialog({
     setPersLoading(false);
     setCopied(false);
     setError(null);
+  }, [isMultiple]);
+
+  useEffect(() => {
+    if (open) {
+      resetState();
+    }
+  }, [open, resetState]);
+
+  function resetAndClose() {
+    resetState();
     onClose();
   }
 
@@ -98,7 +110,7 @@ export function BulkEmailDialog({
     recruitIds: string[],
     subject: string,
     body: string,
-    method: EmailMethod
+    method: EmailMethod,
   ) {
     fetch("/api/email/log", {
       method: "POST",
@@ -135,7 +147,9 @@ export function BulkEmailDialog({
   }
 
   function handleAnnSkip() {
-    const emails = selectedRecruits.map((r) => r.email).filter(Boolean) as string[];
+    const emails = selectedRecruits
+      .map((r) => r.email)
+      .filter(Boolean) as string[];
     setAnnBccEmails(emails);
     setAnnSubject("");
     setAnnBody("");
@@ -144,30 +158,62 @@ export function BulkEmailDialog({
   }
 
   function handleAnnGmail() {
-    const url = buildGmailComposeUrl({ bcc: annBccEmails, subject: annSubject, body: annBody, authuser: coachEmail });
-    logEmail(selectedRecruits.map((r) => r.id), annSubject, annBody, "gmail");
+    const url = buildGmailComposeUrl({
+      bcc: annBccEmails,
+      subject: annSubject,
+      body: annBody,
+      authuser: coachEmail,
+    });
+    logEmail(
+      selectedRecruits.map((r) => r.id),
+      annSubject,
+      annBody,
+      "gmail",
+    );
     window.open(url, "_blank");
     resetAndClose();
   }
 
   function handleAnnOutlook() {
-    const url = buildOutlookComposeUrl({ bcc: annBccEmails, subject: annSubject, body: annBody, authuser: coachEmail });
-    logEmail(selectedRecruits.map((r) => r.id), annSubject, annBody, "outlook");
+    const url = buildOutlookComposeUrl({
+      bcc: annBccEmails,
+      subject: annSubject,
+      body: annBody,
+      authuser: coachEmail,
+    });
+    logEmail(
+      selectedRecruits.map((r) => r.id),
+      annSubject,
+      annBody,
+      "outlook",
+    );
     window.open(url, "_blank");
     resetAndClose();
   }
 
   function handleAnnMailto() {
-    const url = buildMailtoUrl({ bcc: annBccEmails, subject: annSubject, body: annBody });
-    logEmail(selectedRecruits.map((r) => r.id), annSubject, annBody, "mailto");
+    const url = buildMailtoUrl({
+      bcc: annBccEmails,
+      subject: annSubject,
+      body: annBody,
+    });
+    logEmail(
+      selectedRecruits.map((r) => r.id),
+      annSubject,
+      annBody,
+      "mailto",
+    );
     window.location.href = url;
     resetAndClose();
   }
 
   const annMailtoTooLong =
     annStep === "compose" &&
-    estimateComposeUrlLength({ bcc: annBccEmails, subject: annSubject, body: annBody }) >
-      MAILTO_MAX_LENGTH;
+    estimateComposeUrlLength({
+      bcc: annBccEmails,
+      subject: annSubject,
+      body: annBody,
+    }) > MAILTO_MAX_LENGTH;
 
   // ── Personalized ──
 
@@ -195,7 +241,7 @@ export function BulkEmailDialog({
             recruitName: recruit?.full_name ?? "Unknown",
             recruitEmail: recruit?.email ?? null,
           };
-        }
+        },
       );
       setDrafts(mappedDrafts);
       setCurrentDraftIdx(0);
@@ -227,11 +273,25 @@ export function BulkEmailDialog({
 
     let url: string;
     if (method === "gmail") {
-      url = buildGmailComposeUrl({ to: draft.recruitEmail ?? undefined, subject: draft.subject, body: draft.body, authuser: coachEmail });
+      url = buildGmailComposeUrl({
+        to: draft.recruitEmail ?? undefined,
+        subject: draft.subject,
+        body: draft.body,
+        authuser: coachEmail,
+      });
     } else if (method === "outlook") {
-      url = buildOutlookComposeUrl({ to: draft.recruitEmail ?? undefined, subject: draft.subject, body: draft.body, authuser: coachEmail });
+      url = buildOutlookComposeUrl({
+        to: draft.recruitEmail ?? undefined,
+        subject: draft.subject,
+        body: draft.body,
+        authuser: coachEmail,
+      });
     } else {
-      url = buildMailtoUrl({ to: draft.recruitEmail ?? undefined, subject: draft.subject, body: draft.body });
+      url = buildMailtoUrl({
+        to: draft.recruitEmail ?? undefined,
+        subject: draft.subject,
+        body: draft.body,
+      });
     }
 
     logEmail([draft.recruitId], draft.subject, draft.body, method);
@@ -253,7 +313,10 @@ export function BulkEmailDialog({
   function updateCurrentDraft(field: "subject" | "body", value: string) {
     setDrafts((prev) => {
       const updated = [...prev];
-      updated[currentDraftIdx] = { ...updated[currentDraftIdx], [field]: value };
+      updated[currentDraftIdx] = {
+        ...updated[currentDraftIdx],
+        [field]: value,
+      };
       return updated;
     });
   }
@@ -329,11 +392,7 @@ export function BulkEmailDialog({
         {/* ── Announcement: purpose prompt ── */}
         {mode === "announcement" && annStep === "prompt" && (
           <div className="space-y-4 py-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setMode("choose")}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setMode("choose")}>
               <ChevronLeft className="h-4 w-4 mr-1" />
               Back
             </Button>
@@ -345,9 +404,7 @@ export function BulkEmailDialog({
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="ann-purpose">
-                What is this email about?
-              </Label>
+              <Label htmlFor="ann-purpose">What is this email about?</Label>
               <Input
                 id="ann-purpose"
                 value={annPurpose}
@@ -498,9 +555,7 @@ export function BulkEmailDialog({
             </p>
 
             <div className="space-y-1.5">
-              <Label htmlFor="pers-purpose">
-                What is this email about?
-              </Label>
+              <Label htmlFor="pers-purpose">What is this email about?</Label>
               <Input
                 id="pers-purpose"
                 value={persPurpose}
@@ -513,15 +568,19 @@ export function BulkEmailDialog({
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                Each email will be uniquely personalized using the recruit&apos;s
-                profile data (GPA, position, club team, etc.).
+                Each email will be uniquely personalized using the
+                recruit&apos;s profile data (GPA, position, club team, etc.).
               </p>
             </div>
 
             <div className="flex items-center gap-3">
               <Button
                 onClick={generatePersonalized}
-                disabled={!persPurpose.trim() || persLoading || recruitsWithEmail.length === 0}
+                disabled={
+                  !persPurpose.trim() ||
+                  persLoading ||
+                  recruitsWithEmail.length === 0
+                }
               >
                 {`Generate ${recruitsWithEmail.length} Personalized Draft${recruitsWithEmail.length !== 1 ? "s" : ""}`}
               </Button>
@@ -537,118 +596,124 @@ export function BulkEmailDialog({
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Generating {recruitsWithEmail.length} personalized draft{recruitsWithEmail.length !== 1 ? "s" : ""}...
+              Generating {recruitsWithEmail.length} personalized draft
+              {recruitsWithEmail.length !== 1 ? "s" : ""}...
             </p>
           </div>
         )}
 
         {/* ── Personalized: compose per recruit ── */}
-        {mode === "personalized" && persStep === "compose" && !persLoading && drafts.length > 0 && (
-          <div className="space-y-4 py-2">
-            {/* Navigation */}
-            <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setCurrentDraftIdx(Math.max(0, currentDraftIdx - 1))
-                }
-                disabled={currentDraftIdx === 0}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                {currentDraftIdx + 1} of {drafts.length}:{" "}
-                <span className="font-medium text-foreground">
-                  {drafts[currentDraftIdx].recruitName}
+        {mode === "personalized" &&
+          persStep === "compose" &&
+          !persLoading &&
+          drafts.length > 0 && (
+            <div className="space-y-4 py-2">
+              {/* Navigation */}
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentDraftIdx(Math.max(0, currentDraftIdx - 1))
+                  }
+                  disabled={currentDraftIdx === 0}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {currentDraftIdx + 1} of {drafts.length}:{" "}
+                  <span className="font-medium text-foreground">
+                    {drafts[currentDraftIdx].recruitName}
+                  </span>
                 </span>
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setCurrentDraftIdx(
-                    Math.min(drafts.length - 1, currentDraftIdx + 1)
-                  )
-                }
-                disabled={currentDraftIdx === drafts.length - 1}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground w-8">To:</span>
-              <span className="text-sm">
-                {drafts[currentDraftIdx].recruitEmail ?? "No email"}
-              </span>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="pers-subject">Subject</Label>
-              <Input
-                id="pers-subject"
-                value={drafts[currentDraftIdx].subject}
-                onChange={(e) => updateCurrentDraft("subject", e.target.value)}
-                placeholder="Email subject"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="pers-body">Message</Label>
-              <Textarea
-                id="pers-body"
-                value={drafts[currentDraftIdx].body}
-                onChange={(e) => updateCurrentDraft("body", e.target.value)}
-                rows={10}
-                className="min-h-[180px] font-mono text-sm"
-                placeholder="Write your email..."
-              />
-            </div>
-
-            <div className="border-t pt-4">
-              <p className="text-xs text-muted-foreground mb-3">
-                Send this email, then{" "}
-                {currentDraftIdx < drafts.length - 1
-                  ? "review the next draft"
-                  : "you're done"}
-                :
-              </p>
-              <div className="flex flex-wrap gap-2">
                 <Button
-                  onClick={() => openCurrentDraft("gmail")}
-                  disabled={!drafts[currentDraftIdx].recruitEmail}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentDraftIdx(
+                      Math.min(drafts.length - 1, currentDraftIdx + 1),
+                    )
+                  }
+                  disabled={currentDraftIdx === drafts.length - 1}
                 >
-                  Open in Gmail
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => openCurrentDraft("outlook")}
-                  disabled={!drafts[currentDraftIdx].recruitEmail}
-                >
-                  Open in Outlook
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => openCurrentDraft("mailto")}
-                  disabled={!drafts[currentDraftIdx].recruitEmail}
-                >
-                  Mail App
-                </Button>
-                <Button variant="ghost" onClick={handleCopy}>
-                  {copied ? (
-                    <Check className="h-4 w-4 mr-1.5" />
-                  ) : (
-                    <Copy className="h-4 w-4 mr-1.5" />
-                  )}
-                  {copied ? "Copied!" : "Copy"}
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground w-8">To:</span>
+                <span className="text-sm">
+                  {drafts[currentDraftIdx].recruitEmail ?? "No email"}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pers-subject">Subject</Label>
+                <Input
+                  id="pers-subject"
+                  value={drafts[currentDraftIdx].subject}
+                  onChange={(e) =>
+                    updateCurrentDraft("subject", e.target.value)
+                  }
+                  placeholder="Email subject"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="pers-body">Message</Label>
+                <Textarea
+                  id="pers-body"
+                  value={drafts[currentDraftIdx].body}
+                  onChange={(e) => updateCurrentDraft("body", e.target.value)}
+                  rows={10}
+                  className="min-h-[180px] font-mono text-sm"
+                  placeholder="Write your email..."
+                />
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Send this email, then{" "}
+                  {currentDraftIdx < drafts.length - 1
+                    ? "review the next draft"
+                    : "you're done"}
+                  :
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={() => openCurrentDraft("gmail")}
+                    disabled={!drafts[currentDraftIdx].recruitEmail}
+                  >
+                    Open in Gmail
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => openCurrentDraft("outlook")}
+                    disabled={!drafts[currentDraftIdx].recruitEmail}
+                  >
+                    Open in Outlook
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => openCurrentDraft("mailto")}
+                    disabled={!drafts[currentDraftIdx].recruitEmail}
+                  >
+                    Mail App
+                  </Button>
+                  <Button variant="ghost" onClick={handleCopy}>
+                    {copied ? (
+                      <Check className="h-4 w-4 mr-1.5" />
+                    ) : (
+                      <Copy className="h-4 w-4 mr-1.5" />
+                    )}
+                    {copied ? "Copied!" : "Copy"}
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </DialogContent>
     </Dialog>
   );

@@ -9,6 +9,7 @@ import {
   formatScore,
   formatArray,
   formatClubLevel,
+  splitFullName,
   shouldIncludeColumn,
 } from "./formatters";
 
@@ -58,8 +59,12 @@ function recruitsToCSVRows(
     const completenessPercent =
       recruit.fields_total > 0 ? (recruit.fields_extracted / recruit.fields_total) * 100 : 0;
     const row: CSVRow = {};
+    const { firstName, lastName } = splitFullName(recruit.full_name);
 
-    if (shouldIncludeColumn("name", sel)) row["Name"] = recruit.full_name || "";
+    if (shouldIncludeColumn("name", sel)) {
+      row["First Name"] = firstName;
+      row["Last Name"] = lastName;
+    }
     if (shouldIncludeColumn("email", sel) && includeContactInfo) row["Email"] = recruit.email || "";
     if (shouldIncludeColumn("phone", sel) && includeContactInfo) row["Phone"] = recruit.phone || "";
     if (shouldIncludeColumn("graduationYear", sel)) row["Grad Year"] = recruit.graduation_year || "";

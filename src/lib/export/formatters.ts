@@ -41,6 +41,26 @@ export function formatClubLevel(level: string | null): string {
   return CLUB_LEVEL_LABELS[level] || level;
 }
 
+export function splitFullName(fullName: string | null | undefined): {
+  firstName: string;
+  lastName: string;
+} {
+  const normalized = (fullName ?? "").trim().replace(/\s+/g, " ");
+  if (!normalized) {
+    return { firstName: "", lastName: "" };
+  }
+
+  const firstSpace = normalized.indexOf(" ");
+  if (firstSpace === -1) {
+    return { firstName: normalized, lastName: "" };
+  }
+
+  return {
+    firstName: normalized.slice(0, firstSpace),
+    lastName: normalized.slice(firstSpace + 1),
+  };
+}
+
 export function shouldIncludeColumn(columnKey: string, selectedColumns?: Record<string, boolean>): boolean {
   if (!selectedColumns) return true;
   return selectedColumns[columnKey] === true;
