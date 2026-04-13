@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { z } from "zod";
 
 const BulkDeleteSchema = z.object({
@@ -16,6 +18,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: coach } = await supabase
+    .from("coaches")
+    .select("program_id, role")
+    .eq("id", user.id)
+    .single();
+
+  if (!coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
   const raw = await request.json();
   const parsed = BulkDeleteSchema.safeParse(raw);
   if (!parsed.success) {
@@ -25,9 +37,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { error } = await supabase
+  const overrideProgramId = await getAdminProgramOverride(coach.role);
+  const effectiveProgramId = overrideProgramId ?? coach.program_id;
+  const db = overrideProgramId ? createAdminClient() : supabase;
+
+  // Scope the delete to the effective program_id to prevent cross-program deletes
+  const { error } = await db
     .from("recruits")
     .delete()
+    .eq("program_id", effectiveProgramId)
     .in("id", parsed.data.ids);
 
   if (error) {

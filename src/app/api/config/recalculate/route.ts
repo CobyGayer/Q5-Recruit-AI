@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
 import type { Recruit, ProgramConfig } from "@/types/database";
@@ -17,7 +18,7 @@ export async function POST() {
 
   const { data: coach } = await supabase
     .from("coaches")
-    .select("program_id")
+    .select("program_id, role")
     .eq("id", user.id)
     .single();
 
@@ -25,32 +26,29 @@ export async function POST() {
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
 
-  // Get shared program config
-  const { data: config } = await supabase
+  const overrideProgramId = await getAdminProgramOverride(coach.role);
+  const effectiveProgramId = overrideProgramId ?? coach.program_id;
+  const adminSupabase = createAdminClient();
+
+  const { data: config } = await adminSupabase
     .from("program_config")
     .select("*")
-    .eq("program_id", coach.program_id)
+    .eq("program_id", effectiveProgramId)
     .single();
 
   if (!config) {
-    return NextResponse.json(
-      { error: "No configuration found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "No configuration found" }, { status: 404 });
   }
 
-  // Get all recruits in this shared program workspace
-  const { data: recruits } = await supabase
+  const { data: recruits } = await adminSupabase
     .from("recruits")
     .select("*")
-    .eq("program_id", coach.program_id);
+    .eq("program_id", effectiveProgramId);
 
   if (!recruits || recruits.length === 0) {
     return NextResponse.json({ recalculated: 0 });
   }
 
-  // Recalculate DQS for each recruit using admin client (to bypass RLS for upserts)
-  const adminSupabase = createAdminClient();
   let recalculated = 0;
 
   for (const recruit of recruits) {
@@ -66,7 +64,7 @@ export async function POST() {
       {
         recruit_id: recruit.id,
         coach_id: user.id,
-        program_id: coach.program_id,
+        program_id: effectiveProgramId,
         overall_score: dqsResult.score,
         is_qualified: dqsResult.isQualified,
         disqualification_reasons: dqsResult.disqualificationReasons,

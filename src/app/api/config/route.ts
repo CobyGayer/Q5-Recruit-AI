@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateApiKey, hashApiKey } from "@/lib/utils/api-key";
+import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { z } from "zod";
 
 const ProgramConfigUpdateSchema = z.object({
@@ -34,7 +35,7 @@ export async function GET() {
 
   const { data: coach, error: coachError } = await supabase
     .from("coaches")
-    .select("program_id")
+    .select("program_id, role")
     .eq("id", user.id)
     .single();
 
@@ -42,10 +43,15 @@ export async function GET() {
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  // Validates the override cookie and confirms the program still exists
+  const overrideProgramId = await getAdminProgramOverride(coach.role);
+  const effectiveProgramId = overrideProgramId ?? coach.program_id;
+  const dbClient = overrideProgramId ? createAdminClient() : supabase;
+
+  const { data, error } = await dbClient
     .from("program_config")
     .select("*")
-    .eq("program_id", coach.program_id)
+    .eq("program_id", effectiveProgramId)
     .single();
 
   if (error) {
@@ -67,7 +73,7 @@ export async function PUT(request: NextRequest) {
 
   const { data: coach, error: coachError } = await supabase
     .from("coaches")
-    .select("program_id")
+    .select("program_id, role")
     .eq("id", user.id)
     .single();
 
@@ -84,12 +90,15 @@ export async function PUT(request: NextRequest) {
     );
   }
 
-  // Use admin client to bypass RLS for program_config writes
+  // Validates the override cookie and confirms the program still exists
+  const overrideProgramId = await getAdminProgramOverride(coach.role);
+  const effectiveProgramId = overrideProgramId ?? coach.program_id;
+
   const adminSupabase = createAdminClient();
   const { data, error } = await adminSupabase
     .from("program_config")
     .upsert(
-      { program_id: coach.program_id, coach_id: user.id, ...parsed.data },
+      { program_id: effectiveProgramId, coach_id: user.id, ...parsed.data },
       { onConflict: "program_id" }
     )
     .select()

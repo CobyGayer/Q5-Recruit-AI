@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import type { FlagType } from "@/types/database";
 
 export async function PUT(
@@ -21,7 +23,7 @@ export async function PUT(
 
   const { data: coach } = await supabase
     .from("coaches")
-    .select("program_id")
+    .select("program_id, role")
     .eq("id", user.id)
     .single();
 
@@ -29,12 +31,16 @@ export async function PUT(
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const overrideProgramId = await getAdminProgramOverride(coach.role);
+  const effectiveProgramId = overrideProgramId ?? coach.program_id;
+  const db = overrideProgramId ? createAdminClient() : supabase;
+
+  const { data, error } = await db
     .from("coach_recruit_flags")
     .upsert(
       {
         coach_id: user.id,
-        program_id: coach.program_id,
+        program_id: effectiveProgramId,
         recruit_id: recruitId,
         flag,
       },
@@ -51,7 +57,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: recruitId } = await params;
@@ -64,10 +70,25 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error, count } = await supabase
+  const { data: coach } = await supabase
+    .from("coaches")
+    .select("program_id, role")
+    .eq("id", user.id)
+    .single();
+
+  if (!coach?.program_id) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+
+  const overrideProgramId = await getAdminProgramOverride(coach.role);
+  const effectiveProgramId = overrideProgramId ?? coach.program_id;
+  const db = overrideProgramId ? createAdminClient() : supabase;
+
+  const { error, count } = await db
     .from("coach_recruit_flags")
     .delete()
-    .eq("recruit_id", recruitId);
+    .eq("recruit_id", recruitId)
+    .eq("program_id", effectiveProgramId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

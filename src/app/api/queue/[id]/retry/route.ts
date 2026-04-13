@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { extractRecruitData } from "@/lib/extraction/extract";
 import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
@@ -24,7 +25,7 @@ export async function POST(
 
   const { data: coach } = await supabase
     .from("coaches")
-    .select("program_id")
+    .select("program_id, role")
     .eq("id", user.id)
     .single();
 
@@ -32,11 +33,15 @@ export async function POST(
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
 
-  // Get the failed email
-  const { data: email } = await supabase
+  const overrideProgramId = await getAdminProgramOverride(coach.role);
+  const effectiveProgramId = overrideProgramId ?? coach.program_id;
+
+  // Fetch the failed email — admin client needed when override is active (RLS would block it)
+  const { data: email } = await adminSupabase
     .from("ingested_emails")
     .select("*")
     .eq("id", id)
+    .eq("program_id", effectiveProgramId)
     .single();
 
   if (!email) {
@@ -67,13 +72,13 @@ export async function POST(
     const recruitEmail =
       (extraction.recruitData.email as string) ?? email.sender_email;
 
-    // Create or update recruit
+    // Create or update recruit within the effective program
     let recruitId: string;
     if (recruitEmail) {
       const { data: existing } = await adminSupabase
         .from("recruits")
         .select("id")
-        .eq("program_id", coach.program_id)
+        .eq("program_id", effectiveProgramId)
         .eq("email", recruitEmail)
         .single();
 
@@ -86,7 +91,7 @@ export async function POST(
       } else {
         const { data: newRecruit } = await adminSupabase
           .from("recruits")
-          .insert({ coach_id: user.id, program_id: coach.program_id, ...extraction.recruitData })
+          .insert({ coach_id: user.id, program_id: effectiveProgramId, ...extraction.recruitData })
           .select()
           .single();
         recruitId = newRecruit!.id;
@@ -94,17 +99,17 @@ export async function POST(
     } else {
       const { data: newRecruit } = await adminSupabase
         .from("recruits")
-        .insert({ coach_id: user.id, program_id: coach.program_id, ...extraction.recruitData })
+        .insert({ coach_id: user.id, program_id: effectiveProgramId, ...extraction.recruitData })
         .select()
         .single();
       recruitId = newRecruit!.id;
     }
 
-    // Calculate DQS
+    // Calculate DQS using the effective program's config
     const { data: config } = await adminSupabase
       .from("program_config")
       .select("*")
-      .eq("program_id", coach.program_id)
+      .eq("program_id", effectiveProgramId)
       .single();
 
     if (config) {
@@ -115,10 +120,7 @@ export async function POST(
         .single();
 
       if (recruit) {
-        const dqsResult = calculateDQS(
-          recruit as Recruit,
-          config as ProgramConfig
-        );
+        const dqsResult = calculateDQS(recruit as Recruit, config as ProgramConfig);
 
         const aiSummary = await generateDQSSummary(
           recruit as Recruit,
@@ -130,7 +132,7 @@ export async function POST(
           {
             recruit_id: recruitId,
             coach_id: user.id,
-            program_id: coach.program_id,
+            program_id: effectiveProgramId,
             overall_score: dqsResult.score,
             is_qualified: dqsResult.isQualified,
             disqualification_reasons: dqsResult.disqualificationReasons,

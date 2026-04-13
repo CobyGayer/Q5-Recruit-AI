@@ -99,60 +99,25 @@ export default function RecruitDetailPage() {
 
   useEffect(() => {
     async function loadRecruit() {
-      const { data: recruitData } = await supabase
-        .from("recruits")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const [{ data: { user } }, detailRes] = await Promise.all([
+        supabase.auth.getUser(),
+        fetch(`/api/recruits/${id}`),
+      ]);
 
-      if (!recruitData) {
+      if (user) setCoachEmail(user.email ?? undefined);
+
+      if (!detailRes.ok) {
         setLoading(false);
         return;
       }
 
-      setRecruit(recruitData as Recruit);
-
-      // Fetch DQS score
-      const { data: scoreData } = await supabase
-        .from("recruit_dqs_scores")
-        .select("*")
-        .eq("recruit_id", id)
-        .single();
-      setDqsScore(scoreData as RecruitDqsScore | null);
-
-      // Fetch flag
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        setCoachEmail(user.email ?? undefined);
-        const { data: flagData } = await supabase
-          .from("coach_recruit_flags")
-          .select("*")
-          .eq("recruit_id", id)
-          .single();
-        setFlag(flagData as CoachRecruitFlag | null);
-      }
-
-      // Fetch original email
-      const { data: emailData } = await supabase
-        .from("ingested_emails")
-        .select("body_plain, received_at")
-        .eq("recruit_id", id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      setOriginalEmail(emailData?.body_plain ?? null);
-      setEmailReceivedAt(emailData?.received_at ?? null);
-
-      // Fetch transcript analysis
-      const { data: transcriptData } = await supabase
-        .from("transcript_analyses")
-        .select("*")
-        .eq("recruit_id", id)
-        .single();
-      setTranscriptAnalysis(transcriptData as TranscriptAnalysis | null);
-
+      const detail = await detailRes.json();
+      setRecruit(detail.recruit ?? null);
+      setDqsScore(detail.dqs_score ?? null);
+      setFlag(detail.flag ?? null);
+      setOriginalEmail(detail.original_email?.body_plain ?? null);
+      setEmailReceivedAt(detail.original_email?.received_at ?? null);
+      setTranscriptAnalysis(detail.transcript_analysis ?? null);
       setLoading(false);
     }
     loadRecruit();
@@ -162,25 +127,22 @@ export default function RecruitDetailPage() {
     if (!recruit) return;
     setSaving(true);
 
-    await supabase.from("recruits").update(editData).eq("id", recruit.id);
+    await fetch(`/api/recruits/${recruit.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editData),
+    });
 
-    // Trigger DQS recalculation
+    // Trigger DQS recalculation (respects program override server-side)
     await fetch("/api/config/recalculate", { method: "POST" });
 
-    // Reload data
-    const { data: updated } = await supabase
-      .from("recruits")
-      .select("*")
-      .eq("id", recruit.id)
-      .single();
-    if (updated) setRecruit(updated as Recruit);
-
-    const { data: newScore } = await supabase
-      .from("recruit_dqs_scores")
-      .select("*")
-      .eq("recruit_id", recruit.id)
-      .single();
-    setDqsScore(newScore as RecruitDqsScore | null);
+    // Reload data via the API route so override is respected
+    const detailRes = await fetch(`/api/recruits/${recruit.id}`);
+    if (detailRes.ok) {
+      const detail = await detailRes.json();
+      setRecruit(detail.recruit ?? null);
+      setDqsScore(detail.dqs_score ?? null);
+    }
 
     setEditing(false);
     setSaving(false);

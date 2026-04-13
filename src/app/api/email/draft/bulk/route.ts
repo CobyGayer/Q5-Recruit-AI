@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { generateRecruitDraft } from "@/lib/email/draft";
 import type { Recruit, RecruitDqsScore } from "@/types/database";
 
@@ -20,34 +22,32 @@ export async function POST(request: NextRequest) {
   const purpose = typeof body.purpose === "string" ? body.purpose : undefined;
 
   if (recruitIds.length === 0) {
-    return NextResponse.json(
-      { error: "recruitIds array is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "recruitIds array is required" }, { status: 400 });
   }
-
   if (recruitIds.length > MAX_BULK_SIZE) {
-    return NextResponse.json(
-      { error: `Maximum ${MAX_BULK_SIZE} recruits per batch` },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: `Maximum ${MAX_BULK_SIZE} recruits per batch` }, { status: 400 });
   }
 
-  // Fetch all recruits (RLS ensures coach isolation)
-  const { data: recruits } = await supabase
-    .from("recruits")
-    .select("*")
-    .in("id", recruitIds);
+  const { data: coach } = await supabase
+    .from("coaches")
+    .select("full_name, program_id, role")
+    .eq("id", user.id)
+    .single();
+
+  const overrideProgramId = await getAdminProgramOverride(coach?.role ?? "coach");
+  const effectiveProgramId = overrideProgramId ?? coach?.program_id;
+  const db = overrideProgramId ? createAdminClient() : supabase;
+
+  // Scope recruit fetch to the effective program to prevent cross-workspace lookups
+  let recruitsQuery = db.from("recruits").select("*").in("id", recruitIds);
+  if (overrideProgramId) recruitsQuery = recruitsQuery.eq("program_id", overrideProgramId);
+  const { data: recruits } = await recruitsQuery;
 
   if (!recruits?.length) {
-    return NextResponse.json(
-      { error: "No recruits found" },
-      { status: 404 }
-    );
+    return NextResponse.json({ error: "No recruits found" }, { status: 404 });
   }
 
-  // Fetch all DQS scores
-  const { data: scores } = await supabase
+  const { data: scores } = await db
     .from("recruit_dqs_scores")
     .select("*")
     .in("recruit_id", recruitIds);
@@ -56,26 +56,18 @@ export async function POST(request: NextRequest) {
     (scores ?? []).map((s) => [s.recruit_id, s as RecruitDqsScore])
   );
 
-  // Fetch coach + program info
-  const { data: coach } = await supabase
-    .from("coaches")
-    .select("full_name, program_id")
-    .eq("id", user.id)
-    .single();
-
   let programName = "";
   let institution = "";
-  if (coach?.program_id) {
-    const { data: program } = await supabase
+  if (effectiveProgramId) {
+    const { data: program } = await db
       .from("programs")
       .select("name, institution")
-      .eq("id", coach.program_id)
+      .eq("id", effectiveProgramId)
       .single();
     programName = program?.name ?? "";
     institution = program?.institution ?? "";
   }
 
-  // Generate drafts in parallel
   const results = await Promise.allSettled(
     recruits.map(async (recruit) => {
       const draft = await generateRecruitDraft({
