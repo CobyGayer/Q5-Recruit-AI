@@ -69,7 +69,7 @@ ${recruitSummary}
 INSTRUCTIONS:
 - Write as ${ctx.coachName}, the coach — use first person
 - Reference specific details from the recruit's profile (academics, position, club team, etc.)${ctx.purpose ? `\n- Focus the email around this purpose: ${ctx.purpose}` : ""}
-- Keep the tone warm and personal, not like a form letter
+- Keep the tone warm and personal, not like a formal letter
 - 2-3 short paragraphs maximum
 - Do NOT include a subject line in the body — only in the JSON
 - Do NOT use placeholder brackets like [School Name] — use the actual data provided

@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
  Dialog,
  DialogContent,
@@ -85,7 +85,7 @@ export function BulkEmailDialog({
  const [error, setError] = useState<string | null>(null);
 
 
- function resetState() {
+ const resetState = useCallback(() => {
    setMode(isMultiple ? "choose" : "personalized");
    setAnnStep("prompt");
    setAnnPurpose("");
@@ -100,14 +100,14 @@ export function BulkEmailDialog({
    setPersLoading(false);
    setCopied(false);
    setError(null);
- }
+ }, [isMultiple]);
 
 
  useEffect(() => {
    if (open) {
      resetState();
    }
- }, [open]);
+ }, [open, resetState]);
 
 
  function resetAndClose() {
