@@ -27,6 +27,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid format" }, { status: 400 });
     }
 
+    const { data: coach, error: coachError } = await supabase
+      .from("coaches")
+      .select("program_id")
+      .eq("id", user.id)
+      .single();
+
+    if (coachError || !coach?.program_id) {
+      return NextResponse.json(
+        { error: "Coach program not set" },
+        { status: 400 }
+      );
+    }
+
     const EXPORT_LIMIT = 5000;
 
     // Fetch recruits for this coach (optionally filtered to specific IDs)
@@ -34,7 +47,7 @@ export async function POST(request: NextRequest) {
     let query = supabase
       .from("recruits")
       .select("*")
-      .eq("coach_id", user.id)
+      .eq("program_id", coach.program_id)
       .order("full_name", { ascending: true })
       // Fetch one extra row as a sentinel: if we get EXPORT_LIMIT+1 results,
       // the dataset exceeds the limit and we reject rather than silently truncating.
@@ -85,7 +98,7 @@ export async function POST(request: NextRequest) {
     const { data: flags, error: flagsError } = await supabase
       .from("coach_recruit_flags")
       .select("*")
-      .eq("coach_id", user.id)
+      .eq("program_id", coach.program_id)
       .in("recruit_id", recruitIds);
 
     if (flagsError) {

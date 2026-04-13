@@ -8,6 +8,7 @@ import {
   formatHeight,
   formatArray,
   formatClubLevel,
+  splitFullName,
   shouldIncludeColumn,
 } from "./formatters";
 
@@ -32,9 +33,13 @@ function recruitsToExcelRows(
       recruit.fields_total > 0 ? (recruit.fields_extracted / recruit.fields_total) * 100 : 0;
 
     const row: ExcelRow = {};
+    const { firstName, lastName } = splitFullName(recruit.full_name);
 
     // Basic info columns
-    if (shouldIncludeColumn("name", options.selectedColumns)) row["Name"] = recruit.full_name || "";
+    if (shouldIncludeColumn("name", options.selectedColumns)) {
+      row["First Name"] = firstName;
+      row["Last Name"] = lastName;
+    }
     if (shouldIncludeColumn("email", options.selectedColumns) && options.includeContactInfo) row["Email"] = recruit.email || "";
     if (shouldIncludeColumn("phone", options.selectedColumns) && options.includeContactInfo) row["Phone"] = recruit.phone || "";
     if (shouldIncludeColumn("graduationYear", options.selectedColumns)) row["Grad Year"] = recruit.graduation_year || "";
