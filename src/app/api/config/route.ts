@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateApiKey, hashApiKey } from "@/lib/utils/api-key";
 import { getAdminProgramOverride } from "@/lib/admin-cookies";
+import { getEffectiveProgramContext } from "@/lib/program-context";
 import { z } from "zod";
 
 const ProgramConfigUpdateSchema = z.object({
@@ -33,20 +34,11 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: coach, error: coachError } = await supabase
-    .from("coaches")
-    .select("program_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (coachError || !coach?.program_id) {
+  const ctx = await getEffectiveProgramContext(supabase, user.id);
+  if (!ctx) {
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
-
-  // Validates the override cookie and confirms the program still exists
-  const overrideProgramId = await getAdminProgramOverride(coach.role);
-  const effectiveProgramId = overrideProgramId ?? coach.program_id;
-  const dbClient = overrideProgramId ? createAdminClient() : supabase;
+  const { effectiveProgramId, db: dbClient } = ctx;
 
   const { data, error } = await dbClient
     .from("program_config")

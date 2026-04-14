@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getAdminProgramOverride } from "@/lib/admin-cookies";
+import { getEffectiveProgramContext } from "@/lib/program-context";
 import type { RecruitWithScore } from "@/types/database";
 import { generateExcel } from "@/lib/export/excel";
 import { generateCSV } from "@/lib/export/csv";
@@ -23,25 +22,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: coach } = await supabase
-      .from("coaches")
-      .select("program_id, role")
-      .eq("id", user.id)
-      .single();
-
-    if (!coach?.program_id) {
+    const ctx = await getEffectiveProgramContext(supabase, user.id);
+    if (!ctx) {
       return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
     }
+    const { effectiveProgramId, db } = ctx;
 
     const body: ExportRequest = await request.json();
 
     if (!body.format || !["excel", "csv"].includes(body.format)) {
       return NextResponse.json({ error: "Invalid format" }, { status: 400 });
     }
-
-    const overrideProgramId = await getAdminProgramOverride(coach.role);
-    const effectiveProgramId = overrideProgramId ?? coach.program_id;
-    const db = overrideProgramId ? createAdminClient() : supabase;
 
     const EXPORT_LIMIT = 5000;
     const selectedIds = body.recruitIds && body.recruitIds.length > 0 ? body.recruitIds : null;

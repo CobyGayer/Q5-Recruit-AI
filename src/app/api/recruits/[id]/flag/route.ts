@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getAdminProgramOverride } from "@/lib/admin-cookies";
+import { getEffectiveProgramContext } from "@/lib/program-context";
 import type { FlagType } from "@/types/database";
 
 export async function PUT(
@@ -21,19 +20,11 @@ export async function PUT(
   const body = await request.json();
   const flag = body.flag as FlagType;
 
-  const { data: coach } = await supabase
-    .from("coaches")
-    .select("program_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!coach?.program_id) {
+  const ctx = await getEffectiveProgramContext(supabase, user.id);
+  if (!ctx) {
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
-
-  const overrideProgramId = await getAdminProgramOverride(coach.role);
-  const effectiveProgramId = overrideProgramId ?? coach.program_id;
-  const db = overrideProgramId ? createAdminClient() : supabase;
+  const { effectiveProgramId, db } = ctx;
 
   const { data, error } = await db
     .from("coach_recruit_flags")
@@ -70,19 +61,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: coach } = await supabase
-    .from("coaches")
-    .select("program_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!coach?.program_id) {
+  const ctx = await getEffectiveProgramContext(supabase, user.id);
+  if (!ctx) {
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
-
-  const overrideProgramId = await getAdminProgramOverride(coach.role);
-  const effectiveProgramId = overrideProgramId ?? coach.program_id;
-  const db = overrideProgramId ? createAdminClient() : supabase;
+  const { effectiveProgramId, db } = ctx;
 
   const { error, count } = await db
     .from("coach_recruit_flags")

@@ -85,6 +85,7 @@ export default function RecruitDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [emailCopied, setEmailCopied] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [emailReceivedAt, setEmailReceivedAt] = useState<string | null>(null);
@@ -134,9 +135,13 @@ export default function RecruitDetailPage() {
     });
 
     if (!saveRes.ok) {
+      const errJson = await saveRes.json().catch(() => ({}));
+      setSaveError(errJson.error ?? "Failed to save changes. Please try again.");
       setSaving(false);
       return;
     }
+
+    setSaveError(null);
 
     // Trigger DQS recalculation (respects program override server-side)
     await fetch("/api/config/recalculate", { method: "POST" });
@@ -400,16 +405,21 @@ export default function RecruitDetailPage() {
                       </div>
                     );
                   })}
-                  <div className="flex gap-2 pt-2">
-                    <Button onClick={handleSaveEdit} disabled={saving}>
-                      {saving ? "Saving..." : "Save Changes"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setEditing(false)}
-                    >
-                      Cancel
-                    </Button>
+                  <div className="space-y-2 pt-2">
+                    {saveError && (
+                      <p className="text-sm text-destructive">{saveError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button onClick={handleSaveEdit} disabled={saving}>
+                        {saving ? "Saving..." : "Save Changes"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => { setEditing(false); setSaveError(null); }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (

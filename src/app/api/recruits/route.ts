@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getAdminProgramOverride } from "@/lib/admin-cookies";
+import { getEffectiveProgramContext } from "@/lib/program-context";
 import type { RecruitWithScore } from "@/types/database";
 
 export async function GET() {
@@ -14,20 +13,11 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: coach } = await supabase
-    .from("coaches")
-    .select("program_id, role")
-    .eq("id", user.id)
-    .single();
-
-  if (!coach?.program_id) {
+  const ctx = await getEffectiveProgramContext(supabase, user.id);
+  if (!ctx) {
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
-
-  // Validates the override cookie and confirms the program still exists
-  const overrideProgramId = await getAdminProgramOverride(coach.role);
-  const effectiveProgramId = overrideProgramId ?? coach.program_id;
-  const dbClient = overrideProgramId ? createAdminClient() : supabase;
+  const { effectiveProgramId, db: dbClient } = ctx;
 
   const [recruitsResult, scoresResult, flagsResult] = await Promise.all([
     dbClient
