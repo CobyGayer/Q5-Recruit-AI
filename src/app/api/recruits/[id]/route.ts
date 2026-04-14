@@ -52,8 +52,8 @@ export async function GET(
 
   // When override is active, scope the recruit query to the overridden program so
   // the admin cannot reach records outside the currently selected workspace.
-  const recruitQuery = db.from("recruits").select("*").eq("id", id);
-  if (overrideProgramId) recruitQuery.eq("program_id", overrideProgramId);
+  let recruitQuery = db.from("recruits").select("*").eq("id", id);
+  if (overrideProgramId) recruitQuery = recruitQuery.eq("program_id", overrideProgramId);
 
   const [recruitResult, scoreResult, flagResult, emailResult, transcriptResult] =
     await Promise.all([

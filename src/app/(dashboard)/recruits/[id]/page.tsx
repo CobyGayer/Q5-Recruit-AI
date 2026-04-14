@@ -127,11 +127,16 @@ export default function RecruitDetailPage() {
     if (!recruit) return;
     setSaving(true);
 
-    await fetch(`/api/recruits/${recruit.id}`, {
+    const saveRes = await fetch(`/api/recruits/${recruit.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editData),
     });
+
+    if (!saveRes.ok) {
+      setSaving(false);
+      return;
+    }
 
     // Trigger DQS recalculation (respects program override server-side)
     await fetch("/api/config/recalculate", { method: "POST" });

@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
   const effectiveProgramId = overrideProgramId ?? coach?.program_id;
   const db = overrideProgramId ? createAdminClient() : supabase;
 
-  const recruitQuery = db.from("recruits").select("*").eq("id", recruitId);
-  if (overrideProgramId) recruitQuery.eq("program_id", overrideProgramId);
+  let recruitQuery = db.from("recruits").select("*").eq("id", recruitId);
+  if (overrideProgramId) recruitQuery = recruitQuery.eq("program_id", overrideProgramId);
   const { data: recruit, error: recruitError } = await recruitQuery.single();
 
   if (recruitError || !recruit) {

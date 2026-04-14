@@ -36,14 +36,19 @@ export function ProgramSwitcher() {
 
   async function handleChange(value: string) {
     setSwitching(true);
+    let res: Response;
     if (value === MY_PROGRAM_VALUE) {
-      await fetch("/api/admin/program-override", { method: "DELETE" });
+      res = await fetch("/api/admin/program-override", { method: "DELETE" });
     } else {
-      await fetch("/api/admin/program-override", {
+      res = await fetch("/api/admin/program-override", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ programId: value }),
       });
+    }
+    if (!res.ok) {
+      setSwitching(false);
+      return;
     }
     // Full reload is required: client-side hooks (useRecruits, useQueue, etc.)
     // are mount-only fetchers that router.refresh() does not remount.

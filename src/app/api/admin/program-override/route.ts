@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
   response.cookies.set(ADMIN_PROGRAM_OVERRIDE_COOKIE, programId, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
   });
   return response;
