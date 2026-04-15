@@ -2,11 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminProgramOverride } from "@/lib/admin-cookies";
 
-/**
- * Resolves the effective program ID and DB client for a given user,
- * applying the admin program override cookie when present.
- * Returns null if the coach has no program_id set.
- */
 export async function getEffectiveProgramContext(
   supabase: SupabaseClient,
   userId: string

@@ -143,8 +143,7 @@ export default function RecruitDetailPage() {
 
     setSaveError(null);
 
-    // Trigger DQS recalculation (respects program override server-side)
-    await fetch("/api/config/recalculate", { method: "POST" });
+    fetch("/api/config/recalculate", { method: "POST" });
 
     // Reload data via the API route so override is respected
     const detailRes = await fetch(`/api/recruits/${recruit.id}`);
