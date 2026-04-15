@@ -80,17 +80,16 @@ export function ProgramSwitcher() {
     <div className="px-3 mt-1">
       <p className="text-xs text-muted-foreground mb-1.5 px-1">Viewing as</p>
       <Select
-        value={currentOverrideId ?? MY_PROGRAM_VALUE}
+        value={currentOverrideId ?? ""}
         onValueChange={handleChange}
         disabled={switching}
       >
         <SelectTrigger
           className={`w-full text-xs h-8 ${isOverrideActive ? "border-amber-500/50 text-amber-600 dark:text-amber-400" : ""}`}
         >
-          <SelectValue />
+          <SelectValue placeholder="Select program…" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={MY_PROGRAM_VALUE}>My Program</SelectItem>
           {programs.map((p) => (
             <SelectItem key={p.id} value={p.id}>
               {p.name}
