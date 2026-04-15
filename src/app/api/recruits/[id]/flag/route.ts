@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveProgramContext } from "@/lib/program-context";
 import type { FlagType } from "@/types/database";
 
 export async function PUT(
@@ -19,22 +20,18 @@ export async function PUT(
   const body = await request.json();
   const flag = body.flag as FlagType;
 
-  const { data: coach } = await supabase
-    .from("coaches")
-    .select("program_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!coach?.program_id) {
+  const ctx = await getEffectiveProgramContext(supabase, user.id);
+  if (!ctx) {
     return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
   }
+  const { effectiveProgramId, db } = ctx;
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("coach_recruit_flags")
     .upsert(
       {
         coach_id: user.id,
-        program_id: coach.program_id,
+        program_id: effectiveProgramId,
         recruit_id: recruitId,
         flag,
       },
@@ -51,7 +48,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: recruitId } = await params;
@@ -64,10 +61,17 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error, count } = await supabase
+  const ctx = await getEffectiveProgramContext(supabase, user.id);
+  if (!ctx) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+  const { effectiveProgramId, db } = ctx;
+
+  const { error, count } = await db
     .from("coach_recruit_flags")
     .delete()
-    .eq("recruit_id", recruitId);
+    .eq("recruit_id", recruitId)
+    .eq("program_id", effectiveProgramId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -15,6 +15,7 @@ import {
 import { FeedbackDialog } from "@/components/layout/feedback-dialog";
 import { DqsInfoDialog } from "@/components/scoring/dqs-info-dialog";
 import { Logo } from "@/components/brand/logo";
+import { ProgramSwitcher } from "@/components/admin/program-switcher";
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -98,6 +99,7 @@ export function Sidebar({ isAdmin }: SidebarProps) {
               );
             })}
           </div>
+          <ProgramSwitcher />
         </div>
       )}
 

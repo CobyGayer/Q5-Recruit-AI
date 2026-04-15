@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveProgramContext } from "@/lib/program-context";
 import { z } from "zod";
 
 const BulkDeleteSchema = z.object({
@@ -16,6 +17,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ctx = await getEffectiveProgramContext(supabase, user.id);
+  if (!ctx) {
+    return NextResponse.json({ error: "Coach program not set" }, { status: 400 });
+  }
+  const { effectiveProgramId, db } = ctx;
+
   const raw = await request.json();
   const parsed = BulkDeleteSchema.safeParse(raw);
   if (!parsed.success) {
@@ -25,9 +32,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { error } = await supabase
+  // Scope the delete to the effective program_id to prevent cross-program deletes
+  const { error } = await db
     .from("recruits")
     .delete()
+    .eq("program_id", effectiveProgramId)
     .in("id", parsed.data.ids);
 
   if (error) {

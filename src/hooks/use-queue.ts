@@ -1,42 +1,26 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import type { IngestedEmail } from "@/types/database";
 
 export function useQueue() {
   const [emails, setEmails] = useState<IngestedEmail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createClient();
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Not authenticated");
-      setLoading(false);
-      return;
-    }
-
-    const { data, error: fetchError } = await supabase
-      .from("ingested_emails")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100);
-
-    if (fetchError) {
-      setError(fetchError.message);
+    const res = await fetch("/api/queue");
+    if (!res.ok) {
+      setError("Failed to fetch queue");
     } else {
-      setEmails(data ?? []);
+      setEmails(await res.json());
     }
 
     setLoading(false);
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     fetchQueue();
