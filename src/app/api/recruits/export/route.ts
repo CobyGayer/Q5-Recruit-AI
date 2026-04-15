@@ -34,6 +34,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid format" }, { status: 400 });
     }
 
+    const { data: coach, error: coachError } = await supabase
+      .from("coaches")
+      .select("program_id")
+      .eq("id", user.id)
+      .single();
+
+    if (coachError || !coach?.program_id) {
+      return NextResponse.json(
+        { error: "Coach program not set" },
+        { status: 400 }
+      );
+    }
+
     const EXPORT_LIMIT = 5000;
     const selectedIds = body.recruitIds && body.recruitIds.length > 0 ? body.recruitIds : null;
 
