@@ -143,7 +143,7 @@ export default function RecruitDetailPage() {
 
     setSaveError(null);
 
-    fetch("/api/config/recalculate", { method: "POST" });
+    await fetch("/api/config/recalculate", { method: "POST" });
 
     // Reload data via the API route so override is respected
     const detailRes = await fetch(`/api/recruits/${recruit.id}`);

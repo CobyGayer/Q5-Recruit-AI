@@ -55,9 +55,26 @@ export function ProgramSwitcher() {
     window.location.reload();
   }
 
-  if (loading || programs.length < 2) return null;
+  if (loading) return null;
+  if (!currentOverrideId && programs.length < 2) return null;
 
   const isOverrideActive = currentOverrideId !== null;
+
+  // Override active but programs list unavailable — render minimal reset so admin isn't trapped.
+  if (isOverrideActive && programs.length < 2) {
+    return (
+      <div className="px-3 mt-1">
+        <p className="text-xs text-muted-foreground mb-1.5 px-1">Viewing as</p>
+        <button
+          onClick={() => handleChange(MY_PROGRAM_VALUE)}
+          disabled={switching}
+          className="w-full text-xs h-8 rounded-md border border-amber-500/50 text-amber-600 dark:text-amber-400 px-2 text-left hover:bg-accent disabled:opacity-50"
+        >
+          Reset to My Program
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="px-3 mt-1">

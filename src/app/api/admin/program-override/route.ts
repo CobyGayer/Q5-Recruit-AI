@@ -37,7 +37,14 @@ export async function GET() {
     .eq("id", overrideProgramId)
     .single();
 
-  return NextResponse.json({ programId: overrideProgramId, program: program ?? null });
+  if (!program) {
+    // Stale cookie — program was deleted. Clear and normalize to no override.
+    const response = NextResponse.json({ programId: null, program: null });
+    response.cookies.delete(ADMIN_PROGRAM_OVERRIDE_COOKIE);
+    return response;
+  }
+
+  return NextResponse.json({ programId: overrideProgramId, program });
 }
 
 export async function POST(request: NextRequest) {
