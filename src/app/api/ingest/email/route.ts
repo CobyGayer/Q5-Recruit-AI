@@ -10,7 +10,9 @@ import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
 import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
 import { findAndParseEmlAttachments, looksLikeEml, type ParsedEmail } from "@/lib/email/parse-eml";
-import type { Recruit, ProgramConfig, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
+import { buildUpdateData } from "@/lib/recruits/update-data";
+import { checkAndQueueDuplicateReview, normalizeNameKey } from "@/lib/recruits/duplicate-review";
+import type { Recruit, ProgramConfig, TranscriptAnalysis } from "@/types/database";
 
 export const maxDuration = 300;
 
@@ -367,6 +369,7 @@ async function processEmail(
 
     if (existing) {
       // Update existing recruit (only overwrite if new confidence >= existing)
+      const prevNameKey = (existing.name_key as string | null) ?? null;
       const updateData = buildUpdateData(
         existing,
         extraction.recruitData,
@@ -384,6 +387,12 @@ async function processEmail(
       recruitId = existing.id as string;
       if (!updatedRecruit) {
         console.warn(`[processEmail] Update returned no data for recruit ${recruitId} — proceeding with ID only`);
+      }
+
+      // Check if the name key changed or became newly available on this update
+      const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
+      if (newNameKey && newNameKey !== prevNameKey) {
+        await checkAndQueueDuplicateReview(supabase, programId, recruitId, prevNameKey, newNameKey, "ingest");
       }
     } else if (senderIsCoach) {
       // Coach's own outbound email — don't create a duplicate recruit
@@ -413,6 +422,12 @@ async function processEmail(
         );
       }
       recruitId = newRecruit.id;
+
+      // Scan the new recruit for name matches (create path always scans)
+      const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
+      if (newNameKey) {
+        await checkAndQueueDuplicateReview(supabase, programId, recruitId, null, newNameKey, "ingest");
+      }
     }
 
     // Transcript analysis (non-blocking)
@@ -562,54 +577,3 @@ async function processEmail(
   }
 }
 
-/**
- * Build update data for an existing recruit, only overwriting fields
- * where the new extraction has equal or higher confidence.
- */
-function buildUpdateData(
-  existing: Record<string, unknown>,
-  newData: Record<string, unknown>,
-  newConfidence: Record<string, ConfidenceLevel>
-): Record<string, unknown> {
-  const existingConfidence = (existing.extraction_confidence ?? {}) as Record<
-    string,
-    ConfidenceLevel
-  >;
-  const confidenceRank: Record<ConfidenceLevel, number> = {
-    high: 3,
-    medium: 2,
-    low: 1,
-  };
-
-  const update: Record<string, unknown> = {};
-
-  for (const [field, value] of Object.entries(newData)) {
-    if (field === "extraction_confidence" || field === "fields_missing" || field === "fields_extracted" || field === "fields_total") {
-      continue; // Handle these separately
-    }
-
-    if (value == null) continue; // Don't overwrite with null
-
-    const existingConf = existingConfidence[field];
-    const newConf = newConfidence[field];
-
-    if (!existingConf || !newConf) {
-      // No confidence data — overwrite if we have a value
-      update[field] = value;
-    } else if (confidenceRank[newConf] >= confidenceRank[existingConf]) {
-      update[field] = value;
-    }
-    // Otherwise keep existing value (higher confidence)
-  }
-
-  // Always update metadata
-  update.extraction_confidence = {
-    ...existingConfidence,
-    ...newConfidence,
-  };
-  update.fields_missing = newData.fields_missing;
-  update.fields_extracted = newData.fields_extracted;
-  update.fields_total = newData.fields_total;
-
-  return update;
-}

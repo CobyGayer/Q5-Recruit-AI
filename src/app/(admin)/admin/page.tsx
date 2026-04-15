@@ -65,6 +65,10 @@ export default function AdminPage() {
   const [sampleLoading, setSampleLoading] = useState<string | null>(null);
   const [sampleResult, setSampleResult] = useState<{ coachId: string; success: boolean; message: string } | null>(null);
 
+  const [dupScanCoachId, setDupScanCoachId] = useState<string>("");
+  const [dupScanLoading, setDupScanLoading] = useState(false);
+  const [dupScanResult, setDupScanResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const [programs, setPrograms] = useState<Program[]>([]);
   const [programsLoading, setProgramsLoading] = useState(false);
   const [newProgram, setNewProgram] = useState({ name: "", institution: "", domain: "", division: "", conference: "" });
@@ -207,6 +211,26 @@ export default function AdminPage() {
     }
     setResetLoading(false);
     setResetDialogOpen(false);
+  }
+
+  async function handleDuplicateScan() {
+    if (!dupScanCoachId) return;
+    setDupScanLoading(true);
+    setDupScanResult(null);
+    try {
+      const res = await fetch(`/api/admin/coaches/${dupScanCoachId}/duplicate-scan`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDupScanResult({ success: true, message: data.message });
+      } else {
+        setDupScanResult({ success: false, message: data.error || "Scan failed" });
+      }
+    } catch {
+      setDupScanResult({ success: false, message: "Network error" });
+    }
+    setDupScanLoading(false);
   }
 
   async function handleSendSample(coachId: string) {
@@ -840,6 +864,60 @@ export default function AdminPage() {
                     }`}
                   >
                     {resetResult.message}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Temporary duplicate-scan trigger */}
+            <Card className="border-blue-200 bg-blue-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-5 w-5 text-blue-500" />
+                  Duplicate Recruit Scan
+                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Temporary</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Bulk-scan a coach&apos;s program for same-name recruit clusters and queue pending
+                  duplicate review groups. The coach will be prompted to resolve duplicates on their
+                  next dashboard visit. This does <strong>not</strong> merge anything automatically.
+                </p>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Select Coach</Label>
+                  <Select value={dupScanCoachId} onValueChange={setDupScanCoachId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a coach..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {coaches.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.full_name} ({c.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                  onClick={handleDuplicateScan}
+                  disabled={!dupScanCoachId || dupScanLoading}
+                >
+                  <Users className="h-4 w-4 mr-1" />
+                  {dupScanLoading ? "Scanning..." : "Run Duplicate Scan"}
+                </Button>
+
+                {dupScanResult && (
+                  <div
+                    className={`p-3 rounded text-sm ${
+                      dupScanResult.success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                    }`}
+                  >
+                    {dupScanResult.message}
                   </div>
                 )}
               </CardContent>

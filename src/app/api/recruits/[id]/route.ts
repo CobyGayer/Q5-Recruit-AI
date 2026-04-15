@@ -55,17 +55,15 @@ export async function GET(
   let recruitQuery = db.from("recruits").select("*").eq("id", id);
   if (overrideProgramId) recruitQuery = recruitQuery.eq("program_id", overrideProgramId);
 
-  const [recruitResult, scoreResult, flagResult, emailResult, transcriptResult] =
+  const [recruitResult, scoreResult, flagResult, emailsResult, transcriptResult] =
     await Promise.all([
       recruitQuery.single(),
       db.from("recruit_dqs_scores").select("*").eq("recruit_id", id).maybeSingle(),
       db.from("coach_recruit_flags").select("*").eq("recruit_id", id).maybeSingle(),
       db.from("ingested_emails")
-        .select("body_plain, received_at")
+        .select("id, subject, sender_email, sender_name, body_plain, received_at, created_at")
         .eq("recruit_id", id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .order("received_at", { ascending: true }),
       db.from("transcript_analyses").select("*").eq("recruit_id", id).maybeSingle(),
     ]);
 
@@ -73,11 +71,16 @@ export async function GET(
     return NextResponse.json({ error: "Recruit not found" }, { status: 404 });
   }
 
+  const emails = emailsResult.data ?? [];
+
   return NextResponse.json({
     recruit: recruitResult.data,
     dqs_score: scoreResult.data ?? null,
     flag: flagResult.data ?? null,
-    original_email: emailResult.data ?? null,
+    // Legacy field — kept for backwards compatibility, points to the earliest email
+    original_email: emails[0] ?? null,
+    // Full email history
+    source_emails: emails,
     transcript_analysis: transcriptResult.data ?? null,
   });
 }
