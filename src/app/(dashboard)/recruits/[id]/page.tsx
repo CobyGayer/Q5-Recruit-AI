@@ -179,6 +179,7 @@ export default function RecruitDetailPage() {
       high_school_team: recruit.high_school_team,
       video_url: recruit.video_url,
     });
+    setSaveError(null);
     setEditing(true);
   }
 
