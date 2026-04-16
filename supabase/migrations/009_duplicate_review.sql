@@ -19,7 +19,6 @@ CREATE OR REPLACE FUNCTION public.normalize_name_key(name TEXT)
 RETURNS TEXT
 LANGUAGE SQL
 STABLE
-STRICT
 AS $$
   SELECT trim(
     regexp_replace(
