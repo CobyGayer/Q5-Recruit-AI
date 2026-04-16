@@ -67,6 +67,7 @@ BEGIN
     sat_score            = COALESCE((p_survivor_data->>'sat_score')::INT, sat_score),
     act_score            = COALESCE((p_survivor_data->>'act_score')::INT, act_score),
     club_team            = COALESCE((p_survivor_data->>'club_team'), club_team),
+    club_level           = COALESCE((p_survivor_data->>'club_level'), club_level),
     high_school_team     = COALESCE((p_survivor_data->>'high_school_team'), high_school_team),
     video_url            = COALESCE((p_survivor_data->>'video_url'), video_url),
     extraction_confidence = COALESCE(p_survivor_data->'extraction_confidence', extraction_confidence),

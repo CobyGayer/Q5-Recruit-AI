@@ -66,6 +66,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Group is not pending" }, { status: 400 });
   }
 
+  // Verify all recruitIds are actual members of this group
+  const { data: groupMembers } = await db
+    .from("recruit_duplicate_review_group_members")
+    .select("recruit_id")
+    .eq("group_id", groupId);
+
+  const memberIdSet = new Set((groupMembers ?? []).map((m) => m.recruit_id));
+  const outsideGroup = recruitIds.filter((id) => !memberIdSet.has(id));
+  if (outsideGroup.length > 0) {
+    return NextResponse.json(
+      { error: "One or more recruits are not members of this review group" },
+      { status: 400 }
+    );
+  }
+
   // Fetch full recruit records — use admin client to ensure we can read all members
   const { data: recruits, error: recruitsError } = await adminDb
     .from("recruits")

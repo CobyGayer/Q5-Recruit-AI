@@ -297,9 +297,9 @@ function DashboardContent() {
   }, [supabase]);
 
   useEffect(() => {
-    fetch("/api/recruits/duplicate-review/groups")
-      .then((res) => res.ok ? res.json() : [])
-      .then((groups: unknown[]) => setPendingDuplicateCount(groups.length))
+    fetch("/api/recruits/duplicate-review/groups?count_only=true")
+      .then((res) => res.ok ? res.json() : { count: 0 })
+      .then((data: { count: number }) => setPendingDuplicateCount(data.count ?? 0))
       .catch(() => {});
   }, []);
 

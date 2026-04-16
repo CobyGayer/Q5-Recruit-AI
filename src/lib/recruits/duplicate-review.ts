@@ -122,10 +122,24 @@ async function upsertReviewGroup(
       .single();
 
     if (insertError || !inserted) {
-      console.error("[duplicate-review] Failed to insert review group:", insertError?.message);
-      return;
+      // Unique constraint violation: another concurrent request won the race.
+      // Re-query for the group it created so we can still add members.
+      const { data: raceWinner } = await db
+        .from("recruit_duplicate_review_groups")
+        .select("id")
+        .eq("program_id", programId)
+        .eq("name_key", nameKey)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (!raceWinner) {
+        console.error("[duplicate-review] Failed to insert review group and could not find existing:", insertError?.message);
+        return;
+      }
+      group = raceWinner;
+    } else {
+      group = inserted;
     }
-    group = inserted;
   }
 
   if (!group) {

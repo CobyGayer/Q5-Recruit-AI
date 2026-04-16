@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getEffectiveProgramContext } from "@/lib/program-context";
 
@@ -7,9 +7,9 @@ import { getEffectiveProgramContext } from "@/lib/program-context";
  *
  * Returns all pending duplicate review groups for the current program,
  * each with the full recruit profiles of its members.
- * Used by the dashboard banner and the review page.
+ * Used by the dashboard banner (?count_only=true) and the review page.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -25,6 +25,19 @@ export async function GET() {
   }
 
   const { effectiveProgramId, db } = ctx;
+
+  // Fast path: dashboard banner only needs a count
+  const countOnly = request.nextUrl.searchParams.get("count_only") === "true";
+  if (countOnly) {
+    const { count, error } = await db
+      .from("recruit_duplicate_review_groups")
+      .select("id", { count: "exact", head: true })
+      .eq("program_id", effectiveProgramId)
+      .eq("status", "pending");
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ count: count ?? 0 });
+  }
 
   // Fetch pending groups for this program
   const { data: groups, error: groupsError } = await db

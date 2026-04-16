@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -113,6 +113,16 @@ function ReviewGroupCard({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [confirmMergeOpen, setConfirmMergeOpen] = useState(false);
   const [confirmDismissOpen, setConfirmDismissOpen] = useState(false);
+
+  // Reset selection when members list changes (e.g. after partial merge)
+  const prevMemberIds = useRef<string>("");
+  useEffect(() => {
+    const currentIds = group.members.map((r) => r.id).sort().join(",");
+    if (prevMemberIds.current && prevMemberIds.current !== currentIds) {
+      setSelectedIds(new Set());
+    }
+    prevMemberIds.current = currentIds;
+  }, [group.members]);
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
