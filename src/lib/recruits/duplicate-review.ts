@@ -133,8 +133,7 @@ async function upsertReviewGroup(
         .maybeSingle();
 
       if (!raceWinner) {
-        console.error("[duplicate-review] Failed to insert review group and could not find existing:", insertError?.message);
-        return;
+        throw new Error(`[duplicate-review] Failed to insert review group and could not find existing: ${insertError?.message}`);
       }
       group = raceWinner;
     } else {

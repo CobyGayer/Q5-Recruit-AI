@@ -49,6 +49,10 @@ BEGIN
 
   -- -------------------------------------------------------
   -- 3. Apply the pre-computed merged field payload to the survivor.
+  --    COALESCE is intentionally defensive: the TS merge logic never
+  --    nulls a field (it skips null values), so COALESCE aligns with
+  --    that contract. If a future caller wants to explicitly clear a
+  --    field, this SQL must be updated to use direct assignment instead.
   -- -------------------------------------------------------
   UPDATE public.recruits
   SET

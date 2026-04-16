@@ -32,6 +32,7 @@ const MERGEABLE_FIELDS: Array<keyof Recruit> = [
  * its field values are then merged from all sources.
  */
 export function chooseSurvivor(recruits: Recruit[]): Recruit {
+  if (recruits.length === 0) throw new Error("chooseSurvivor requires at least one recruit");
   return recruits.reduce((best, r) => {
     if (r.fields_extracted > best.fields_extracted) return r;
     if (
@@ -57,6 +58,7 @@ export function chooseSurvivor(recruits: Recruit[]): Recruit {
 export function buildMergedPayload(
   recruits: Recruit[]
 ): Partial<Recruit> & { extraction_confidence: Record<string, ConfidenceLevel> } {
+  if (recruits.length === 0) throw new Error("buildMergedPayload requires at least one recruit");
   const merged: Record<string, unknown> = {};
   // mergedConfidence: the final confidence metadata stored on the recruit row (union of all sources)
   const mergedConfidence: Record<string, ConfidenceLevel> = {};
