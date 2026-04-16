@@ -144,7 +144,7 @@ function ReviewGroupCard({
               &ldquo;{group.name_key}&rdquo;
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {group.members.length} profiles with this name · Source: {group.source.replace("_", " ")}
+              {group.members.length} profiles with this name · Source: {group.source.replaceAll("_", " ")}
             </p>
           </div>
           <Badge variant="outline" className="text-xs bg-amber-50 border-amber-200 text-amber-700 shrink-0">

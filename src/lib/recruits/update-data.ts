@@ -20,6 +20,9 @@ export function buildUpdateData(
   >;
 
   const update: Record<string, unknown> = {};
+  // Track which fields actually won the confidence battle so we only persist
+  // confidence for fields whose values we are overwriting.
+  const winnerConf: Record<string, ConfidenceLevel> = {};
 
   for (const [field, value] of Object.entries(newData)) {
     if (
@@ -39,16 +42,18 @@ export function buildUpdateData(
     if (!existingConf || !newConf) {
       // No confidence metadata on either side — overwrite if we have a value
       update[field] = value;
+      if (newConf) winnerConf[field] = newConf;
     } else if (CONFIDENCE_RANK[newConf] >= CONFIDENCE_RANK[existingConf]) {
       update[field] = value;
+      winnerConf[field] = newConf;
     }
-    // Otherwise keep existing (higher-confidence) value
+    // Otherwise keep existing (higher-confidence) value — don't downgrade confidence
   }
 
-  // Always merge confidence metadata and completeness counters
+  // Merge confidence only for fields that were actually overwritten
   update.extraction_confidence = {
     ...existingConfidence,
-    ...newConfidence,
+    ...winnerConf,
   };
   update.fields_missing = newData.fields_missing;
   update.fields_extracted = newData.fields_extracted;

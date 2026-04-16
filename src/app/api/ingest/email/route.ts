@@ -392,7 +392,9 @@ async function processEmail(
       // Check if the name key changed or became newly available on this update
       const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
       if (newNameKey && newNameKey !== prevNameKey) {
-        await checkAndQueueDuplicateReview(supabase, programId, recruitId, prevNameKey, newNameKey, "ingest");
+        checkAndQueueDuplicateReview(supabase, programId, recruitId, prevNameKey, newNameKey, "ingest").catch((err) =>
+          console.error("[ingest] duplicate-review queue failed:", err)
+        );
       }
     } else if (senderIsCoach) {
       // Coach's own outbound email — don't create a duplicate recruit
@@ -426,7 +428,9 @@ async function processEmail(
       // Scan the new recruit for name matches (create path always scans)
       const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
       if (newNameKey) {
-        await checkAndQueueDuplicateReview(supabase, programId, recruitId, null, newNameKey, "ingest");
+        checkAndQueueDuplicateReview(supabase, programId, recruitId, null, newNameKey, "ingest").catch((err) =>
+          console.error("[ingest] duplicate-review queue failed:", err)
+        );
       }
     }
 

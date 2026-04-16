@@ -158,7 +158,9 @@ export async function POST(
       // Name-scan on name change
       const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
       if (newNameKey && newNameKey !== prevNameKey) {
-        await checkAndQueueDuplicateReview(adminSupabase, effectiveProgramId, recruitId, prevNameKey, newNameKey, "ingest");
+        checkAndQueueDuplicateReview(adminSupabase, effectiveProgramId, recruitId, prevNameKey, newNameKey, "ingest").catch((err) =>
+          console.error("[retry] duplicate-review queue failed:", err)
+        );
       }
     } else {
       // Create new recruit
@@ -180,7 +182,9 @@ export async function POST(
       // Name-scan on create
       const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
       if (newNameKey) {
-        await checkAndQueueDuplicateReview(adminSupabase, effectiveProgramId, recruitId, null, newNameKey, "ingest");
+        checkAndQueueDuplicateReview(adminSupabase, effectiveProgramId, recruitId, null, newNameKey, "ingest").catch((err) =>
+          console.error("[retry] duplicate-review queue failed:", err)
+        );
       }
     }
 

@@ -147,16 +147,18 @@ export async function PUT(
   }
 
   // Maintain duplicate-review queue when full_name changes.
+  // Source: admin override path = "admin_scan", regular coach edit = "ingest".
   if (parsed.data.full_name !== undefined && data) {
     const adminDb = createAdminClient();
-    await checkAndQueueDuplicateReview(
+    const duplicateSource = overrideProgramId ? "admin_scan" : "ingest";
+    checkAndQueueDuplicateReview(
       adminDb,
       data.program_id,
       id,
       prevNameKey,
       (data.name_key as string | null) ?? null,
-      "admin_scan"
-    );
+      duplicateSource
+    ).catch((err) => console.error("[recruits/PUT] duplicate-review queue failed:", err));
   }
 
   return NextResponse.json(data);
