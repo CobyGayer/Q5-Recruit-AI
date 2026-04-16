@@ -274,7 +274,7 @@ export default function DuplicateReviewPage() {
       const data = await res.json();
       setGroups(data);
     } catch (err) {
-      setErrorMsg(String(err));
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setPageLoading(false);
     }
@@ -297,7 +297,7 @@ export default function DuplicateReviewPage() {
       }
       await loadGroups();
     } catch (err) {
-      setErrorMsg(String(err));
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setActionLoading(false);
     }
@@ -318,7 +318,7 @@ export default function DuplicateReviewPage() {
       }
       await loadGroups();
     } catch (err) {
-      setErrorMsg(String(err));
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setActionLoading(false);
     }

@@ -39,10 +39,13 @@ export function buildUpdateData(
     const existingConf = existingConfidence[field];
     const newConf = newConfidence[field];
 
-    if (!existingConf || !newConf) {
+    if (!existingConf && !newConf) {
       // No confidence metadata on either side — overwrite if we have a value
       update[field] = value;
-      if (newConf) winnerConf[field] = newConf;
+    } else if (!existingConf && newConf) {
+      // New has confidence, existing doesn't — overwrite and record confidence
+      update[field] = value;
+      winnerConf[field] = newConf;
     } else if (CONFIDENCE_RANK[newConf] >= CONFIDENCE_RANK[existingConf]) {
       update[field] = value;
       winnerConf[field] = newConf;

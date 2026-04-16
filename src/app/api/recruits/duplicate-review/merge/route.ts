@@ -147,7 +147,6 @@ export async function POST(request: NextRequest) {
         configResult.data as ProgramConfig,
         transcriptResult.data as TranscriptAnalysis | null
       );
-      console.log("[merge] calling generateDQSSummary for survivor", survivor.id);
       const aiSummary = await generateDQSSummary(
         survivorResult.data as Recruit,
         configResult.data as ProgramConfig,
