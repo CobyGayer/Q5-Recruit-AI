@@ -1,10 +1,5 @@
 import type { ConfidenceLevel } from "@/types/database";
-
-const CONFIDENCE_RANK: Record<ConfidenceLevel, number> = {
-  high: 3,
-  medium: 2,
-  low: 1,
-};
+import { CONFIDENCE_RANK } from "./confidence";
 
 /**
  * Build a partial update payload for an existing recruit row.

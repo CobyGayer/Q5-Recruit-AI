@@ -9,6 +9,13 @@
  *
  * Suffixes like "jr", "sr", "ii" are NOT stripped in v1 — they remain
  * significant to reduce false positives.
+ *
+ * Known divergence from SQL unaccent(): NFD decomposition only strips combining
+ * diacritical marks (U+0300–U+036F). Characters whose base+accent do not
+ * decompose in Unicode (e.g. ł → stays ł, ß → stays ß, Turkish ı → stays ı)
+ * will NOT be folded here, but unaccent() in Postgres maps them to ASCII.
+ * This means edge-case names with those characters may produce different keys
+ * in TS vs SQL. Acceptable for v1 — affected names are rare in a US recruit pool.
  */
 export function normalizeNameKey(name: string | null | undefined): string {
   if (!name) return "";

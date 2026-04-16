@@ -73,20 +73,20 @@ const CLUB_LEVEL_LABELS: Record<string, string> = {
   unknown: "Unknown",
 };
 
+interface SourceEmail {
+  id: string;
+  subject: string | null;
+  sender_email: string | null;
+  sender_name: string | null;
+  body_plain: string | null;
+  received_at: string | null;
+  created_at: string;
+}
+
 export default function RecruitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = createClient();
-
-  interface SourceEmail {
-    id: string;
-    subject: string | null;
-    sender_email: string | null;
-    sender_name: string | null;
-    body_plain: string | null;
-    received_at: string | null;
-    created_at: string;
-  }
 
   const [recruit, setRecruit] = useState<Recruit | null>(null);
   const [dqsScore, setDqsScore] = useState<RecruitDqsScore | null>(null);

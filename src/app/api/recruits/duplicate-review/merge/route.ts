@@ -41,14 +41,21 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const groupId = body.group_id as string | undefined;
-  const recruitIds = body.recruit_ids as string[] | undefined;
+  const recruitIds = body.recruit_ids as unknown;
 
-  if (!groupId || !recruitIds || recruitIds.length < 2) {
+  if (
+    !groupId ||
+    !Array.isArray(recruitIds) ||
+    recruitIds.length < 2 ||
+    recruitIds.some((id) => typeof id !== "string")
+  ) {
     return NextResponse.json(
       { error: "group_id and at least 2 recruit_ids are required" },
       { status: 400 }
     );
   }
+
+  const validatedRecruitIds = recruitIds as string[];
 
   // Verify the group belongs to this program
   const { data: group } = await db
@@ -73,7 +80,7 @@ export async function POST(request: NextRequest) {
     .eq("group_id", groupId);
 
   const memberIdSet = new Set((groupMembers ?? []).map((m) => m.recruit_id));
-  const outsideGroup = recruitIds.filter((id) => !memberIdSet.has(id));
+  const outsideGroup = validatedRecruitIds.filter((id) => !memberIdSet.has(id));
   if (outsideGroup.length > 0) {
     return NextResponse.json(
       { error: "One or more recruits are not members of this review group" },
@@ -85,7 +92,7 @@ export async function POST(request: NextRequest) {
   const { data: recruits, error: recruitsError } = await adminDb
     .from("recruits")
     .select("*")
-    .in("id", recruitIds)
+    .in("id", validatedRecruitIds)
     .eq("program_id", effectiveProgramId);
 
   if (recruitsError || !recruits || recruits.length < 2) {
@@ -95,7 +102,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (recruits.length !== recruitIds.length) {
+  if (recruits.length !== validatedRecruitIds.length) {
     return NextResponse.json(
       { error: "Some recruits could not be found in this program" },
       { status: 400 }

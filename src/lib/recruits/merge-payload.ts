@@ -1,10 +1,5 @@
 import type { Recruit, ConfidenceLevel } from "@/types/database";
-
-const CONFIDENCE_RANK: Record<ConfidenceLevel, number> = {
-  high: 3,
-  medium: 2,
-  low: 1,
-};
+import { CONFIDENCE_RANK } from "./confidence";
 
 /** Scalar fields on a recruit that participate in the field-level merge. */
 const MERGEABLE_FIELDS: Array<keyof Recruit> = [
