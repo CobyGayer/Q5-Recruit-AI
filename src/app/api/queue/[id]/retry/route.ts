@@ -156,8 +156,11 @@ export async function POST(
         console.warn(`[retry] Update returned no data for recruit ${recruitId}`);
       }
 
-      // Name-scan on name change
-      const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
+      // Use the persisted name_key from the updated row rather than recomputing
+      // from extraction.recruitData — buildUpdateData() may have rejected the
+      // extracted full_name due to low confidence, so the DB trigger's value is
+      // the authoritative key.
+      const newNameKey = (updatedRecruit?.name_key as string | null) ?? null;
       if (newNameKey && newNameKey !== prevNameKey) {
         checkAndQueueDuplicateReview(adminSupabase, effectiveProgramId, recruitId, prevNameKey, newNameKey, "ingest").catch((err) =>
           console.error("[retry] duplicate-review queue failed:", err)

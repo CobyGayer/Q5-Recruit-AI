@@ -353,7 +353,7 @@ export default function DuplicateReviewPage() {
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Loading review groups...</p>
         </div>
-      ) : groups.length === 0 ? (
+      ) : !errorMsg && groups.length === 0 ? (
         <Card>
           <CardContent className="p-12 text-center">
             <p className="text-muted-foreground">

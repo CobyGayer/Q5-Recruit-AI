@@ -20,14 +20,17 @@ RETURNS TEXT
 LANGUAGE SQL
 STABLE
 AS $$
-  SELECT trim(
-    regexp_replace(
+  SELECT NULLIF(
+    trim(
       regexp_replace(
-        lower(unaccent(coalesce(name, ''))),
-        '[^a-z]+', ' ', 'g'
-      ),
-      '\s+', ' ', 'g'
-    )
+        regexp_replace(
+          lower(unaccent(coalesce(name, ''))),
+          '[^a-z]+', ' ', 'g'
+        ),
+        '\s+', ' ', 'g'
+      )
+    ),
+    ''
   )
 $$;
 

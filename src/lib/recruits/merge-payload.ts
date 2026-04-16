@@ -90,11 +90,10 @@ export function buildMergedPayload(
         // Field not yet set — take this value
         merged[field as string] = value;
         winnerConf[field as string] = newConf;
-      } else if (!existingConf || !newConf) {
-        // No confidence data on one side — newer source wins (sorted oldest→newest)
-        merged[field as string] = value;
-        winnerConf[field as string] = newConf;
-      } else if (CONFIDENCE_RANK[newConf] > CONFIDENCE_RANK[existingConf]) {
+      } else if (!newConf) {
+        // Incoming has no confidence metadata — never overwrite an existing value
+        // (sparse placeholder values must not displace higher-quality data)
+      } else if (!existingConf || CONFIDENCE_RANK[newConf] > CONFIDENCE_RANK[existingConf]) {
         merged[field as string] = value;
         winnerConf[field as string] = newConf;
       } else if (CONFIDENCE_RANK[newConf] === CONFIDENCE_RANK[existingConf]) {
@@ -128,10 +127,17 @@ export function buildMergedPayload(
   const mergedExtracted =
     MERGEABLE_FIELDS.filter((f) => merged[f as string] != null).length +
     (positions.length > 0 ? 1 : 0);
-  // Use the newest source's fields_total so the sat/act mutual-exclusion
-  // adjustment (which removes one field when only one test score is present)
-  // is preserved rather than hard-coding a raw field count here.
-  const mergedTotal = sorted[sorted.length - 1]?.fields_total ?? (MERGEABLE_FIELDS.length + 1);
+  // Recompute fields_total from the merged record rather than copying from the
+  // newest source. When two duplicates each carry a different test score (one has
+  // SAT, the other ACT) the merge produces a record with BOTH scores, making
+  // fields_extracted exceed a copied fields_total and pushing completeness > 100%.
+  // Base: all MERGEABLE_FIELDS slots + 1 for positions.
+  // SAT/ACT mutual exclusion: when both scores are present all slots count;
+  // otherwise one test-score slot is excluded (the one the recruit didn't supply).
+  const hasSat = (merged["sat_score"] as number | null | undefined) != null;
+  const hasAct = (merged["act_score"] as number | null | undefined) != null;
+  const baseMergedTotal = MERGEABLE_FIELDS.length + 1; // +1 for positions
+  const mergedTotal = (hasSat && hasAct) ? baseMergedTotal : baseMergedTotal - 1;
 
   return {
     ...(merged as Partial<Recruit>),
