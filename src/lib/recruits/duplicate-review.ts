@@ -23,14 +23,16 @@ export async function checkAndQueueDuplicateReview(
   source: DuplicateReviewGroupSource = "ingest"
 ): Promise<void> {
   // Only scan on create (prevNameKey null) or when the name actually changed/appeared.
-  if (!newNameKey) return;
   if (prevNameKey === newNameKey) return;
 
-  // When the name changed, remove this recruit from the old pending group.
+  // When the name changed (or was removed), remove this recruit from the old pending group.
   // If the old group drops below 2 members it is auto-resolved.
   if (prevNameKey) {
     await pruneFromOldGroup(db, programId, recruitId, prevNameKey);
   }
+
+  // Name was removed — nothing left to queue.
+  if (!newNameKey) return;
 
   // Find other recruits in the same program with the same name_key.
   const { data: matches } = await db

@@ -13,6 +13,7 @@ CREATE OR REPLACE FUNCTION public.merge_duplicate_recruits(
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_program_id          UUID;
@@ -120,6 +121,11 @@ BEGIN
     WHERE lf.recruit_id = v_loser_id
     ON CONFLICT (program_id, recruit_id)
     DO UPDATE SET
+      coach_id   = CASE
+                     WHEN EXCLUDED.created_at > coach_recruit_flags.created_at
+                     THEN EXCLUDED.coach_id
+                     ELSE coach_recruit_flags.coach_id
+                   END,
       flag       = CASE
                      WHEN EXCLUDED.created_at > coach_recruit_flags.created_at
                      THEN EXCLUDED.flag
@@ -199,3 +205,7 @@ BEGIN
 
 END;
 $$;
+
+-- Restrict execution to service_role only (SECURITY DEFINER function must not be public-callable).
+REVOKE EXECUTE ON FUNCTION public.merge_duplicate_recruits(UUID, UUID[], JSONB) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.merge_duplicate_recruits(UUID, UUID[], JSONB) TO service_role;

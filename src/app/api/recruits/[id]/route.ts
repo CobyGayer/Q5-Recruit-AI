@@ -64,7 +64,8 @@ export async function GET(
       db.from("ingested_emails")
         .select("id, subject, sender_email, sender_name, body_plain, received_at, created_at")
         .eq("recruit_id", id)
-        .order("received_at", { ascending: true }),
+        .order("received_at", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true }),
       db.from("transcript_analyses").select("*").eq("recruit_id", id).maybeSingle(),
     ]);
 
