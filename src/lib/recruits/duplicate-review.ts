@@ -26,6 +26,12 @@ export async function checkAndQueueDuplicateReview(
   if (!newNameKey) return;
   if (prevNameKey === newNameKey) return;
 
+  // When the name changed, remove this recruit from the old pending group.
+  // If the old group drops below 2 members it is auto-resolved.
+  if (prevNameKey) {
+    await pruneFromOldGroup(db, programId, recruitId, prevNameKey);
+  }
+
   // Find other recruits in the same program with the same name_key.
   const { data: matches } = await db
     .from("recruits")
@@ -37,6 +43,47 @@ export async function checkAndQueueDuplicateReview(
   if (!matches || matches.length === 0) return; // no duplicates found
 
   await upsertReviewGroup(db, programId, newNameKey, [recruitId, ...matches.map((r) => r.id)], source);
+}
+
+/**
+ * Remove a recruit from the pending review group for the given name_key.
+ * If the group drops below 2 members, auto-resolve it.
+ */
+async function pruneFromOldGroup(
+  db: SupabaseClient,
+  programId: string,
+  recruitId: string,
+  nameKey: string
+): Promise<void> {
+  const { data: group } = await db
+    .from("recruit_duplicate_review_groups")
+    .select("id")
+    .eq("program_id", programId)
+    .eq("name_key", nameKey)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (!group) return;
+
+  // Remove this recruit from the group.
+  await db
+    .from("recruit_duplicate_review_group_members")
+    .delete()
+    .eq("group_id", group.id)
+    .eq("recruit_id", recruitId);
+
+  // Count remaining members.
+  const { count } = await db
+    .from("recruit_duplicate_review_group_members")
+    .select("*", { count: "exact", head: true })
+    .eq("group_id", group.id);
+
+  if ((count ?? 0) < 2) {
+    await db
+      .from("recruit_duplicate_review_groups")
+      .update({ status: "resolved", resolved_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq("id", group.id);
+  }
 }
 
 /**

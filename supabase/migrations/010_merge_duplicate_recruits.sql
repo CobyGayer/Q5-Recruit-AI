@@ -114,8 +114,8 @@ BEGIN
   --    one flag per recruit per program (shared between all coaches).
   -- -------------------------------------------------------
   FOREACH v_loser_id IN ARRAY p_loser_ids LOOP
-    INSERT INTO public.coach_recruit_flags (id, coach_id, program_id, recruit_id, flag, created_at)
-    SELECT lf.id, lf.coach_id, lf.program_id, p_survivor_id, lf.flag, lf.created_at
+    INSERT INTO public.coach_recruit_flags (coach_id, program_id, recruit_id, flag, created_at)
+    SELECT lf.coach_id, lf.program_id, p_survivor_id, lf.flag, lf.created_at
     FROM public.coach_recruit_flags lf
     WHERE lf.recruit_id = v_loser_id
     ON CONFLICT (program_id, recruit_id)

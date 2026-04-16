@@ -119,21 +119,26 @@ export function buildMergedPayload(
   const allPositions = sorted.flatMap((r) => r.positions ?? []);
   const positions = [...new Set(allPositions)];
 
-  // Recompute completeness metadata based on merged result —
+  // Recompute completeness metadata from the merged result —
   // this will be regenerated properly by DQS recalculation, but we set
-  // reasonable values so the row is consistent before DQS runs.
-  const allMissing = sorted[sorted.length - 1]?.fields_missing ?? [];
-  const allTotal = sorted[sorted.length - 1]?.fields_total ?? 0;
-  const allExtracted = Object.values(MERGEABLE_FIELDS).filter(
-    (f) => merged[f as string] != null
-  ).length;
+  // consistent values so the row is not misleadingly stale before DQS runs.
+  const mergedMissing = (MERGEABLE_FIELDS.filter(
+    (f) => merged[f as string] == null
+  ) as string[]).concat(positions.length === 0 ? ["positions"] : []);
+  const mergedExtracted =
+    MERGEABLE_FIELDS.filter((f) => merged[f as string] != null).length +
+    (positions.length > 0 ? 1 : 0);
+  // Use the newest source's fields_total so the sat/act mutual-exclusion
+  // adjustment (which removes one field when only one test score is present)
+  // is preserved rather than hard-coding a raw field count here.
+  const mergedTotal = sorted[sorted.length - 1]?.fields_total ?? (MERGEABLE_FIELDS.length + 1);
 
   return {
     ...(merged as Partial<Recruit>),
     positions,
     extraction_confidence: mergedConfidence,
-    fields_missing: allMissing,
-    fields_extracted: allExtracted,
-    fields_total: allTotal,
+    fields_missing: mergedMissing,
+    fields_extracted: mergedExtracted,
+    fields_total: mergedTotal,
   };
 }

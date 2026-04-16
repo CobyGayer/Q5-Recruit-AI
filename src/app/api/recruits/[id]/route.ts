@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { z } from "zod";
 import { normalizeEmail } from "@/lib/utils/email";
+import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
 
 const RecruitUpdateSchema = z.object({
   full_name: z.string().nullable().optional(),
@@ -122,6 +123,17 @@ export async function PUT(
   const overrideProgramId = await getAdminProgramOverride(coach?.role ?? "coach");
   const db = overrideProgramId ? createAdminClient() : supabase;
 
+  // Capture the current name_key before update so duplicate-review can diff old vs new.
+  let prevNameKey: string | null = null;
+  if (parsed.data.full_name !== undefined) {
+    const { data: current } = await db
+      .from("recruits")
+      .select("name_key")
+      .eq("id", id)
+      .single();
+    prevNameKey = current?.name_key ?? null;
+  }
+
   // When override is active, scope the update to the overridden program_id to
   // prevent cross-program writes if the recruit ID somehow belongs elsewhere.
   let query = db.from("recruits").update(updateData).eq("id", id);
@@ -132,6 +144,19 @@ export async function PUT(
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Maintain duplicate-review queue when full_name changes.
+  if (parsed.data.full_name !== undefined && data) {
+    const adminDb = createAdminClient();
+    await checkAndQueueDuplicateReview(
+      adminDb,
+      data.program_id,
+      id,
+      prevNameKey,
+      (data.name_key as string | null) ?? null,
+      "admin_scan"
+    );
   }
 
   return NextResponse.json(data);
