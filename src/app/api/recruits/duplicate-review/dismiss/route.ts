@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
     .update({
       status: "dismissed",
       dismissed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
     .eq("id", groupId);
 

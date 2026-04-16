@@ -8,7 +8,8 @@ import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
 import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
 import { buildUpdateData } from "@/lib/recruits/update-data";
-import { checkAndQueueDuplicateReview, normalizeNameKey } from "@/lib/recruits/duplicate-review";
+import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
+import { normalizeNameKey } from "@/lib/recruits/name-key";
 import type { Recruit, ProgramConfig, TranscriptAnalysis } from "@/types/database";
 
 export async function POST(

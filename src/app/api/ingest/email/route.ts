@@ -11,7 +11,8 @@ import { generateDQSSummary } from "@/lib/scoring/summary";
 import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
 import { findAndParseEmlAttachments, looksLikeEml, type ParsedEmail } from "@/lib/email/parse-eml";
 import { buildUpdateData } from "@/lib/recruits/update-data";
-import { checkAndQueueDuplicateReview, normalizeNameKey } from "@/lib/recruits/duplicate-review";
+import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
+import { normalizeNameKey } from "@/lib/recruits/name-key";
 import type { Recruit, ProgramConfig, TranscriptAnalysis } from "@/types/database";
 
 export const maxDuration = 300;

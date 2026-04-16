@@ -297,10 +297,12 @@ function DashboardContent() {
   }, [supabase]);
 
   useEffect(() => {
-    fetch("/api/recruits/duplicate-review/groups?count_only=true")
+    const controller = new AbortController();
+    fetch("/api/recruits/duplicate-review/groups?count_only=true", { signal: controller.signal })
       .then((res) => res.ok ? res.json() : { count: 0 })
       .then((data: { count: number }) => setPendingDuplicateCount(data.count ?? 0))
       .catch(() => {});
+    return () => controller.abort();
   }, []);
 
   function handleViewMode(mode: "cards" | "list") {

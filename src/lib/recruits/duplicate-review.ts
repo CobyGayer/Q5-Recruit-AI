@@ -210,5 +210,3 @@ async function upsertReviewGroup(
   }
 }
 
-// Re-export for convenience
-export { normalizeNameKey };

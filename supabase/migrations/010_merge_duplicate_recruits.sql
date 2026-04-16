@@ -182,26 +182,20 @@ BEGIN
 
   UPDATE public.recruit_duplicate_review_groups g
   SET
-    status      = CASE
-                    WHEN (
-                      SELECT count(*) FROM public.recruit_duplicate_review_group_members m
-                      WHERE m.group_id = g.id
-                    ) < 2 THEN 'resolved'
-                    ELSE 'pending'
-                  END,
-    resolved_at = CASE
-                    WHEN (
-                      SELECT count(*) FROM public.recruit_duplicate_review_group_members m
-                      WHERE m.group_id = g.id
-                    ) < 2 THEN now()
-                    ELSE NULL
-                  END,
+    status      = CASE WHEN member_count < 2 THEN 'resolved' ELSE 'pending' END,
+    resolved_at = CASE WHEN member_count < 2 THEN now() ELSE NULL END,
     updated_at  = now()
-  WHERE id IN (
-    SELECT DISTINCT m.group_id
+  FROM (
+    SELECT m.group_id, count(*) AS member_count
     FROM public.recruit_duplicate_review_group_members m
-    WHERE m.recruit_id = p_survivor_id
-  );
+    WHERE m.group_id IN (
+      SELECT DISTINCT group_id
+      FROM public.recruit_duplicate_review_group_members
+      WHERE recruit_id = p_survivor_id
+    )
+    GROUP BY m.group_id
+  ) counts
+  WHERE g.id = counts.group_id;
 
 END;
 $$;
