@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DuplicateReviewGroupSource } from "@/types/database";
-import { normalizeNameKey } from "./name-key";
 
 /**
  * After a recruit is created or its name becomes newly available/changed,
@@ -22,8 +21,14 @@ export async function checkAndQueueDuplicateReview(
   newNameKey: string | null,
   source: DuplicateReviewGroupSource = "ingest"
 ): Promise<void> {
-  // Only scan on create (prevNameKey null) or when the name actually changed/appeared.
-  if (prevNameKey === newNameKey) return;
+  // Name unchanged — only re-surface a dismissed group (the email touch is the
+  // promised re-prompt trigger). No pruning or pending-group logic needed.
+  if (prevNameKey === newNameKey) {
+    if (newNameKey) {
+      await maybySurfaceDismissedGroup(db, programId, newNameKey, source);
+    }
+    return;
+  }
 
   // When the name changed (or was removed), remove this recruit from the old pending group.
   // If the old group drops below 2 members it is auto-resolved.
@@ -121,6 +126,38 @@ export async function bulkScanProgramForDuplicates(
   }
 
   return groupsQueued;
+}
+
+/**
+ * If a dismissed group exists for this (program, name_key) and there are still
+ * 2+ recruits with that key, insert a fresh pending group so the coach is
+ * re-prompted. Called when an email touches a recruit without changing its name.
+ */
+async function maybySurfaceDismissedGroup(
+  db: SupabaseClient,
+  programId: string,
+  nameKey: string,
+  source: DuplicateReviewGroupSource
+): Promise<void> {
+  const { data: dismissed } = await db
+    .from("recruit_duplicate_review_groups")
+    .select("id")
+    .eq("program_id", programId)
+    .eq("name_key", nameKey)
+    .eq("status", "dismissed")
+    .maybeSingle();
+
+  if (!dismissed) return;
+
+  const { data: matches } = await db
+    .from("recruits")
+    .select("id")
+    .eq("program_id", programId)
+    .eq("name_key", nameKey);
+
+  if (!matches || matches.length < 2) return;
+
+  await upsertReviewGroup(db, programId, nameKey, matches.map((r) => r.id), source);
 }
 
 /**

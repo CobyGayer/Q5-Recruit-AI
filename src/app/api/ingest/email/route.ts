@@ -12,7 +12,6 @@ import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
 import { findAndParseEmlAttachments, looksLikeEml, type ParsedEmail } from "@/lib/email/parse-eml";
 import { buildUpdateData } from "@/lib/recruits/update-data";
 import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
-import { normalizeNameKey } from "@/lib/recruits/name-key";
 import type { Recruit, ProgramConfig, TranscriptAnalysis } from "@/types/database";
 
 export const maxDuration = 300;
@@ -395,7 +394,10 @@ async function processEmail(
       // extracted full_name due to low confidence, so the DB trigger's value is
       // the authoritative key.
       const newNameKey = (updatedRecruit?.name_key as string | null) ?? null;
-      if (newNameKey && newNameKey !== prevNameKey) {
+      // Always fire when there's a name key: handles both name-change (re-queue
+      // pending group) and name-unchanged (re-surface a dismissed group if the
+      // email touch is the promised re-prompt trigger).
+      if (newNameKey) {
         checkAndQueueDuplicateReview(supabase, programId, recruitId, prevNameKey, newNameKey, "ingest").catch((err) =>
           console.error("[ingest] duplicate-review queue failed:", err)
         );
@@ -429,8 +431,9 @@ async function processEmail(
       }
       recruitId = newRecruit.id;
 
-      // Scan the new recruit for name matches (create path always scans)
-      const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
+      // Use the DB-persisted name_key — the trigger applies unaccent() which
+      // diverges from the TS helper for chars like ł, ß, ı.
+      const newNameKey = (newRecruit.name_key as string | null) ?? null;
       if (newNameKey) {
         checkAndQueueDuplicateReview(supabase, programId, recruitId, null, newNameKey, "ingest").catch((err) =>
           console.error("[ingest] duplicate-review queue failed:", err)
