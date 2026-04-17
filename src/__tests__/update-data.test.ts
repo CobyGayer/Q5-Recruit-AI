@@ -78,6 +78,16 @@ describe("buildUpdateData", () => {
     expect(update.fields_total).toBe(10);
   });
 
+  it("does NOT overwrite when existing has confidence but new does not", () => {
+    // existingConf && !newConf: new extraction has no confidence metadata → keep existing
+    const update = buildUpdateData(
+      makeExisting(),       // gpa existing confidence = "high"
+      { gpa: 2.0 },        // new value present but no confidence key
+      {}                   // no confidence for gpa
+    );
+    expect(update.gpa).toBeUndefined();
+  });
+
   it("a sparse follow-up email can update a single field (sat_score) without losing others", () => {
     // Simulate a more complete existing recruit
     const existing = makeExisting({

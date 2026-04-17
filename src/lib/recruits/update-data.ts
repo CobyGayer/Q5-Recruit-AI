@@ -61,9 +61,9 @@ export function buildUpdateData(
     ...existingConfidence,
     ...winnerConf,
   };
-  update.fields_missing = newData.fields_missing;
-  update.fields_extracted = newData.fields_extracted;
-  update.fields_total = newData.fields_total;
+  if (newData.fields_missing !== undefined) update.fields_missing = newData.fields_missing;
+  if (newData.fields_extracted !== undefined) update.fields_extracted = newData.fields_extracted;
+  if (newData.fields_total !== undefined) update.fields_total = newData.fields_total;
 
   return update;
 }

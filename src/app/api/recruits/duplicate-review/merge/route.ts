@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
   const { effectiveProgramId, db } = ctx;
   const adminDb = createAdminClient();
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const groupId = body.group_id as string | undefined;
   const recruitIds = body.recruit_ids as unknown;
 

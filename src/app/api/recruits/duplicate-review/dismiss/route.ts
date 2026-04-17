@@ -26,7 +26,12 @@ export async function POST(request: NextRequest) {
 
   const { effectiveProgramId, db } = ctx;
 
-  const body = await request.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const groupId = body.group_id as string | undefined;
   if (!groupId) {
     return NextResponse.json({ error: "group_id is required" }, { status: 400 });
