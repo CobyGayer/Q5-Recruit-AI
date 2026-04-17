@@ -9,7 +9,6 @@ import { generateDQSSummary } from "@/lib/scoring/summary";
 import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
 import { buildUpdateData } from "@/lib/recruits/update-data";
 import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
-import { normalizeNameKey } from "@/lib/recruits/name-key";
 import type { Recruit, ProgramConfig, TranscriptAnalysis } from "@/types/database";
 
 export async function POST(
@@ -161,7 +160,9 @@ export async function POST(
       // extracted full_name due to low confidence, so the DB trigger's value is
       // the authoritative key.
       const newNameKey = (updatedRecruit?.name_key as string | null) ?? null;
-      if (newNameKey && newNameKey !== prevNameKey) {
+      // Mirror ingest: fire on any truthy name_key, not just when it changed.
+      // Unchanged keys still need to re-surface dismissed groups on touch.
+      if (newNameKey) {
         checkAndQueueDuplicateReview(adminSupabase, effectiveProgramId, recruitId, prevNameKey, newNameKey, "ingest").catch((err) =>
           console.error("[retry] duplicate-review queue failed:", err)
         );
@@ -183,8 +184,9 @@ export async function POST(
       }
       recruitId = newRecruit.id;
 
-      // Name-scan on create
-      const newNameKey = normalizeNameKey(extraction.recruitData.full_name as string | null);
+      // Use DB-persisted name_key — SQL unaccent() diverges from TS normalizeNameKey()
+      // for chars like ł, ß, ı. Mirror ingest create path.
+      const newNameKey = (newRecruit.name_key as string | null) ?? null;
       if (newNameKey) {
         checkAndQueueDuplicateReview(adminSupabase, effectiveProgramId, recruitId, null, newNameKey, "ingest").catch((err) =>
           console.error("[retry] duplicate-review queue failed:", err)

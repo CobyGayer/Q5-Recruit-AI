@@ -139,12 +139,15 @@ async function maybySurfaceDismissedGroup(
   nameKey: string,
   source: DuplicateReviewGroupSource
 ): Promise<void> {
+  // limit(1) before maybeSingle — dismissed rows have no uniqueness constraint
+  // so multiple dismissed rows for the same (program_id, name_key) can exist.
   const { data: dismissed } = await db
     .from("recruit_duplicate_review_groups")
     .select("id")
     .eq("program_id", programId)
     .eq("name_key", nameKey)
     .eq("status", "dismissed")
+    .limit(1)
     .maybeSingle();
 
   if (!dismissed) return;

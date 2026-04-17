@@ -182,7 +182,11 @@ BEGIN
 
   UPDATE public.recruit_duplicate_review_groups g
   SET
-    status      = CASE WHEN member_count < 2 THEN 'resolved' ELSE 'pending' END,
+    status      = CASE
+                    WHEN member_count < 2 THEN 'resolved'
+                    WHEN g.status = 'dismissed' THEN 'dismissed'
+                    ELSE 'pending'
+                  END,
     resolved_at = CASE WHEN member_count < 2 THEN now() ELSE NULL END,
     updated_at  = now()
   FROM (
