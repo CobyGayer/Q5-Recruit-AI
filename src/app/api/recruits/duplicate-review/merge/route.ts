@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
         dqsResult
       );
 
-      await adminDb.from("recruit_dqs_scores").upsert(
+      const { error: dqsUpsertError } = await adminDb.from("recruit_dqs_scores").upsert(
         {
           recruit_id: survivor.id,
           coach_id: user.id,
@@ -175,10 +175,20 @@ export async function POST(request: NextRequest) {
         },
         { onConflict: "recruit_id" }
       );
+      if (dqsUpsertError) {
+        console.error("[merge] DQS upsert failed:", dqsUpsertError.message);
+        return NextResponse.json(
+          { error: "Merge succeeded but DQS score could not be updated. Refresh the page to retry." },
+          { status: 500 }
+        );
+      }
     }
   } catch (err) {
-    // Non-fatal: log but don't fail the merge response
     console.error("[merge] DQS recompute error:", err);
+    return NextResponse.json(
+      { error: "Merge succeeded but DQS recompute failed. Refresh the page to retry." },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({

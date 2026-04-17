@@ -70,7 +70,7 @@ export async function POST(
     // We use the same heuristic as the main ingest path.
     const isForwarded = /---------- Forwarded message -+/.test(email.body_plain ?? "") ||
       /^Begin forwarded message:/m.test(email.body_plain ?? "") ||
-      /^----- Original Message -----/.test(email.body_plain ?? "");
+      /^----- Original Message -----/m.test(email.body_plain ?? "");
 
     const extraction = await extractRecruitData(
       email.subject,

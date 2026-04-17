@@ -5,6 +5,7 @@ import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { z } from "zod";
 import { normalizeEmail } from "@/lib/utils/email";
 import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
+import type { ConfidenceLevel } from "@/types/database";
 
 const RecruitUpdateSchema = z.object({
   full_name: z.string().nullable().optional(),
@@ -116,24 +117,36 @@ export async function PUT(
     );
   }
 
-  const updateData = {
-    ...parsed.data,
-    ...(parsed.data.email !== undefined && { email: normalizeEmail(parsed.data.email) }),
-  };
-
   const overrideProgramId = await getAdminProgramOverride(coach?.role ?? "coach");
   const db = overrideProgramId ? createAdminClient() : supabase;
 
-  // Capture the current name_key before update so duplicate-review can diff old vs new.
-  let prevNameKey: string | null = null;
-  if (parsed.data.full_name !== undefined) {
-    const { data: current } = await db
-      .from("recruits")
-      .select("name_key")
-      .eq("id", id)
-      .single();
-    prevNameKey = current?.name_key ?? null;
+  // Fetch pre-update state: name_key (for duplicate-review diff) and
+  // extraction_confidence (to merge with manual-edit confidence patch).
+  let preFetchQuery = db
+    .from("recruits")
+    .select("name_key, extraction_confidence")
+    .eq("id", id);
+  if (overrideProgramId) preFetchQuery = preFetchQuery.eq("program_id", overrideProgramId);
+  const { data: current } = await preFetchQuery.single();
+  const prevNameKey: string | null = current?.name_key ?? null;
+  const prevConfidence: Record<string, ConfidenceLevel> = (current?.extraction_confidence ?? {}) as Record<string, ConfidenceLevel>;
+
+  // Stamp manually-edited non-null fields with "high" confidence so they survive
+  // future duplicate merges. merge-payload prefers higher confidence; a field
+  // with no confidence entry would be overwritten by any extracted value.
+  const manualConfidencePatch: Record<string, ConfidenceLevel> = {};
+  for (const [field, value] of Object.entries(parsed.data)) {
+    if (field !== "email" && value != null) {
+      manualConfidencePatch[field] = "high";
+    }
   }
+  const updatedConfidence = { ...prevConfidence, ...manualConfidencePatch };
+
+  const updateData = {
+    ...parsed.data,
+    ...(parsed.data.email !== undefined && { email: normalizeEmail(parsed.data.email) }),
+    ...(Object.keys(manualConfidencePatch).length > 0 && { extraction_confidence: updatedConfidence }),
+  };
 
   // When override is active, scope the update to the overridden program_id to
   // prevent cross-program writes if the recruit ID somehow belongs elsewhere.
@@ -147,9 +160,11 @@ export async function PUT(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Maintain duplicate-review queue when full_name changes.
-  // Source: admin override path = "admin_scan", regular coach edit = "ingest".
-  if (parsed.data.full_name !== undefined && data) {
+  // Only trigger duplicate-review when full_name is explicitly being changed.
+  // Do not resurface dismissed groups on unrelated field edits — the UI always
+  // sends full_name in the payload, so we guard by comparing the actual name_key.
+  const newNameKey = (data?.name_key as string | null) ?? null;
+  if (parsed.data.full_name !== undefined && data && prevNameKey !== newNameKey) {
     const adminDb = createAdminClient();
     const duplicateSource = overrideProgramId ? "admin_scan" : "ingest";
     checkAndQueueDuplicateReview(
@@ -157,7 +172,7 @@ export async function PUT(
       data.program_id,
       id,
       prevNameKey,
-      (data.name_key as string | null) ?? null,
+      newNameKey,
       duplicateSource
     ).catch((err) => console.error("[recruits/PUT] duplicate-review queue failed:", err));
   }
