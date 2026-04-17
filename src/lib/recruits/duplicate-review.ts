@@ -25,7 +25,7 @@ export async function checkAndQueueDuplicateReview(
   // promised re-prompt trigger). No pruning or pending-group logic needed.
   if (prevNameKey === newNameKey) {
     if (newNameKey) {
-      await maybySurfaceDismissedGroup(db, programId, newNameKey, source);
+      await maybeSurfaceDismissedGroup(db, programId, newNameKey, source);
     }
     return;
   }
@@ -133,7 +133,7 @@ export async function bulkScanProgramForDuplicates(
  * 2+ recruits with that key, insert a fresh pending group so the coach is
  * re-prompted. Called when an email touches a recruit without changing its name.
  */
-async function maybySurfaceDismissedGroup(
+async function maybeSurfaceDismissedGroup(
   db: SupabaseClient,
   programId: string,
   nameKey: string,

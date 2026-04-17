@@ -80,9 +80,6 @@ export async function GET(
     recruit: recruitResult.data,
     dqs_score: scoreResult.data ?? null,
     flag: flagResult.data ?? null,
-    // Legacy field — kept for backwards compatibility, points to the earliest email
-    original_email: emails[0] ?? null,
-    // Full email history
     source_emails: emails,
     transcript_analysis: transcriptResult.data ?? null,
   });
