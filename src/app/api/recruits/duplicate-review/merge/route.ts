@@ -177,18 +177,22 @@ export async function POST(request: NextRequest) {
       );
       if (dqsUpsertError) {
         console.error("[merge] DQS upsert failed:", dqsUpsertError.message);
-        return NextResponse.json(
-          { error: "Merge succeeded but DQS score could not be updated. Refresh the page to retry." },
-          { status: 500 }
-        );
+        return NextResponse.json({
+          success: true,
+          survivor_id: survivor.id,
+          merged_count: loserIds.length,
+          dqs_warning: "Merge succeeded but DQS score could not be updated. It will refresh on next page load.",
+        });
       }
     }
   } catch (err) {
     console.error("[merge] DQS recompute error:", err);
-    return NextResponse.json(
-      { error: "Merge succeeded but DQS recompute failed. Refresh the page to retry." },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      survivor_id: survivor.id,
+      merged_count: loserIds.length,
+      dqs_warning: "Merge succeeded but DQS recompute failed. It will refresh on next page load.",
+    });
   }
 
   return NextResponse.json({

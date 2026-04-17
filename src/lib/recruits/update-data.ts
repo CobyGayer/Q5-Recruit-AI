@@ -50,7 +50,10 @@ export function buildUpdateData(
       update[field] = value;
       winnerConf[field] = newConf;
     }
-    // Otherwise keep existing (higher-confidence) value — don't downgrade confidence
+    // existingConf && !newConf: new extraction has no confidence metadata → keep
+    // existing high-confidence value rather than overwriting with unconfident data.
+    // (Intentional divergence from the pre-refactor `!existingConf || !newConf` check,
+    // which would have overwritten in this case — that was a confidence-downgrade bug.)
   }
 
   // Merge confidence only for fields that were actually overwritten

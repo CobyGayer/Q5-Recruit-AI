@@ -264,6 +264,7 @@ export default function DuplicateReviewPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [warnMsg, setWarnMsg] = useState<string | null>(null);
 
   const loadGroups = useCallback(async () => {
     setPageLoading(true);
@@ -285,16 +286,18 @@ export default function DuplicateReviewPage() {
   async function handleMerge(groupId: string, selectedIds: string[]) {
     setActionLoading(true);
     setErrorMsg(null);
+    setWarnMsg(null);
     try {
       const res = await fetch("/api/recruits/duplicate-review/merge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ group_id: groupId, recruit_ids: selectedIds }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Merge failed");
       }
+      if (data.dqs_warning) setWarnMsg(data.dqs_warning);
       await loadGroups();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
@@ -346,6 +349,11 @@ export default function DuplicateReviewPage() {
       {errorMsg && (
         <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded text-sm text-rose-700">
           {errorMsg}
+        </div>
+      )}
+      {warnMsg && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-700">
+          {warnMsg}
         </div>
       )}
 
