@@ -19,9 +19,21 @@ DECLARE
   v_program_id          UUID;
   v_loser_id            UUID;
   v_best_transcript_id  UUID;
+  v_locked_count        INT;
 BEGIN
   -- -------------------------------------------------------
-  -- 1. Lock all rows in deterministic order (ascending UUID)
+  -- 1. Validate inputs before locking anything.
+  -- -------------------------------------------------------
+  IF p_survivor_id = ANY(p_loser_ids) THEN
+    RAISE EXCEPTION 'Survivor % cannot also appear in p_loser_ids', p_survivor_id;
+  END IF;
+
+  IF array_length(p_loser_ids, 1) IS NULL THEN
+    RAISE EXCEPTION 'p_loser_ids must contain at least one ID';
+  END IF;
+
+  -- -------------------------------------------------------
+  -- 2. Lock all rows in deterministic order (ascending UUID)
   --    to avoid deadlocks when two concurrent merges overlap.
   -- -------------------------------------------------------
   PERFORM id FROM public.recruits
@@ -30,7 +42,7 @@ BEGIN
   FOR UPDATE;
 
   -- -------------------------------------------------------
-  -- 2. Validate: all recruits must share the same program_id.
+  -- 3. Validate: survivor exists, all losers exist, same program_id.
   -- -------------------------------------------------------
   SELECT program_id INTO v_program_id
   FROM public.recruits
@@ -38,6 +50,16 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Survivor recruit % not found', p_survivor_id;
+  END IF;
+
+  -- Assert every requested loser ID actually exists.
+  SELECT COUNT(*) INTO v_locked_count
+  FROM public.recruits
+  WHERE id = ANY(p_loser_ids);
+
+  IF v_locked_count <> array_length(p_loser_ids, 1) THEN
+    RAISE EXCEPTION 'One or more loser IDs not found (expected %, found %)',
+      array_length(p_loser_ids, 1), v_locked_count;
   END IF;
 
   IF EXISTS (

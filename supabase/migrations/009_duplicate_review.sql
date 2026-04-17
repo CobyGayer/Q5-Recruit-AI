@@ -160,4 +160,13 @@ CREATE POLICY duplicate_review_group_members_program_isolation
         WHERE c.id = auth.uid()
       )
     )
+    AND recruit_id IN (
+      SELECT r.id
+      FROM public.recruits r
+      WHERE r.program_id = (
+        SELECT c.program_id
+        FROM public.coaches c
+        WHERE c.id = auth.uid()
+      )
+    )
   );

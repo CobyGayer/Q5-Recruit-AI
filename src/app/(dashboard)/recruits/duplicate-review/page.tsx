@@ -376,7 +376,7 @@ export default function DuplicateReviewPage() {
             </Button>
           </CardContent>
         </Card>
-      ) : (
+      ) : !errorMsg ? (
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
             {groups.length} group{groups.length !== 1 ? "s" : ""} pending review
@@ -391,7 +391,7 @@ export default function DuplicateReviewPage() {
             />
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -90,8 +90,8 @@ export function buildMergedPayload(
         // Field not yet set — take this value
         merged[field as string] = value;
         winnerConf[field as string] = newConf;
-      } else if (!newConf) {
-        // Incoming has no confidence metadata — never overwrite an existing value
+      } else if (!newConf && existingConf) {
+        // Incoming has no confidence metadata but existing does — keep existing
         // (sparse placeholder values must not displace higher-quality data)
       } else if (!existingConf || CONFIDENCE_RANK[newConf] > CONFIDENCE_RANK[existingConf]) {
         merged[field as string] = value;

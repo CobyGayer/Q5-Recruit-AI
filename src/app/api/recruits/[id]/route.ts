@@ -133,7 +133,7 @@ export async function PUT(
   // with no confidence entry would be overwritten by any extracted value.
   const manualConfidencePatch: Record<string, ConfidenceLevel> = {};
   for (const [field, value] of Object.entries(parsed.data)) {
-    if (field !== "email" && value != null) {
+    if (value != null) {
       manualConfidencePatch[field] = "high";
     }
   }
