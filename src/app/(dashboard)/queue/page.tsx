@@ -60,7 +60,7 @@ export default function QueuePage() {
         <div>
           <h1 className="text-2xl font-bold">Ingestion Queue</h1>
           <p className="text-sm text-muted-foreground">
-            {emails.length} emails processed
+            {emails.length} emails in queue
           </p>
         </div>
         <Button variant="outline" onClick={refetch}>

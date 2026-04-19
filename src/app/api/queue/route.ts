@@ -22,8 +22,7 @@ export async function GET() {
     .from("ingested_emails")
     .select("*")
     .eq("program_id", effectiveProgramId)
-    .order("created_at", { ascending: false })
-    .limit(100);
+    .order("created_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
