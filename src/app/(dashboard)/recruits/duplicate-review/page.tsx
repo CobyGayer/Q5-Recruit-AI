@@ -21,6 +21,19 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, GitMerge, X } from "lucide-react";
 import type { Recruit } from "@/types/database";
+import { buildMergedPayload, chooseSurvivor } from "@/lib/recruits/merge-payload";
+
+interface RecruitEmail {
+  id: string;
+  sender_email: string | null;
+  subject: string | null;
+  received_at: string | null;
+  body_snippet: string | null;
+}
+
+interface ReviewGroupMember extends Recruit {
+  recruit_emails: RecruitEmail[];
+}
 
 interface ReviewGroup {
   id: string;
@@ -29,7 +42,7 @@ interface ReviewGroup {
   status: string;
   source: string;
   created_at: string;
-  members: Recruit[];
+  members: ReviewGroupMember[];
 }
 
 function RecruitSummaryCard({
@@ -37,10 +50,21 @@ function RecruitSummaryCard({
   selected,
   onToggle,
 }: {
-  recruit: Recruit;
+  recruit: ReviewGroupMember;
   selected: boolean;
   onToggle: () => void;
 }) {
+  const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
+
+  function toggleEmail(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setExpandedEmails((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
   return (
     <div
       className={`border rounded-lg p-4 cursor-pointer transition-colors ${
@@ -60,7 +84,9 @@ function RecruitSummaryCard({
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-sm">{recruit.full_name || "Unknown Name"}</p>
           {recruit.email && (
-            <p className="text-xs text-muted-foreground truncate">{recruit.email}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              <span className="font-medium text-foreground/70">Email:</span> {recruit.email}
+            </p>
           )}
           <div className="flex flex-wrap gap-1 mt-2">
             {recruit.graduation_year && (
@@ -93,6 +119,44 @@ function RecruitSummaryCard({
           <p className="text-[10px] text-muted-foreground/60 mt-2">
             Added {new Date(recruit.created_at).toLocaleDateString()}
           </p>
+          {(recruit.recruit_emails ?? []).length > 0 && (
+            <div className="mt-3 border-t pt-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Emails ({recruit.recruit_emails.length})
+              </p>
+              {recruit.recruit_emails.map((email) => {
+                const expanded = expandedEmails.has(email.id);
+                return (
+                  <div key={email.id} className="text-xs rounded bg-muted/50 px-2 py-1.5 space-y-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium truncate">{email.subject || "(no subject)"}</span>
+                      {email.received_at && (
+                        <span className="text-muted-foreground shrink-0">
+                          {new Date(email.received_at).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    {email.sender_email && (
+                      <p className="text-muted-foreground">From: {email.sender_email}</p>
+                    )}
+                    {email.body_snippet && (
+                      <>
+                        <p className={`text-muted-foreground/80 whitespace-pre-wrap ${expanded ? "" : "line-clamp-3"}`}>
+                          {email.body_snippet}
+                        </p>
+                        <button
+                          className="text-primary hover:underline mt-0.5"
+                          onClick={(e) => toggleEmail(email.id, e)}
+                        >
+                          {expanded ? "Show less" : "Show more"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -135,6 +199,10 @@ function ReviewGroupCard({
 
   const canMerge = selectedIds.size >= 2;
 
+  const selectedRecruits = group.members.filter((r) => selectedIds.has(r.id));
+  const mergePreview = canMerge ? buildMergedPayload(selectedRecruits) : null;
+  const mergesurvivor = canMerge ? chooseSurvivor(selectedRecruits) : null;
+
   return (
     <Card className="border-amber-200">
       <CardHeader className="pb-3">
@@ -158,7 +226,7 @@ function ReviewGroupCard({
           rest, or dismiss without merging.
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           {group.members.map((recruit) => (
             <RecruitSummaryCard
               key={recruit.id}
@@ -210,6 +278,43 @@ function ReviewGroupCard({
               cannot be undone. All source emails and history will be preserved.
             </DialogDescription>
           </DialogHeader>
+          {mergePreview && mergesurvivor && (
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Merged profile preview
+              </p>
+              <div>
+                <p className="font-semibold">{mergePreview.full_name ?? mergesurvivor.full_name ?? "Unknown Name"}</p>
+                {mergePreview.email && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    <span className="font-medium text-foreground/70">Email:</span> {mergePreview.email}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {mergePreview.graduation_year && (
+                  <Badge variant="outline" className="text-xs">Class of {mergePreview.graduation_year}</Badge>
+                )}
+                {mergePreview.positions?.map((pos) => (
+                  <Badge key={pos} variant="outline" className="text-xs border-primary/30 text-primary">{pos}</Badge>
+                ))}
+                {mergePreview.current_school && (
+                  <Badge variant="outline" className="text-xs bg-muted">{mergePreview.current_school}</Badge>
+                )}
+                {mergePreview.club_team && (
+                  <Badge variant="outline" className="text-xs">{mergePreview.club_team}</Badge>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                {mergePreview.gpa != null && <span>GPA {mergePreview.gpa}</span>}
+                {mergePreview.sat_score != null && <span>SAT {mergePreview.sat_score}</span>}
+                {mergePreview.act_score != null && <span>ACT {mergePreview.act_score}</span>}
+                {mergePreview.city && mergePreview.state && (
+                  <span>{mergePreview.city}, {mergePreview.state}</span>
+                )}
+              </div>
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmMergeOpen(false)}>
               Cancel
@@ -231,10 +336,10 @@ function ReviewGroupCard({
       <Dialog open={confirmDismissOpen} onOpenChange={setConfirmDismissOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Dismiss This Group?</DialogTitle>
+            <DialogTitle>Keep These as Separate Recruits?</DialogTitle>
             <DialogDescription>
-              The profiles in this group will stay as separate records. You will no longer
-              be prompted about this name cluster unless a new email touches one of them.
+              These profiles will remain as individual recruits and won&apos;t be flagged
+              as potential duplicates again, unless one of them sends a new email.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -341,8 +446,8 @@ export default function DuplicateReviewPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Duplicate Recruit Review</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Recruits with matching names that may be the same person. Review each group and merge
-          the profiles that belong together, or dismiss if they are different people.
+          We found recruits with matching names that may be the same person. Review each group
+          and merge the profiles that belong together, or dismiss if they are different people.
         </p>
       </div>
 

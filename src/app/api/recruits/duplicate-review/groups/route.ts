@@ -82,11 +82,39 @@ export async function GET(request: NextRequest) {
 
   const recruitMap = new Map((recruits ?? []).map((r) => [r.id, r]));
 
+  // Fetch ingested emails for each recruit (subject, sender address, date, body snippet)
+  const { data: ingestedEmails } = recruitIds.length > 0
+    ? await db
+        .from("ingested_emails")
+        .select("id, recruit_id, sender_email, subject, received_at, body_plain")
+        .in("recruit_id", recruitIds)
+        .order("received_at", { ascending: false })
+    : { data: [] };
+
+  // Build a map of recruit_id -> email messages
+  const emailsMap = new Map<string, { id: string; sender_email: string | null; subject: string | null; received_at: string | null; body_snippet: string | null }[]>();
+  for (const row of ingestedEmails ?? []) {
+    if (!row.recruit_id) continue;
+    const existing = emailsMap.get(row.recruit_id) ?? [];
+    existing.push({
+      id: row.id,
+      sender_email: row.sender_email ?? null,
+      subject: row.subject ?? null,
+      received_at: row.received_at ?? null,
+      body_snippet: row.body_plain ? row.body_plain.trim() : null,
+    });
+    emailsMap.set(row.recruit_id, existing);
+  }
+
   // Assemble response
   const result = groups.map((group) => {
     const groupMembers = (members ?? [])
       .filter((m) => m.group_id === group.id)
-      .map((m) => recruitMap.get(m.recruit_id))
+      .map((m) => {
+        const recruit = recruitMap.get(m.recruit_id);
+        if (!recruit) return null;
+        return { ...recruit, recruit_emails: emailsMap.get(recruit.id) ?? [] };
+      })
       .filter(Boolean);
 
     return { ...group, members: groupMembers };

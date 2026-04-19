@@ -71,56 +71,8 @@ BEGIN
   END IF;
 
   -- -------------------------------------------------------
-  -- 3. Apply the pre-computed merged field payload to the survivor.
-  --    COALESCE is intentionally defensive: the TS merge logic never
-  --    nulls a field (it skips null values), so COALESCE aligns with
-  --    that contract. If a future caller wants to explicitly clear a
-  --    field, this SQL must be updated to use direct assignment instead.
-  -- -------------------------------------------------------
-  UPDATE public.recruits
-  SET
-    email                = COALESCE((p_survivor_data->>'email'), email),
-    full_name            = COALESCE((p_survivor_data->>'full_name'), full_name),
-    phone                = COALESCE((p_survivor_data->>'phone'), phone),
-    graduation_year      = COALESCE((p_survivor_data->>'graduation_year')::INT, graduation_year),
-    current_school       = COALESCE((p_survivor_data->>'current_school'), current_school),
-    city                 = COALESCE((p_survivor_data->>'city'), city),
-    state                = COALESCE((p_survivor_data->>'state'), state),
-    country              = COALESCE((p_survivor_data->>'country'), country),
-    preferred_foot       = COALESCE((p_survivor_data->>'preferred_foot'), preferred_foot),
-    height_inches        = COALESCE((p_survivor_data->>'height_inches')::INT, height_inches),
-    weight_lbs           = COALESCE((p_survivor_data->>'weight_lbs')::INT, weight_lbs),
-    gpa                  = COALESCE((p_survivor_data->>'gpa')::NUMERIC, gpa),
-    sat_score            = COALESCE((p_survivor_data->>'sat_score')::INT, sat_score),
-    act_score            = COALESCE((p_survivor_data->>'act_score')::INT, act_score),
-    club_team            = COALESCE((p_survivor_data->>'club_team'), club_team),
-    club_level           = COALESCE((p_survivor_data->>'club_level'), club_level),
-    high_school_team     = COALESCE((p_survivor_data->>'high_school_team'), high_school_team),
-    video_url            = COALESCE((p_survivor_data->>'video_url'), video_url),
-    extraction_confidence = COALESCE(p_survivor_data->'extraction_confidence', extraction_confidence),
-    fields_missing       = COALESCE(
-                             ARRAY(SELECT jsonb_array_elements_text(p_survivor_data->'fields_missing')),
-                             fields_missing
-                           ),
-    fields_extracted     = COALESCE((p_survivor_data->>'fields_extracted')::INT, fields_extracted),
-    fields_total         = COALESCE((p_survivor_data->>'fields_total')::INT, fields_total),
-    updated_at           = now()
-  WHERE id = p_survivor_id;
-
-  -- Handle positions (union of survivor's existing positions + merged ones)
-  IF p_survivor_data ? 'positions' THEN
-    UPDATE public.recruits
-    SET positions = ARRAY(
-      SELECT DISTINCT unnest(
-        positions ||
-        ARRAY(SELECT jsonb_array_elements_text(p_survivor_data->'positions'))
-      )
-    )
-    WHERE id = p_survivor_id;
-  END IF;
-
-  -- -------------------------------------------------------
   -- 4. Reassign multi-row tables from losers → survivor.
+  --    Must happen before deleting losers (FK references).
   -- -------------------------------------------------------
   UPDATE public.ingested_emails
   SET recruit_id = p_survivor_id
@@ -191,12 +143,64 @@ BEGIN
   WHERE recruit_id = ANY(p_loser_ids);
 
   -- -------------------------------------------------------
-  -- 8. Delete the loser recruit rows (cascades clean up remaining children).
+  -- 8. Delete loser rows BEFORE updating survivor.
+  --    Losers may share email/program with survivor; deleting first
+  --    avoids a unique constraint violation on idx_recruits_program_email_unique
+  --    when the survivor UPDATE adopts a loser's email.
   -- -------------------------------------------------------
   DELETE FROM public.recruits WHERE id = ANY(p_loser_ids);
 
   -- -------------------------------------------------------
-  -- 9. Remove the merged losers from review group members.
+  -- 9. Apply the pre-computed merged field payload to the survivor.
+  --    COALESCE is intentionally defensive: the TS merge logic never
+  --    nulls a field (it skips null values), so COALESCE aligns with
+  --    that contract. If a future caller wants to explicitly clear a
+  --    field, this SQL must be updated to use direct assignment instead.
+  -- -------------------------------------------------------
+  UPDATE public.recruits
+  SET
+    email                = COALESCE((p_survivor_data->>'email'), email),
+    full_name            = COALESCE((p_survivor_data->>'full_name'), full_name),
+    phone                = COALESCE((p_survivor_data->>'phone'), phone),
+    graduation_year      = COALESCE((p_survivor_data->>'graduation_year')::INT, graduation_year),
+    current_school       = COALESCE((p_survivor_data->>'current_school'), current_school),
+    city                 = COALESCE((p_survivor_data->>'city'), city),
+    state                = COALESCE((p_survivor_data->>'state'), state),
+    country              = COALESCE((p_survivor_data->>'country'), country),
+    preferred_foot       = COALESCE((p_survivor_data->>'preferred_foot'), preferred_foot),
+    height_inches        = COALESCE((p_survivor_data->>'height_inches')::INT, height_inches),
+    weight_lbs           = COALESCE((p_survivor_data->>'weight_lbs')::INT, weight_lbs),
+    gpa                  = COALESCE((p_survivor_data->>'gpa')::NUMERIC, gpa),
+    sat_score            = COALESCE((p_survivor_data->>'sat_score')::INT, sat_score),
+    act_score            = COALESCE((p_survivor_data->>'act_score')::INT, act_score),
+    club_team            = COALESCE((p_survivor_data->>'club_team'), club_team),
+    club_level           = COALESCE((p_survivor_data->>'club_level')::club_level, club_level),
+    high_school_team     = COALESCE((p_survivor_data->>'high_school_team'), high_school_team),
+    video_url            = COALESCE((p_survivor_data->>'video_url'), video_url),
+    extraction_confidence = COALESCE(p_survivor_data->'extraction_confidence', extraction_confidence),
+    fields_missing       = COALESCE(
+                             ARRAY(SELECT jsonb_array_elements_text(p_survivor_data->'fields_missing')),
+                             fields_missing
+                           ),
+    fields_extracted     = COALESCE((p_survivor_data->>'fields_extracted')::INT, fields_extracted),
+    fields_total         = COALESCE((p_survivor_data->>'fields_total')::INT, fields_total),
+    updated_at           = now()
+  WHERE id = p_survivor_id;
+
+  -- Handle positions (union of survivor's existing positions + merged ones)
+  IF p_survivor_data ? 'positions' THEN
+    UPDATE public.recruits
+    SET positions = ARRAY(
+      SELECT DISTINCT unnest(
+        positions ||
+        ARRAY(SELECT jsonb_array_elements_text(p_survivor_data->'positions'))
+      )
+    )
+    WHERE id = p_survivor_id;
+  END IF;
+
+  -- -------------------------------------------------------
+  -- 10. Remove the merged losers from review group members.
   --    Auto-resolve any group that now has fewer than 2 members.
   -- -------------------------------------------------------
   DELETE FROM public.recruit_duplicate_review_group_members

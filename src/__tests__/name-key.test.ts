@@ -36,4 +36,27 @@ describe("normalizeNameKey", () => {
     expect(normalizeNameKey("John Smith Jr")).toBe("john smith jr");
     expect(normalizeNameKey("Robert Lee II")).toBe("robert lee ii");
   });
+
+  // TS uses NFD decomposition; Postgres uses unaccent(). Characters that do
+  // not decompose under Unicode NFD are stripped by the [^a-z] replace in TS
+  // but transliterated to ASCII by unaccent() in SQL. Document divergences.
+  it("TS/SQL divergence: ł stays ł under NFD, so is stripped to space (SQL maps it to l)", () => {
+    // SQL: unaccent("Łukasz") → "Lukasz" → "lukasz"
+    // TS:  NFD("Łukasz") = "Łukasz", [^a-z]→space → " ukasz" → trim "ukasz"
+    expect(normalizeNameKey("Łukasz")).toBe("ukasz");
+  });
+
+  it("TS/SQL divergence: ß stays ß under NFD, so is stripped (SQL expands it to ss)", () => {
+    // SQL: unaccent("Straße") → "Strasse" → "strasse"
+    // TS:  NFD("Straße") = "Straße", [^a-z]→space → "stra e"
+    expect(normalizeNameKey("Straße")).toBe("stra e");
+  });
+
+  it("TS/SQL divergence: Turkish ı (U+0131) is stripped (SQL maps it to i)", () => {
+    // ş decomposes to s + combining cedilla (U+0327) which IS stripped by the
+    // diacritic regex; ı does NOT decompose, so it hits the [^a-z] replace.
+    // SQL: unaccent("Işık") → "Isik"
+    // TS:  "is k"
+    expect(normalizeNameKey("Işık")).toBe("is k");
+  });
 });

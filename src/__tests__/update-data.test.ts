@@ -88,6 +88,14 @@ describe("buildUpdateData", () => {
     expect(update.gpa).toBeUndefined();
   });
 
+  it("neither side has confidence metadata → overwrites unconditionally", () => {
+    // No confidence on existing record, no confidence on new extraction.
+    // The `!existingConf && !newConf` branch: update[field] = value.
+    const existing = makeExisting({ extraction_confidence: {} }); // no confidence at all
+    const update = buildUpdateData(existing, { club_team: "FC Dynamo" }, {});
+    expect(update.club_team).toBe("FC Dynamo");
+  });
+
   it("a sparse follow-up email can update a single field (sat_score) without losing others", () => {
     // Simulate a more complete existing recruit
     const existing = makeExisting({

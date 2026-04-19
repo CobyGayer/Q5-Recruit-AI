@@ -137,6 +137,25 @@ describe("buildMergedPayload", () => {
     expect(payload.gpa).toBe(3.5);
   });
 
+  it("SAT and ACT both present → fields_total uses base count (not base-1)", () => {
+    const a = makeRecruit({ id: "a", sat_score: 1400, extraction_confidence: { sat_score: "high" }, fields_extracted: 1 });
+    const b = makeRecruit({ id: "b", act_score: 32, extraction_confidence: { act_score: "high" }, fields_extracted: 1 });
+    const payload = buildMergedPayload([a, b]);
+    expect(payload.sat_score).toBe(1400);
+    expect(payload.act_score).toBe(32);
+    // MERGEABLE_FIELDS.length + 1 (positions) = 19. Both test scores present → no deduction.
+    expect(payload.fields_total).toBe(19);
+  });
+
+  it("only SAT present → fields_total deducts one slot for missing ACT", () => {
+    const a = makeRecruit({ id: "a", sat_score: 1400, extraction_confidence: { sat_score: "high" }, fields_extracted: 1 });
+    const payload = buildMergedPayload([a]);
+    expect(payload.sat_score).toBe(1400);
+    expect(payload.act_score).toBeUndefined();
+    // One test-score slot excluded when only one is present.
+    expect(payload.fields_total).toBe(18);
+  });
+
   it("a sparse update (only sat_score) updates that one field without losing others", () => {
     // Simulate a more complete profile
     const full = makeRecruit({
