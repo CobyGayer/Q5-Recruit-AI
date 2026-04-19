@@ -41,6 +41,7 @@ import {
   Mail,
 } from "lucide-react";
 
+
 const FIELD_LABELS: Record<string, string> = {
   full_name: "Full Name",
   email: "Email",
@@ -72,6 +73,16 @@ const CLUB_LEVEL_LABELS: Record<string, string> = {
   unknown: "Unknown",
 };
 
+interface SourceEmail {
+  id: string;
+  subject: string | null;
+  sender_email: string | null;
+  sender_name: string | null;
+  body_plain: string | null;
+  received_at: string | null;
+  created_at: string;
+}
+
 export default function RecruitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -80,15 +91,14 @@ export default function RecruitDetailPage() {
   const [recruit, setRecruit] = useState<Recruit | null>(null);
   const [dqsScore, setDqsScore] = useState<RecruitDqsScore | null>(null);
   const [flag, setFlag] = useState<CoachRecruitFlag | null>(null);
-  const [originalEmail, setOriginalEmail] = useState<string | null>(null);
+  const [sourceEmails, setSourceEmails] = useState<SourceEmail[]>([]);
+  const [expandedEmailIds, setExpandedEmailIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [emailCopied, setEmailCopied] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
-  const [emailReceivedAt, setEmailReceivedAt] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [emailComposeOpen, setEmailComposeOpen] = useState(false);
@@ -116,8 +126,7 @@ export default function RecruitDetailPage() {
       setRecruit(detail.recruit ?? null);
       setDqsScore(detail.dqs_score ?? null);
       setFlag(detail.flag ?? null);
-      setOriginalEmail(detail.original_email?.body_plain ?? null);
-      setEmailReceivedAt(detail.original_email?.received_at ?? null);
+      setSourceEmails(detail.source_emails ?? []);
       setTranscriptAnalysis(detail.transcript_analysis ?? null);
       setLoading(false);
     }
@@ -507,36 +516,61 @@ export default function RecruitDetailPage() {
             </Card>
           )}
 
-          {/* Original email */}
-          {originalEmail && (
+          {/* Source emails (all ingested emails linked to this recruit) */}
+          {sourceEmails.length > 0 && (
             <Card className="border-primary/10">
               <CardHeader>
-                <button
-                  className="flex items-center justify-between w-full"
-                  onClick={() => setShowEmail(!showEmail)}
-                >
-                  <CardTitle>
-                    Original Email
-                    {emailReceivedAt && (
-                      <span className="text-sm font-normal text-muted-foreground ml-2">
-                        ({new Date(emailReceivedAt).toLocaleDateString()})
-                      </span>
-                    )}
-                  </CardTitle>
-                  {showEmail ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </button>
+                <CardTitle>
+                  Source Email{sourceEmails.length > 1 ? "s" : ""}
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    ({sourceEmails.length})
+                  </span>
+                </CardTitle>
               </CardHeader>
-              {showEmail && (
-                <CardContent>
-                  <pre className="text-sm whitespace-pre-wrap bg-muted p-4 rounded-lg max-h-96 overflow-auto">
-                    {originalEmail}
-                  </pre>
-                </CardContent>
-              )}
+              <CardContent className="space-y-3">
+                {sourceEmails.map((email, idx) => {
+                  const isExpanded = expandedEmailIds.has(email.id);
+                  return (
+                    <div key={email.id} className="border rounded-lg overflow-hidden">
+                      <button
+                        className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          setExpandedEmailIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(email.id)) next.delete(email.id);
+                            else next.add(email.id);
+                            return next;
+                          });
+                        }}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {email.subject || `Email ${idx + 1}`}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {email.sender_name || email.sender_email || "Unknown sender"}
+                            {email.received_at && (
+                              <> · {new Date(email.received_at).toLocaleDateString()}</>
+                            )}
+                          </p>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 shrink-0 ml-2 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 shrink-0 ml-2 text-muted-foreground" />
+                        )}
+                      </button>
+                      {isExpanded && email.body_plain && (
+                        <div className="border-t">
+                          <pre className="text-sm whitespace-pre-wrap bg-muted p-4 max-h-96 overflow-auto">
+                            {email.body_plain}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </CardContent>
             </Card>
           )}
         </div>

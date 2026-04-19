@@ -95,6 +95,7 @@ export interface Recruit {
   program_id: string;
   email: string | null;
   full_name: string | null;
+  name_key: string | null;
   phone: string | null;
   graduation_year: number | null;
   current_school: string | null;
@@ -192,4 +193,31 @@ export interface TranscriptAnalysis {
 export interface RecruitWithScore extends Recruit {
   dqs_score: RecruitDqsScore | null;
   flag: CoachRecruitFlag | null;
+}
+
+export type DuplicateReviewGroupStatus = "pending" | "resolved" | "dismissed";
+export type DuplicateReviewGroupSource = "ingest" | "admin_scan";
+
+export interface DuplicateReviewGroup {
+  id: string;
+  program_id: string;
+  name_key: string;
+  status: DuplicateReviewGroupStatus;
+  source: DuplicateReviewGroupSource;
+  resolved_at: string | null;
+  dismissed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DuplicateReviewGroupMember {
+  id: string;
+  group_id: string;
+  recruit_id: string;
+  added_at: string;
+}
+
+/** A review group together with its full member recruit profiles */
+export interface DuplicateReviewGroupWithMembers extends DuplicateReviewGroup {
+  members: Recruit[];
 }

@@ -10,7 +10,9 @@ import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
 import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
 import { findAndParseEmlAttachments, looksLikeEml, type ParsedEmail } from "@/lib/email/parse-eml";
-import type { Recruit, ProgramConfig, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
+import { buildUpdateData } from "@/lib/recruits/update-data";
+import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
+import type { Recruit, ProgramConfig, TranscriptAnalysis } from "@/types/database";
 
 export const maxDuration = 300;
 
@@ -19,6 +21,39 @@ function isForwardedEmail(body: string): boolean {
   return /---------- Forwarded message -+/.test(body) ||
     /^Begin forwarded message:/m.test(body) ||
     /^----- Original Message -----/m.test(body);
+}
+
+/**
+ * Extract the original email's sent date from a forwarded message body.
+ * Returns an ISO string if found, null otherwise.
+ * Handles Gmail, Apple Mail, Outlook, and inline-quote formats.
+ */
+function parseForwardedEmailDate(body: string): string | null {
+  // Gmail/Apple Mail forwarding header: "Date: Mon, 14 Apr 2024 at 10:30 AM"
+  // Outlook forwarding header: "Sent: Monday, April 14, 2024 10:30 AM"
+  const headerMatch = body.match(/^(?:Date|Sent):\s*(.+)$/m);
+  if (headerMatch) {
+    // Normalize "at" separator used by Gmail ("Apr 14, 2024 at 10:30 AM" → "Apr 14, 2024 10:30 AM")
+    const normalized = headerMatch[1].trim().replace(/\s+at\s+/, " ");
+    const d = new Date(normalized);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  // Inline quote: "On Mon, Apr 14, 2024 at 10:30 AM, John Smith <...> wrote:"
+  // Capture everything between "On " and the first ", [Name]" or "<email>" segment
+  const inlineMatch = body.match(/^On\s+(.+?)\s+wrote:/m);
+  if (inlineMatch) {
+    // Strip trailing sender info after a comma-space followed by a name/email
+    const candidate = inlineMatch[1]
+      .replace(/,\s*[^,]+<[^>]+>.*$/, "")  // strip ", Name <email>"
+      .replace(/,\s*<[^>]+>.*$/, "")        // strip ", <email>"
+      .replace(/\s+at\s+/, " ")
+      .trim();
+    const d = new Date(candidate);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+
+  return null;
 }
 
 /** Normalize attachments into an array (Zapier may send a string, object, or array) */
@@ -155,6 +190,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // For forwarded emails, Zapier captures the forward date (today), not the original email date.
+  // Override with the date parsed from the forwarding headers in the email body.
+  const receivedAt = isForwarded
+    ? (parseForwardedEmailDate(payload.body_plain) ?? payload.received_at)
+    : payload.received_at;
+
   const { data: emailRecord, error: emailError } = await supabase
     .from("ingested_emails")
     .insert({
@@ -165,7 +206,7 @@ export async function POST(request: NextRequest) {
       subject: payload.subject,
       body_plain: payload.body_plain,
       body_html: payload.body_html,
-      received_at: payload.received_at,
+      received_at: receivedAt,
       attachments: normalizedAttachments,
       processing_status: "pending",
     })
@@ -367,6 +408,7 @@ async function processEmail(
 
     if (existing) {
       // Update existing recruit (only overwrite if new confidence >= existing)
+      const prevNameKey = (existing.name_key as string | null) ?? null;
       const updateData = buildUpdateData(
         existing,
         extraction.recruitData,
@@ -384,6 +426,20 @@ async function processEmail(
       recruitId = existing.id as string;
       if (!updatedRecruit) {
         console.warn(`[processEmail] Update returned no data for recruit ${recruitId} — proceeding with ID only`);
+      }
+
+      // Use the persisted name_key from the updated row rather than recomputing
+      // from extraction.recruitData — buildUpdateData() may have rejected the
+      // extracted full_name due to low confidence, so the DB trigger's value is
+      // the authoritative key.
+      const newNameKey = (updatedRecruit?.name_key as string | null) ?? null;
+      // Always fire when there's a name key: handles both name-change (re-queue
+      // pending group) and name-unchanged (re-surface a dismissed group if the
+      // email touch is the promised re-prompt trigger).
+      if (newNameKey) {
+        checkAndQueueDuplicateReview(supabase, programId, recruitId, prevNameKey, newNameKey, "ingest").catch((err) =>
+          console.error("[ingest] duplicate-review queue failed:", err)
+        );
       }
     } else if (senderIsCoach) {
       // Coach's own outbound email — don't create a duplicate recruit
@@ -413,6 +469,15 @@ async function processEmail(
         );
       }
       recruitId = newRecruit.id;
+
+      // Use the DB-persisted name_key — the trigger applies unaccent() which
+      // diverges from the TS helper for chars like ł, ß, ı.
+      const newNameKey = (newRecruit.name_key as string | null) ?? null;
+      if (newNameKey) {
+        checkAndQueueDuplicateReview(supabase, programId, recruitId, null, newNameKey, "ingest").catch((err) =>
+          console.error("[ingest] duplicate-review queue failed:", err)
+        );
+      }
     }
 
     // Transcript analysis (non-blocking)
@@ -562,54 +627,3 @@ async function processEmail(
   }
 }
 
-/**
- * Build update data for an existing recruit, only overwriting fields
- * where the new extraction has equal or higher confidence.
- */
-function buildUpdateData(
-  existing: Record<string, unknown>,
-  newData: Record<string, unknown>,
-  newConfidence: Record<string, ConfidenceLevel>
-): Record<string, unknown> {
-  const existingConfidence = (existing.extraction_confidence ?? {}) as Record<
-    string,
-    ConfidenceLevel
-  >;
-  const confidenceRank: Record<ConfidenceLevel, number> = {
-    high: 3,
-    medium: 2,
-    low: 1,
-  };
-
-  const update: Record<string, unknown> = {};
-
-  for (const [field, value] of Object.entries(newData)) {
-    if (field === "extraction_confidence" || field === "fields_missing" || field === "fields_extracted" || field === "fields_total") {
-      continue; // Handle these separately
-    }
-
-    if (value == null) continue; // Don't overwrite with null
-
-    const existingConf = existingConfidence[field];
-    const newConf = newConfidence[field];
-
-    if (!existingConf || !newConf) {
-      // No confidence data — overwrite if we have a value
-      update[field] = value;
-    } else if (confidenceRank[newConf] >= confidenceRank[existingConf]) {
-      update[field] = value;
-    }
-    // Otherwise keep existing value (higher confidence)
-  }
-
-  // Always update metadata
-  update.extraction_confidence = {
-    ...existingConfidence,
-    ...newConfidence,
-  };
-  update.fields_missing = newData.fields_missing;
-  update.fields_extracted = newData.fields_extracted;
-  update.fields_total = newData.fields_total;
-
-  return update;
-}

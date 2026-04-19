@@ -24,7 +24,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Mail, Trash2, X, Download } from "lucide-react";
+import Link from "next/link";
+import { Mail, Trash2, X, Download, Users, AlertCircle } from "lucide-react";
 
 function applyFilters(
   recruits: RecruitWithScore[],
@@ -262,6 +263,7 @@ function DashboardContent() {
   const supabase = createClient();
   const { recruits, loading, refetch, updateRecruitFlag } = useRecruits();
   const [coachEmail, setCoachEmail] = useState<string | undefined>();
+  const [pendingDuplicateCount, setPendingDuplicateCount] = useState(0);
   const {
     searchTerm,
     setSearchTerm,
@@ -293,6 +295,15 @@ function DashboardContent() {
       if (user?.email) setCoachEmail(user.email);
     });
   }, [supabase]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/recruits/duplicate-review/groups?count_only=true", { signal: controller.signal })
+      .then((res) => res.ok ? res.json() : { count: 0 })
+      .then((data: { count: number }) => setPendingDuplicateCount(data.count ?? 0))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   function handleViewMode(mode: "cards" | "list") {
     setViewMode(mode);
@@ -389,6 +400,27 @@ function DashboardContent() {
 
   return (
     <div className="p-6">
+      {/* Duplicate review banner */}
+      {pendingDuplicateCount > 0 && (
+        <div className="mb-4 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-900">
+              {pendingDuplicateCount} duplicate recruit group{pendingDuplicateCount !== 1 ? "s" : ""} need{pendingDuplicateCount === 1 ? "s" : ""} review
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              We found recruits with matching names that may be the same person.
+            </p>
+          </div>
+          <Link href="/recruits/duplicate-review">
+            <Button size="sm" variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 shrink-0">
+              <Users className="h-4 w-4 mr-1" />
+              Review Duplicates
+            </Button>
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-baseline gap-3 mb-4">
