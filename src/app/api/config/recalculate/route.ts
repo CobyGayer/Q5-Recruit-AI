@@ -5,6 +5,7 @@ import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { calculateDQS } from "@/lib/scoring/dqs";
 import { generateDQSSummary } from "@/lib/scoring/summary";
 import type { Recruit, ProgramConfig } from "@/types/database";
+import { POSITIONS } from "@/types/config";
 
 export async function POST() {
   const supabase = await createClient();
@@ -52,6 +53,35 @@ export async function POST() {
   let recalculated = 0;
 
   for (const recruit of recruits) {
+    // Patch recruits with no recognized positions — treat as missing.
+    const knownPositions = (recruit.positions as string[]).filter((pos) =>
+      (POSITIONS as readonly string[]).includes(pos)
+    );
+    const confidence = recruit.extraction_confidence as Record<string, unknown> ?? {};
+    if (recruit.positions.length > 0 && knownPositions.length === 0) {
+      const fieldsMissing: string[] = Array.isArray(recruit.fields_missing)
+        ? [...recruit.fields_missing]
+        : [];
+      if (!fieldsMissing.includes("positions")) {
+        fieldsMissing.push("positions");
+      }
+      const updatedConfidence = { ...confidence };
+      delete updatedConfidence["positions"];
+      await adminSupabase
+        .from("recruits")
+        .update({
+          positions: [],
+          fields_missing: fieldsMissing,
+          fields_extracted: Math.max(0, (recruit.fields_extracted as number) - 1),
+          extraction_confidence: updatedConfidence,
+        })
+        .eq("id", recruit.id);
+      recruit.positions = [];
+      recruit.fields_missing = fieldsMissing;
+      recruit.fields_extracted = Math.max(0, (recruit.fields_extracted as number) - 1);
+      recruit.extraction_confidence = updatedConfidence;
+    }
+
     const dqsResult = calculateDQS(recruit as Recruit, config as ProgramConfig);
 
     const aiSummary = await generateDQSSummary(

@@ -9,6 +9,7 @@ import { CompletenessBar } from "@/components/scoring/completeness-bar";
 import { FlagButton } from "./flag-button";
 import { Play } from "lucide-react";
 import type { RecruitWithScore, FlagType } from "@/types/database";
+import { POSITIONS } from "@/types/config";
 
 interface RecruitCardProps {
   recruit: RecruitWithScore;
@@ -128,9 +129,11 @@ export function RecruitCard({ recruit, onFlagChange, selected, onToggleSelect }:
                   </span>
                 )}
               </div>
-              {recruit.positions.length > 0 && (
+              {(() => {
+                const knownPositions = recruit.positions.filter((pos) => (POSITIONS as readonly string[]).includes(pos));
+                return knownPositions.length > 0 && (
                 <div className="flex gap-1 mt-1 flex-wrap">
-                  {recruit.positions.map((pos) => (
+                  {knownPositions.map((pos) => (
                     <Badge
                       key={pos}
                       variant="outline"
@@ -140,7 +143,7 @@ export function RecruitCard({ recruit, onFlagChange, selected, onToggleSelect }:
                     </Badge>
                   ))}
                 </div>
-              )}
+              );})()}
             </div>
 
             <div className="shrink-0">
