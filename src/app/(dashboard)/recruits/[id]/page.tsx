@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useConfig } from "@/hooks/use-config";
+import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -86,7 +88,8 @@ interface SourceEmail {
 export default function RecruitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const { config } = useConfig();
 
   const [recruit, setRecruit] = useState<Recruit | null>(null);
   const [dqsScore, setDqsScore] = useState<RecruitDqsScore | null>(null);
@@ -211,6 +214,25 @@ export default function RecruitDetailPage() {
     }
   }
 
+  const visibleMissingFields = useMemo(
+    () =>
+      recruit
+        ? adjustCompletenessForWeights(
+            recruit.fields_missing,
+            recruit.fields_extracted,
+            recruit.fields_total,
+            config,
+            recruit.club_level
+          ).missing
+        : [],
+    [recruit, config]
+  );
+
+  const selectedVisibleMissingFields = useMemo(
+    () => selectedMissingFields.filter((field) => visibleMissingFields.includes(field)),
+    [selectedMissingFields, visibleMissingFields]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -330,7 +352,7 @@ export default function RecruitDetailPage() {
         recruitId={recruit.id}
         recruitName={recruit.full_name}
         recruitEmail={recruit.email}
-        selectedFields={selectedMissingFields}
+        selectedFields={selectedVisibleMissingFields}
         fieldLabels={FIELD_LABELS}
         coachEmail={coachEmail}
       />
@@ -384,6 +406,8 @@ export default function RecruitDetailPage() {
                 fieldsExtracted={recruit.fields_extracted}
                 fieldsTotal={recruit.fields_total}
                 fieldsMissing={recruit.fields_missing}
+                programConfig={config}
+                clubLevel={recruit.club_level}
               />
             </CardHeader>
             <CardContent>
@@ -456,7 +480,7 @@ export default function RecruitDetailPage() {
                         rawValue != null ? String(rawValue) : "—";
                     }
 
-                    const isMissing = recruit.fields_missing.includes(key);
+                    const isMissing = visibleMissingFields.includes(key);
 
                     return (
                       <div
@@ -692,11 +716,11 @@ export default function RecruitDetailPage() {
             </Card>
           )}
 
-          {recruit.fields_missing.length > 0 && (
+          {visibleMissingFields.length > 0 && (
             <Card className="border-amber-200 bg-amber-50">
               <CardHeader>
                 <CardTitle className="text-amber-700 text-sm">
-                  Missing Data ({recruit.fields_missing.length} fields)
+                  Missing Data ({visibleMissingFields.length} fields)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -704,17 +728,21 @@ export default function RecruitDetailPage() {
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={
-                      selectedMissingFields.length === recruit.fields_missing.length
+                      selectedVisibleMissingFields.length === visibleMissingFields.length
                         ? true
-                        : selectedMissingFields.length > 0
+                        : selectedVisibleMissingFields.length > 0
                         ? "indeterminate"
                         : false
                     }
                     onCheckedChange={() => {
-                      if (selectedMissingFields.length === recruit.fields_missing.length) {
-                        setSelectedMissingFields([]);
+                      if (selectedVisibleMissingFields.length === visibleMissingFields.length) {
+                        setSelectedMissingFields((prev) =>
+                          prev.filter((field) => !visibleMissingFields.includes(field))
+                        );
                       } else {
-                        setSelectedMissingFields([...recruit.fields_missing]);
+                        setSelectedMissingFields((prev) =>
+                          Array.from(new Set([...prev, ...visibleMissingFields]))
+                        );
                       }
                     }}
                   />
@@ -725,13 +753,13 @@ export default function RecruitDetailPage() {
 
                 {/* Individual field checkboxes */}
                 <div className="flex flex-wrap gap-2">
-                  {recruit.fields_missing.map((field) => (
+                  {visibleMissingFields.map((field) => (
                     <label
                       key={field}
                       className="flex items-center gap-1.5 cursor-pointer"
                     >
                       <Checkbox
-                        checked={selectedMissingFields.includes(field)}
+                        checked={selectedVisibleMissingFields.includes(field)}
                         onCheckedChange={() => {
                           setSelectedMissingFields((prev) =>
                             prev.includes(field)
@@ -753,12 +781,12 @@ export default function RecruitDetailPage() {
                     size="sm"
                     variant="outline"
                     className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
-                    disabled={selectedMissingFields.length === 0}
+                    disabled={selectedVisibleMissingFields.length === 0}
                     onClick={() => setRequestInfoOpen(true)}
                   >
                     <Mail className="h-3.5 w-3.5 mr-1.5" />
-                    Request Info ({selectedMissingFields.length} field
-                    {selectedMissingFields.length !== 1 ? "s" : ""})
+                    Request Info ({selectedVisibleMissingFields.length} field
+                    {selectedVisibleMissingFields.length !== 1 ? "s" : ""})
                   </Button>
                 )}
               </CardContent>

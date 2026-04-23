@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest) {
   const { data, error } = await adminSupabase
     .from("program_config")
     .upsert(
-      { program_id: effectiveProgramId, coach_id: user.id, ...parsed.data },
+      { program_id: effectiveProgramId, updated_by_coach_id: user.id, ...parsed.data },
       { onConflict: "program_id" }
     )
     .select()

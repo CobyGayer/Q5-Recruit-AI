@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DqsBadge } from "@/components/scoring/dqs-badge";
 import { CompletenessBar } from "@/components/scoring/completeness-bar";
 import { FlagButton } from "./flag-button";
-import type { RecruitWithScore, FlagType } from "@/types/database";
+import type { RecruitWithScore, FlagType, ProgramConfig } from "@/types/database";
 import type { SortOption, SortDirection } from "@/types/recruit";
 import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import {
@@ -34,6 +34,7 @@ interface RecruitListViewProps {
   selectedIds?: Set<string>;
   onToggleSelect?: (recruitId: string) => void;
   onToggleSelectAll?: () => void;
+  programConfig?: ProgramConfig | null;
 }
 
 const CLUB_LEVEL_LABELS: Record<string, string> = {
@@ -119,6 +120,7 @@ export function RecruitListView({
   selectedIds,
   onToggleSelect,
   onToggleSelectAll,
+  programConfig,
 }: RecruitListViewProps) {
   const router = useRouter();
 
@@ -267,6 +269,8 @@ export function RecruitListView({
                     fieldsExtracted={recruit.fields_extracted}
                     fieldsTotal={recruit.fields_total}
                     fieldsMissing={recruit.fields_missing}
+                    programConfig={programConfig}
+                    clubLevel={recruit.club_level}
                   />
                 </div>
               </TableCell>

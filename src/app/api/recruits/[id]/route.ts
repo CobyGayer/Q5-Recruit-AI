@@ -7,6 +7,11 @@ import { normalizeEmail } from "@/lib/utils/email";
 import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
 import type { ConfidenceLevel } from "@/types/database";
 
+const ClubLevelUpdateSchema = z.preprocess((value) => {
+  if (value === null || value === "") return "unknown";
+  return value;
+}, z.enum(["mls_next", "ecnl", "ga", "regional", "other", "unknown"]));
+
 const RecruitUpdateSchema = z.object({
   full_name: z.string().nullable().optional(),
   email: z.string().nullable().optional().refine((v) => v == null || z.string().email().safeParse(v).success, { message: "Invalid email" }),
@@ -24,7 +29,7 @@ const RecruitUpdateSchema = z.object({
   sat_score: z.number().int().min(400).max(1600).nullable().optional(),
   act_score: z.number().int().min(1).max(36).nullable().optional(),
   club_team: z.string().nullable().optional(),
-  club_level: z.enum(["mls_next", "ecnl", "ga", "regional", "other", "unknown"]).optional(),
+  club_level: ClubLevelUpdateSchema.optional(),
   high_school_team: z.string().nullable().optional(),
   video_url: z.string().url().nullable().optional(),
 }).strict();
