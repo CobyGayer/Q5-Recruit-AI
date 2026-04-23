@@ -129,9 +129,11 @@ export function RecruitCard({ recruit, onFlagChange, selected, onToggleSelect }:
                   </span>
                 )}
               </div>
-              {recruit.positions.filter((pos) => (POSITIONS as readonly string[]).includes(pos)).length > 0 && (
+              {(() => {
+                const knownPositions = recruit.positions.filter((pos) => (POSITIONS as readonly string[]).includes(pos));
+                return knownPositions.length > 0 && (
                 <div className="flex gap-1 mt-1 flex-wrap">
-                  {recruit.positions.filter((pos) => (POSITIONS as readonly string[]).includes(pos)).map((pos) => (
+                  {knownPositions.map((pos) => (
                     <Badge
                       key={pos}
                       variant="outline"
@@ -141,7 +143,7 @@ export function RecruitCard({ recruit, onFlagChange, selected, onToggleSelect }:
                     </Badge>
                   ))}
                 </div>
-              )}
+              );})()}
             </div>
 
             <div className="shrink-0">
