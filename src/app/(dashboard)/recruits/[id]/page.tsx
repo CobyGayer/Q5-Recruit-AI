@@ -457,7 +457,10 @@ export default function RecruitDetailPage() {
                         rawValue != null ? String(rawValue) : "—";
                     }
 
-                    const isMissing = recruit.fields_missing.includes(key);
+                    const isMissing =
+                      recruit.fields_missing.includes(key) ||
+                      (key === "positions" &&
+                        recruit.positions.filter((pos) => (POSITIONS as readonly string[]).includes(pos)).length === 0);
 
                     return (
                       <div

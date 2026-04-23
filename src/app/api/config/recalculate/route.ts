@@ -58,10 +58,7 @@ export async function POST() {
       (POSITIONS as readonly string[]).includes(pos)
     );
     const confidence = recruit.extraction_confidence as Record<string, unknown> ?? {};
-    const hasUnrecognizedPositions =
-      (recruit.positions.length > 0 && knownPositions.length === 0) ||
-      (recruit.positions.length === 0 && "positions" in confidence);
-    if (hasUnrecognizedPositions) {
+    if (recruit.positions.length > 0 && knownPositions.length === 0) {
       const fieldsMissing: string[] = Array.isArray(recruit.fields_missing)
         ? [...recruit.fields_missing]
         : [];
