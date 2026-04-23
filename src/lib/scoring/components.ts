@@ -1,5 +1,6 @@
 import type { Recruit, ProgramConfig, ClubLevel, TranscriptAnalysis } from "@/types/database";
 import { lookupClubLevel } from "@/lib/data/club-directory";
+import { POSITIONS } from "@/types/config";
 
 /** Club level tier scores */
 const CLUB_LEVEL_SCORES: Record<ClubLevel, number> = {
@@ -131,15 +132,19 @@ export function scorePositionFit(
   recruit: Recruit,
   config: ProgramConfig
 ): number | null {
-  if (recruit.positions.length === 0) {
-    return null; // No position data
+  const knownPositions = recruit.positions.filter((pos) =>
+    (POSITIONS as readonly string[]).includes(pos)
+  );
+
+  if (knownPositions.length === 0) {
+    return null; // No recognized position data — treat as missing
   }
 
   if (config.accepted_positions.length === 0) {
     return 100; // Coach accepts all positions
   }
 
-  const hasMatch = recruit.positions.some((pos) =>
+  const hasMatch = knownPositions.some((pos) =>
     config.accepted_positions.includes(pos)
   );
 

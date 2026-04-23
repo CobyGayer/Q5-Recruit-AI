@@ -4,6 +4,7 @@ import { buildExtractionPrompt } from "./prompt";
 import type { ProcessingStatus, ClubLevel, ConfidenceLevel } from "@/types/database";
 import { lookupClubLevel } from "@/lib/data/club-directory";
 import { normalizeEmail } from "@/lib/utils/email";
+import { POSITIONS } from "@/types/config";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -213,6 +214,15 @@ export async function extractRecruitData(
       parsed.club_level.value = directoryLevel;
       parsed.club_level.confidence = "high";
     }
+  }
+
+  // Filter positions to recognized values only — unrecognized strings (e.g. "forward")
+  // are treated as if the field was not found.
+  if (parsed.positions.value != null) {
+    const recognized = parsed.positions.value.filter((pos) =>
+      (POSITIONS as readonly string[]).includes(pos)
+    );
+    parsed.positions.value = recognized.length > 0 ? recognized : null;
   }
 
   // Process extraction results

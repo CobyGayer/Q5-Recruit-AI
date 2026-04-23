@@ -23,6 +23,7 @@ import { EmailComposeDialog } from "@/components/email/email-compose-dialog";
 import { RequestInfoDialog } from "@/components/email/request-info-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Recruit, RecruitDqsScore, CoachRecruitFlag, TranscriptAnalysis, ConfidenceLevel } from "@/types/database";
+import { POSITIONS } from "@/types/config";
 import {
   Dialog,
   DialogContent,
@@ -258,7 +259,7 @@ export default function RecruitDetailPage() {
               {recruit.full_name || "Unknown Name"}
             </h1>
             <div className="flex items-center gap-2 mt-1">
-              {recruit.positions.map((pos) => (
+              {recruit.positions.filter((pos) => (POSITIONS as readonly string[]).includes(pos)).map((pos) => (
                 <Badge key={pos} variant="outline" className="border-primary/40 text-primary">
                   {pos}
                 </Badge>
@@ -438,10 +439,10 @@ export default function RecruitDetailPage() {
                     const rawValue = (recruit as unknown as Record<string, unknown>)[key];
 
                     if (key === "positions") {
-                      displayValue =
-                        recruit.positions.length > 0
-                          ? recruit.positions.join(", ")
-                          : "—";
+                      const knownPositions = recruit.positions.filter((pos) =>
+                        (POSITIONS as readonly string[]).includes(pos)
+                      );
+                      displayValue = knownPositions.length > 0 ? knownPositions.join(", ") : "—";
                     } else if (key === "club_level") {
                       displayValue =
                         CLUB_LEVEL_LABELS[recruit.club_level] ?? "—";
@@ -464,7 +465,7 @@ export default function RecruitDetailPage() {
                         className="grid grid-cols-3 gap-2 items-center py-1 border-b last:border-0"
                       >
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          {confidence[key] && (
+                          {confidence[key] && !isMissing && (
                             <ConfidenceBadge confidence={confidence[key]} />
                           )}
                           {label}
