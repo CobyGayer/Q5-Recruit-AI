@@ -210,23 +210,19 @@ function applySorting(
       );
       break;
     case "completeness": {
-      sorted.sort((a, b) => {
-        const compA = adjustCompletenessForWeights(
-          a.fields_missing,
-          a.fields_extracted,
-          a.fields_total,
-          config,
-          a.club_level
-        ).ratio;
-        const compB = adjustCompletenessForWeights(
-          b.fields_missing,
-          b.fields_extracted,
-          b.fields_total,
-          config,
-          b.club_level
-        ).ratio;
-        return dir * (compA - compB);
-      });
+      const ratioCache = new Map<string, number>(
+        sorted.map((r) => [
+          r.id,
+          adjustCompletenessForWeights(
+            r.fields_missing,
+            r.fields_extracted,
+            r.fields_total,
+            config,
+            r.club_level
+          ).ratio,
+        ])
+      );
+      sorted.sort((a, b) => dir * ((ratioCache.get(a.id) ?? 0) - (ratioCache.get(b.id) ?? 0)));
       break;
     }
     default:
