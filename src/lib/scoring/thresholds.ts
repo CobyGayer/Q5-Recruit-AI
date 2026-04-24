@@ -1,4 +1,5 @@
 import type { Recruit, ProgramConfig } from "@/types/database";
+import { POSITIONS } from "@/types/config";
 
 export interface ThresholdResult {
   qualified: boolean;
@@ -71,18 +72,21 @@ export function checkThresholds(
     }
   }
 
-  // Position check
-  if (
-    recruit.positions.length > 0 &&
-    config.accepted_positions.length > 0
-  ) {
-    const hasMatchingPosition = recruit.positions.some((pos) =>
-      config.accepted_positions.includes(pos)
+  // Position check — only DQ if recruit has at least one recognized position
+  // that doesn't match. Unrecognized positions are treated as missing (no DQ).
+  if (config.accepted_positions.length > 0) {
+    const knownPositions = recruit.positions.filter((pos) =>
+      (POSITIONS as readonly string[]).includes(pos)
     );
-    if (!hasMatchingPosition) {
-      reasons.push(
-        `Position(s) ${recruit.positions.join(", ")} not in accepted positions`
+    if (knownPositions.length > 0) {
+      const hasMatchingPosition = knownPositions.some((pos) =>
+        config.accepted_positions.includes(pos)
       );
+      if (!hasMatchingPosition) {
+        reasons.push(
+          `Position(s) ${knownPositions.join(", ")} not in accepted positions`
+        );
+      }
     }
   }
 
