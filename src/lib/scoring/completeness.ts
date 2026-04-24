@@ -133,8 +133,10 @@ export function adjustCompletenessForWeights(
       );
       adjustedTotal = Math.max(0, adjustedTotal - 2);
     } else if (!hasMissingSat && !hasMissingAct) {
-      // In this state, SAT/ACT contributes either 1 slot (either-or adjusted) or 2 slots.
-      const testSlots = adjustedTotal >= 19 ? 2 : 1;
+      // Derive whether SAT/ACT was already collapsed to a single either-or slot
+      // from the input state instead of inferring it from a hard-coded base total.
+      const testsCollapsedToSingleRequirement = initial.total < fieldsTotal;
+      const testSlots = testsCollapsedToSingleRequirement ? 1 : 2;
       adjustedTotal = Math.max(0, adjustedTotal - testSlots);
       adjustedExtracted = Math.max(0, adjustedExtracted - testSlots);
     }
