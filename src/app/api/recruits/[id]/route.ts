@@ -5,7 +5,10 @@ import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { z } from "zod";
 import { normalizeEmail } from "@/lib/utils/email";
 import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
+import { computeCompletenessMetadata } from "@/lib/recruits/completeness-metadata";
+import { calculateDQS } from "@/lib/scoring/dqs";
 import type { ConfidenceLevel } from "@/types/database";
+import type { ProgramConfig, Recruit, TranscriptAnalysis } from "@/types/database";
 
 const ClubLevelUpdateSchema = z.preprocess((value) => {
   if (value === null || value === "") return "unknown";
@@ -162,16 +165,48 @@ export async function PUT(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  let persistedRecruit = data;
+  const completeness = computeCompletenessMetadata(
+    (persistedRecruit ?? {}) as Record<string, unknown>
+  );
+  const needsCompletenessRefresh =
+    JSON.stringify(persistedRecruit?.fields_missing ?? []) !==
+      JSON.stringify(completeness.fields_missing) ||
+    persistedRecruit?.fields_extracted !== completeness.fields_extracted ||
+    persistedRecruit?.fields_total !== completeness.fields_total;
+
+  if (needsCompletenessRefresh) {
+    let completenessQuery = db
+      .from("recruits")
+      .update(completeness)
+      .eq("id", id);
+    if (overrideProgramId) {
+      completenessQuery = completenessQuery.eq("program_id", overrideProgramId);
+    }
+
+    const { data: refreshedRecruit, error: completenessError } =
+      await completenessQuery.select().single();
+
+    if (completenessError) {
+      return NextResponse.json(
+        { error: completenessError.message },
+        { status: 500 }
+      );
+    }
+
+    persistedRecruit = refreshedRecruit;
+  }
+
   // Only trigger duplicate-review when full_name is explicitly being changed.
   // Do not resurface dismissed groups on unrelated field edits — the UI always
   // sends full_name in the payload, so we guard by comparing the actual name_key.
-  const newNameKey = (data?.name_key as string | null) ?? null;
-  if (parsed.data.full_name !== undefined && data && prevNameKey !== newNameKey) {
+  const newNameKey = (persistedRecruit?.name_key as string | null) ?? null;
+  if (parsed.data.full_name !== undefined && persistedRecruit && prevNameKey !== newNameKey) {
     const adminDb = createAdminClient();
     const duplicateSource = overrideProgramId ? "admin_scan" : "ingest";
     checkAndQueueDuplicateReview(
       adminDb,
-      data.program_id,
+      persistedRecruit.program_id,
       id,
       prevNameKey,
       newNameKey,
@@ -179,7 +214,54 @@ export async function PUT(
     ).catch((err) => console.error("[recruits/PUT] duplicate-review queue failed:", err));
   }
 
-  return NextResponse.json(data);
+  const [configResult, transcriptResult] = await Promise.all([
+    db
+      .from("program_config")
+      .select("*")
+      .eq("program_id", persistedRecruit.program_id)
+      .maybeSingle(),
+    db
+      .from("transcript_analyses")
+      .select("*")
+      .eq("recruit_id", id)
+      .maybeSingle(),
+  ]);
+
+  if (configResult.data) {
+    const dqsResult = calculateDQS(
+      persistedRecruit as Recruit,
+      configResult.data as ProgramConfig,
+      (transcriptResult.data as TranscriptAnalysis | null) ?? null
+    );
+
+    const { error: dqsError } = await db.from("recruit_dqs_scores").upsert(
+      {
+        recruit_id: id,
+        coach_id: user.id,
+        program_id: persistedRecruit.program_id,
+        overall_score: dqsResult.score,
+        is_qualified: dqsResult.isQualified,
+        disqualification_reasons: dqsResult.disqualificationReasons,
+        academic_score: dqsResult.componentScores.academic,
+        competition_score: dqsResult.componentScores.competition,
+        physical_score: dqsResult.componentScores.physical,
+        position_fit_score: dqsResult.componentScores.positionFit,
+        grad_year_score: dqsResult.componentScores.gradYear,
+        completeness_score: dqsResult.componentScores.completeness,
+        bonus_points: dqsResult.bonusPoints,
+        completeness_penalty: dqsResult.completenessPenalty,
+        score_breakdown: dqsResult.breakdown,
+        calculated_at: new Date().toISOString(),
+      },
+      { onConflict: "recruit_id" }
+    );
+
+    if (dqsError) {
+      return NextResponse.json({ error: dqsError.message }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json(persistedRecruit);
 }
 
 export async function DELETE(

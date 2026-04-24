@@ -4,8 +4,11 @@ import { buildUpdateData } from "../lib/recruits/update-data";
 function makeExisting(overrides: Record<string, unknown> = {}) {
   return {
     full_name: "Alex Johnson",
+    email: "alex@example.com",
     gpa: 3.8,
     sat_score: 1200,
+    positions: ["CB"],
+    club_level: "unknown",
     extraction_confidence: {
       full_name: "high",
       gpa: "high",
@@ -67,15 +70,31 @@ describe("buildUpdateData", () => {
     expect((update.extraction_confidence as Record<string, string>).full_name).toBe("high");
   });
 
-  it("always updates completeness counters", () => {
+  it("recomputes completeness counters from effective merged record", () => {
     const update = buildUpdateData(
       makeExisting(),
       { fields_missing: ["phone"], fields_extracted: 9, fields_total: 10 },
       {}
     );
-    expect(update.fields_missing).toEqual(["phone"]);
-    expect(update.fields_extracted).toBe(9);
-    expect(update.fields_total).toBe(10);
+    // Incoming metadata should not be trusted if values were not actually merged.
+    expect(update.fields_missing).not.toEqual(["phone"]);
+    expect(update.fields_extracted).toBe(6);
+    expect(update.fields_total).toBe(18);
+    expect(update.fields_missing).toContain("phone");
+    expect(update.fields_missing).not.toContain("act_score");
+  });
+
+  it("does not let rejected low-confidence values skew completeness metadata", () => {
+    const update = buildUpdateData(
+      makeExisting(),
+      { gpa: 1.9, fields_missing: [], fields_extracted: 19, fields_total: 19 },
+      { gpa: "low" }
+    );
+
+    expect(update.gpa).toBeUndefined();
+    expect(update.fields_extracted).toBe(6);
+    expect(update.fields_total).toBe(18);
+    expect(update.fields_missing).toContain("phone");
   });
 
   it("does NOT overwrite when existing has confidence but new does not", () => {

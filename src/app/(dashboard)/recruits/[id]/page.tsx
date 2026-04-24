@@ -253,6 +253,10 @@ export default function RecruitDetailPage() {
   }
 
   const confidence = recruit.extraction_confidence as Record<string, ConfidenceLevel>;
+  const displayConfidence: Partial<Record<string, ConfidenceLevel>> = {
+    ...confidence,
+    ...(recruit.club_level === "unknown" ? { club_level: undefined } : {}),
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -488,8 +492,8 @@ export default function RecruitDetailPage() {
                         className="grid grid-cols-3 gap-2 items-center py-1 border-b last:border-0"
                       >
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          {confidence[key] && (
-                            <ConfidenceBadge confidence={confidence[key]} />
+                          {displayConfidence[key] && (
+                            <ConfidenceBadge confidence={displayConfidence[key]} />
                           )}
                           {label}
                         </span>
