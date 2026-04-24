@@ -20,7 +20,7 @@ interface ExtractionOutput {
 }
 
 /** All extractable field keys */
-const EXTRACTABLE_FIELDS = [
+export const EXTRACTABLE_FIELDS = [
   "full_name",
   "email",
   "phone",

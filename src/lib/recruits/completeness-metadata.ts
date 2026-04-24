@@ -1,26 +1,6 @@
-const RECRUIT_COMPLETENESS_FIELDS = [
-  "full_name",
-  "email",
-  "phone",
-  "graduation_year",
-  "current_school",
-  "city",
-  "state",
-  "country",
-  "positions",
-  "preferred_foot",
-  "height_inches",
-  "weight_lbs",
-  "gpa",
-  "sat_score",
-  "act_score",
-  "club_team",
-  "club_level",
-  "high_school_team",
-  "video_url",
-] as const;
+import { EXTRACTABLE_FIELDS } from "@/lib/extraction/extract";
 
-type CompletenessField = (typeof RECRUIT_COMPLETENESS_FIELDS)[number];
+type CompletenessField = (typeof EXTRACTABLE_FIELDS)[number];
 
 function hasExtractedValue(field: CompletenessField, value: unknown): boolean {
   if (field === "positions") {
@@ -42,7 +22,7 @@ export function computeCompletenessMetadata(
   const missing: string[] = [];
   let extracted = 0;
 
-  for (const field of RECRUIT_COMPLETENESS_FIELDS) {
+  for (const field of EXTRACTABLE_FIELDS) {
     if (hasExtractedValue(field, recruit[field])) {
       extracted++;
     } else {
@@ -50,7 +30,7 @@ export function computeCompletenessMetadata(
     }
   }
 
-  let total: number = RECRUIT_COMPLETENESS_FIELDS.length;
+  let total: number = EXTRACTABLE_FIELDS.length;
   const hasSat = hasExtractedValue("sat_score", recruit.sat_score);
   const hasAct = hasExtractedValue("act_score", recruit.act_score);
 
