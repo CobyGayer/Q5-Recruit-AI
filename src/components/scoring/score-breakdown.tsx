@@ -1,6 +1,6 @@
 "use client";
 
-import type { RecruitDqsScore, RigorGrade } from "@/types/database";
+import type { ProgramConfig, RecruitDqsScore, RigorGrade } from "@/types/database";
 import { getScoreBarClass } from "@/lib/scoring/colors";
 
 const RIGOR_GRADE_COLORS: Record<string, string> = {
@@ -19,6 +19,15 @@ const RIGOR_GRADE_COLORS: Record<string, string> = {
 interface ScoreBreakdownProps {
   score: RecruitDqsScore;
   rigorGrade?: RigorGrade | null;
+  programConfig?: Pick<
+    ProgramConfig,
+    | "weight_academic"
+    | "weight_competition"
+    | "weight_physical"
+    | "weight_position_fit"
+    | "weight_grad_year"
+    | "weight_completeness"
+  > | null;
 }
 
 const COMPONENT_LABELS: Record<string, string> = {
@@ -30,11 +39,60 @@ const COMPONENT_LABELS: Record<string, string> = {
   completeness: "Completeness",
 };
 
-function ScoreBar({ label, score, badge }: { label: string; score: number | null; badge?: React.ReactNode }) {
-  const displayScore = score ?? 0;
+type ScoreComponentKey = keyof typeof COMPONENT_LABELS;
+
+const COMPONENT_WEIGHT_KEYS: Record<
+  ScoreComponentKey,
+  keyof Pick<
+    ProgramConfig,
+    | "weight_academic"
+    | "weight_competition"
+    | "weight_physical"
+    | "weight_position_fit"
+    | "weight_grad_year"
+    | "weight_completeness"
+  >
+> = {
+  academic: "weight_academic",
+  competition: "weight_competition",
+  physical: "weight_physical",
+  position_fit: "weight_position_fit",
+  grad_year: "weight_grad_year",
+  completeness: "weight_completeness",
+};
+
+export function getScoreDisplayValue(
+  score: number | null,
+  programConfig: ScoreBreakdownProps["programConfig"],
+  componentKey: ScoreComponentKey
+): string {
+  const weightKey = COMPONENT_WEIGHT_KEYS[componentKey];
+  const isZeroWeighted = programConfig?.[weightKey] === 0;
+
+  if (isZeroWeighted) {
+    return "NA";
+  }
+
+  return score != null ? String(Math.round(score)) : "N/A";
+}
+
+function ScoreBar({
+  label,
+  score,
+  displayValue,
+  badge,
+}: {
+  label: string;
+  score: number | null;
+  displayValue: string;
+  badge?: React.ReactNode;
+}) {
+  const isUnavailable = displayValue === "NA" || displayValue === "N/A";
+  const displayScore = isUnavailable ? 0 : score ?? 0;
   const barWidth = Math.max(0, Math.min(100, displayScore));
 
-  const barColor = score != null ? getScoreBarClass(score) : "bg-stone-300";
+  const barColor =
+    !isUnavailable && score != null ? getScoreBarClass(score) : "bg-stone-300";
 
   return (
     <div className="space-y-1">
@@ -44,7 +102,7 @@ function ScoreBar({ label, score, badge }: { label: string; score: number | null
           {badge}
         </span>
         <span className="font-medium">
-          {score != null ? Math.round(score) : "N/A"}
+          {displayValue}
         </span>
       </div>
       <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -57,7 +115,7 @@ function ScoreBar({ label, score, badge }: { label: string; score: number | null
   );
 }
 
-export function ScoreBreakdown({ score, rigorGrade }: ScoreBreakdownProps) {
+export function ScoreBreakdown({ score, rigorGrade, programConfig }: ScoreBreakdownProps) {
   const components = [
     { key: "academic", score: score.academic_score },
     { key: "competition", score: score.competition_score },
@@ -75,6 +133,11 @@ export function ScoreBreakdown({ score, rigorGrade }: ScoreBreakdownProps) {
             key={comp.key}
             label={COMPONENT_LABELS[comp.key]}
             score={comp.score}
+            displayValue={getScoreDisplayValue(
+              comp.score,
+              programConfig,
+              comp.key as ScoreComponentKey
+            )}
             badge={
               comp.key === "academic" && rigorGrade ? (
                 <span

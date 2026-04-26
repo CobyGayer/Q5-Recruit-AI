@@ -141,16 +141,28 @@ export async function PUT(
   // with no confidence entry would be overwritten by any extracted value.
   const manualConfidencePatch: Record<string, ConfidenceLevel> = {};
   for (const [field, value] of Object.entries(parsed.data)) {
-    if (value != null) {
+    const isUnknownClubLevel = field === "club_level" && value === "unknown";
+    if (value != null && !isUnknownClubLevel) {
       manualConfidencePatch[field] = "high";
     }
   }
   const updatedConfidence = { ...prevConfidence, ...manualConfidencePatch };
 
+  // A manual clear maps club_level to "unknown". Keep storage non-nullable,
+  // but ensure the clear does not remain an authoritative high-confidence value.
+  const clearedClubLevelToUnknown = parsed.data.club_level === "unknown";
+  if (clearedClubLevelToUnknown) {
+    delete updatedConfidence.club_level;
+  }
+
+  const shouldPersistConfidence =
+    Object.keys(manualConfidencePatch).length > 0 ||
+    (clearedClubLevelToUnknown && Object.hasOwn(prevConfidence, "club_level"));
+
   const updateData = {
     ...parsed.data,
     ...(parsed.data.email !== undefined && { email: normalizeEmail(parsed.data.email) }),
-    ...(Object.keys(manualConfidencePatch).length > 0 && { extraction_confidence: updatedConfidence }),
+    ...(shouldPersistConfidence && { extraction_confidence: updatedConfidence }),
   };
 
   // When override is active, scope the update to the overridden program_id to

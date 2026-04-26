@@ -137,14 +137,88 @@ export default function RecruitDetailPage() {
     loadRecruit();
   }, [id, supabase]);
 
+  // Validation helpers
+  function validateAndParseEditData(): { valid: true; data: Record<string, unknown> } | { valid: false; error: string } {
+    const processed: Record<string, unknown> = { ...editData };
+
+    // Helper to parse numeric fields
+    const parseNumber = (value: unknown, fieldLabel: string, min?: number): number | null => {
+      if (value === null || value === "" || value === undefined) return null;
+      const strValue = String(value).trim();
+      if (strValue === "") return null;
+      if (!/^\d+$/.test(strValue)) {
+        throw new Error(`${fieldLabel} must be a whole number`);
+      }
+      const num = parseInt(strValue, 10);
+      if (min !== undefined && num < min) {
+        throw new Error(`${fieldLabel} must be at least ${min}`);
+      }
+      return num;
+    };
+
+    // Helper to parse GPA
+    const parseGpa = (value: unknown): number | null => {
+      if (value === null || value === "" || value === undefined) return null;
+      const strValue = String(value).trim();
+      if (strValue === "") return null;
+      if (!/^\d+(\.\d+)?$/.test(strValue)) {
+        throw new Error("GPA must be a number (e.g., 3.8)");
+      }
+      const num = parseFloat(strValue);
+      if (num < 0 || num > 4.0) {
+        throw new Error("GPA must be between 0.0 and 4.0");
+      }
+      return num;
+    };
+
+    // Helper to validate email
+    const validateEmail = (value: unknown): string | null => {
+      if (value === null || value === "" || value === undefined) return null;
+      const strValue = String(value).trim();
+      if (strValue === "") return null;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(strValue)) {
+        throw new Error("Email must be a valid email address");
+      }
+      return strValue;
+    };
+
+    try {
+      // Validate numeric fields
+      processed.graduation_year = parseNumber(editData.graduation_year, "Graduation Year", 1950);
+      processed.height_inches = parseNumber(editData.height_inches, "Height (inches)", 36);
+      processed.weight_lbs = parseNumber(editData.weight_lbs, "Weight (lbs)", 50);
+      processed.sat_score = parseNumber(editData.sat_score, "SAT Score", 200);
+      processed.act_score = parseNumber(editData.act_score, "ACT Score", 1);
+
+      // Validate GPA
+      processed.gpa = parseGpa(editData.gpa);
+
+      // Validate email format
+      processed.email = validateEmail(editData.email);
+
+      return { valid: true, data: processed };
+    } catch (error) {
+      return { valid: false, error: error instanceof Error ? error.message : "Invalid input" };
+    }
+  }
+
   async function handleSaveEdit() {
     if (!recruit) return;
     setSaving(true);
 
+    // Validate all fields
+    const validation = validateAndParseEditData();
+    if (!validation.valid) {
+      setSaveError(validation.error);
+      setSaving(false);
+      return;
+    }
+
     const saveRes = await fetch(`/api/recruits/${recruit.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editData),
+      body: JSON.stringify(validation.data),
     });
 
     if (!saveRes.ok) {
@@ -429,14 +503,7 @@ export default function RecruitDetailPage() {
                           onChange={(e) =>
                             setEditData({
                               ...editData,
-                              [key]:
-                                e.target.value === ""
-                                  ? null
-                                  : ["graduation_year", "height_inches", "weight_lbs", "sat_score", "act_score"].includes(key)
-                                  ? parseInt(e.target.value)
-                                  : key === "gpa"
-                                  ? parseFloat(e.target.value)
-                                  : e.target.value,
+                              [key]: e.target.value === "" ? null : e.target.value,
                             })
                           }
                         />
@@ -618,7 +685,11 @@ export default function RecruitDetailPage() {
                 <DqsInfoDialog />
               </CardHeader>
               <CardContent>
-                <ScoreBreakdown score={dqsScore} rigorGrade={transcriptAnalysis?.rigor_grade} />
+                <ScoreBreakdown
+                  score={dqsScore}
+                  rigorGrade={transcriptAnalysis?.rigor_grade}
+                  programConfig={config}
+                />
               </CardContent>
             </Card>
           )}
