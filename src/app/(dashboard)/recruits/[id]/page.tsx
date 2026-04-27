@@ -728,11 +728,6 @@ export default function RecruitDetailPage() {
               </CardHeader>
               {showTranscript && (
                 <CardContent className="space-y-3">
-                  {transcriptAnalysis.admissions_notes && (
-                    <p className="text-sm text-muted-foreground italic break-words">
-                      {transcriptAnalysis.admissions_notes}
-                    </p>
-                  )}
                   {transcriptAnalysis.strengths.length > 0 && (
                     <div className="min-w-0">
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Strengths</p>
