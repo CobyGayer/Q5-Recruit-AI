@@ -8,14 +8,16 @@ import { DqsBadge } from "@/components/scoring/dqs-badge";
 import { CompletenessBar } from "@/components/scoring/completeness-bar";
 import { FlagButton } from "./flag-button";
 import { Play } from "lucide-react";
-import type { RecruitWithScore, FlagType } from "@/types/database";
+import type { RecruitWithScore, FlagType, ProgramConfig } from "@/types/database";
 import { POSITIONS } from "@/types/config";
+
 
 interface RecruitCardProps {
   recruit: RecruitWithScore;
   onFlagChange?: (recruitId: string, flag: FlagType | null) => void;
   selected?: boolean;
   onToggleSelect?: (recruitId: string) => void;
+  programConfig?: ProgramConfig | null;
 }
 
 const CLUB_LEVEL_LABELS: Record<string, string> = {
@@ -87,7 +89,7 @@ function StatCell({ label, value, truncate, icon }: Stat) {
   );
 }
 
-export function RecruitCard({ recruit, onFlagChange, selected, onToggleSelect }: RecruitCardProps) {
+export function RecruitCard({ recruit, onFlagChange, selected, onToggleSelect, programConfig }: RecruitCardProps) {
   const dqs = recruit.dqs_score;
   const stats = getAvailableStats(recruit);
 
@@ -174,6 +176,8 @@ export function RecruitCard({ recruit, onFlagChange, selected, onToggleSelect }:
             fieldsExtracted={recruit.fields_extracted}
             fieldsTotal={recruit.fields_total}
             fieldsMissing={recruit.fields_missing}
+            programConfig={programConfig}
+            clubLevel={recruit.club_level}
           />
         </div>
       </Card>

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, Suspense } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRecruits } from "@/hooks/use-recruits";
+import { useConfig } from "@/hooks/use-config";
 import { useDashboardParams } from "@/hooks/use-dashboard-params";
 import { RecruitCard } from "@/components/recruits/recruit-card";
 import { RecruitFilterPanel } from "@/components/recruits/recruit-filters";
@@ -13,7 +14,8 @@ import { BulkEmailDialog } from "@/components/email/bulk-email-dialog";
 import { ExportDialog } from "@/components/recruits/export-dialog";
 import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit";
 import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
-import type { RecruitWithScore } from "@/types/database";
+import type { RecruitWithScore, ProgramConfig } from "@/types/database";
+import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -30,7 +32,8 @@ import { Mail, Trash2, X, Download, Users, AlertCircle } from "lucide-react";
 function applyFilters(
   recruits: RecruitWithScore[],
   filters: RecruitFilters,
-  searchTerm: string
+  searchTerm: string,
+  config?: ProgramConfig | null
 ): RecruitWithScore[] {
   return recruits.filter((r) => {
     // Multi-field search
@@ -142,8 +145,13 @@ function applyFilters(
 
     // Completeness filter
     if (filters.completeness_min > 0) {
-      const pct =
-        r.fields_total > 0 ? (r.fields_extracted / r.fields_total) * 100 : 0;
+      const pct = adjustCompletenessForWeights(
+        r.fields_missing,
+        r.fields_extracted,
+        r.fields_total,
+        config,
+        r.club_level
+      ).percent;
       if (pct < filters.completeness_min) return false;
     }
 
@@ -162,7 +170,8 @@ function applyFilters(
 function applySorting(
   recruits: RecruitWithScore[],
   sortBy: SortOption,
-  sortDir: SortDirection
+  sortDir: SortDirection,
+  config?: ProgramConfig | null
 ): RecruitWithScore[] {
   const sorted = [...recruits];
   const dir = sortDir === "asc" ? 1 : -1;
@@ -201,13 +210,19 @@ function applySorting(
       );
       break;
     case "completeness": {
-      sorted.sort((a, b) => {
-        const compA =
-          a.fields_total > 0 ? a.fields_extracted / a.fields_total : 0;
-        const compB =
-          b.fields_total > 0 ? b.fields_extracted / b.fields_total : 0;
-        return dir * (compA - compB);
-      });
+      const ratioCache = new Map<string, number>(
+        sorted.map((r) => [
+          r.id,
+          adjustCompletenessForWeights(
+            r.fields_missing,
+            r.fields_extracted,
+            r.fields_total,
+            config,
+            r.club_level
+          ).ratio,
+        ])
+      );
+      sorted.sort((a, b) => dir * ((ratioCache.get(a.id) ?? 0) - (ratioCache.get(b.id) ?? 0)));
       break;
     }
     default:
@@ -260,8 +275,9 @@ function getDefaultForKey(key: keyof RecruitFilters): Partial<RecruitFilters> {
 }
 
 function DashboardContent() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { recruits, loading, refetch, updateRecruitFlag } = useRecruits();
+  const { config } = useConfig();
   const [coachEmail, setCoachEmail] = useState<string | undefined>();
   const [pendingDuplicateCount, setPendingDuplicateCount] = useState(0);
   const {
@@ -328,13 +344,13 @@ function DashboardContent() {
   }
 
   const filteredRecruits = useMemo(
-    () => applyFilters(recruits, filters, searchTerm),
-    [recruits, filters, searchTerm]
+    () => applyFilters(recruits, filters, searchTerm, config),
+    [recruits, filters, searchTerm, config]
   );
 
   const sortedRecruits = useMemo(
-    () => applySorting(filteredRecruits, sortBy, sortDir),
-    [filteredRecruits, sortBy, sortDir]
+    () => applySorting(filteredRecruits, sortBy, sortDir, config),
+    [filteredRecruits, sortBy, sortDir, config]
   );
 
   const toggleSelect = useCallback((recruitId: string) => {
@@ -621,6 +637,7 @@ function DashboardContent() {
                   onFlagChange={updateRecruitFlag}
                   selected={selectedIds.has(recruit.id)}
                   onToggleSelect={toggleSelect}
+                  programConfig={config}
                 />
               ))}
               </div>
@@ -635,6 +652,7 @@ function DashboardContent() {
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
               onToggleSelectAll={toggleSelectAll}
+              programConfig={config}
             />
           )}
         </div>

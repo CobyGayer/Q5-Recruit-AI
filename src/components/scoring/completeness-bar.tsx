@@ -5,11 +5,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getCompletenessBarClass } from "@/lib/scoring/colors";
+import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
+import type { ClubLevel, ProgramConfig } from "@/types/database";
 
 interface CompletenessBarProps {
   fieldsExtracted: number;
   fieldsTotal: number;
   fieldsMissing?: string[];
+  programConfig?: ProgramConfig | null;
+  clubLevel?: ClubLevel | null;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -34,44 +38,21 @@ const FIELD_LABELS: Record<string, string> = {
   video_url: "Video",
 };
 
-/**
- * SAT and ACT are alternative test scores — having either one satisfies
- * the requirement. If only one is in fieldsMissing, the other was extracted,
- * so we drop the missing one from display and adjust the counts.
- */
-function adjustForAlternativeFields(
-  missing: string[],
-  extracted: number,
-  total: number
-): { missing: string[]; extracted: number; total: number } {
-  const hasMissingSat = missing.includes("sat_score");
-  const hasMissingAct = missing.includes("act_score");
-
-  // Only one is missing → the other was found, so drop the missing one
-  if (hasMissingSat !== hasMissingAct) {
-    const drop = hasMissingSat ? "sat_score" : "act_score";
-    return {
-      missing: missing.filter((f) => f !== drop),
-      extracted,
-      total: total - 1,
-    };
-  }
-
-  return { missing, extracted, total };
-}
-
 export function CompletenessBar({
   fieldsExtracted,
   fieldsTotal,
   fieldsMissing = [],
+  programConfig,
+  clubLevel,
 }: CompletenessBarProps) {
-  const adjusted = adjustForAlternativeFields(
+  const adjusted = adjustCompletenessForWeights(
     fieldsMissing,
     fieldsExtracted,
-    fieldsTotal
+    fieldsTotal,
+    programConfig,
+    clubLevel
   );
-  const pct =
-    adjusted.total > 0 ? (adjusted.extracted / adjusted.total) * 100 : 0;
+  const pct = adjusted.ratio * 100;
   const barClass = getCompletenessBarClass(pct);
 
   return (

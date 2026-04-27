@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ export default function OnboardingPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [thresholds, setThresholds] = useState<ThresholdFormData>(DEFAULT_THRESHOLDS);
 

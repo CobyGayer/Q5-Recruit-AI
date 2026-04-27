@@ -183,4 +183,24 @@ describe("buildMergedPayload", () => {
     expect(payload.city).toBe("Portland");
     expect(payload.full_name).toBe("Alex Johnson");
   });
+
+  it("later extracted high-confidence club level replaces manually-cleared unknown", () => {
+    const manuallyCleared = makeRecruit({
+      id: "manual-clear",
+      club_level: "unknown",
+      // Manual clear should not carry club_level confidence metadata.
+      extraction_confidence: {},
+      updated_at: "2024-01-01T00:00:00Z",
+    });
+    const extractedLater = makeRecruit({
+      id: "extracted-later",
+      club_level: "ecnl",
+      extraction_confidence: { club_level: "high" },
+      updated_at: "2024-06-01T00:00:00Z",
+    });
+
+    const payload = buildMergedPayload([manuallyCleared, extractedLater]);
+    expect(payload.club_level).toBe("ecnl");
+    expect(payload.extraction_confidence.club_level).toBe("high");
+  });
 });

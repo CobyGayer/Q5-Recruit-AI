@@ -1,5 +1,6 @@
 import type { ConfidenceLevel } from "@/types/database";
 import { CONFIDENCE_RANK } from "./confidence";
+import { computeCompletenessMetadata } from "./completeness-metadata";
 
 /**
  * Build a partial update payload for an existing recruit row.
@@ -61,9 +62,15 @@ export function buildUpdateData(
     ...existingConfidence,
     ...winnerConf,
   };
-  if (newData.fields_missing !== undefined) update.fields_missing = newData.fields_missing;
-  if (newData.fields_extracted !== undefined) update.fields_extracted = newData.fields_extracted;
-  if (newData.fields_total !== undefined) update.fields_total = newData.fields_total;
+
+  const effectiveRecruit = {
+    ...existing,
+    ...update,
+  };
+  const completeness = computeCompletenessMetadata(effectiveRecruit);
+  update.fields_missing = completeness.fields_missing;
+  update.fields_extracted = completeness.fields_extracted;
+  update.fields_total = completeness.fields_total;
 
   return update;
 }

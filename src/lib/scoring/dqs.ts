@@ -6,9 +6,9 @@ import {
   scorePhysical,
   scorePositionFit,
   scoreGradYearFit,
-  scoreCompleteness,
   calculateBonus,
 } from "./components";
+import { adjustCompletenessForWeights } from "./completeness";
 
 export interface DQSResult {
   score: number | null;
@@ -48,7 +48,7 @@ function normalizeWeights(
   let total = 0;
 
   for (const [key, weight] of Object.entries(weightConfig)) {
-    if (availableComponents[key]) {
+    if (availableComponents[key] && (weight as number) > 0) {
       rawWeights[key] = weight as number;
       total += weight as number;
     }
@@ -72,6 +72,14 @@ export function calculateDQS(
   config: ProgramConfig,
   transcriptAnalysis?: TranscriptAnalysis | null
 ): DQSResult {
+  const adjustedCompleteness = adjustCompletenessForWeights(
+    recruit.fields_missing,
+    recruit.fields_extracted,
+    recruit.fields_total,
+    config,
+    recruit.club_level
+  );
+
   // Step 1: Threshold check
   const thresholdResult = checkThresholds(recruit, config);
 
@@ -86,7 +94,7 @@ export function calculateDQS(
         physical: scorePhysical(recruit, config),
         positionFit: scorePositionFit(recruit, config),
         gradYear: scoreGradYearFit(recruit, config),
-        completeness: scoreCompleteness(recruit),
+        completeness: adjustedCompleteness.percent,
       },
       bonusPoints: 0,
       completenessPenalty: 0,
@@ -101,7 +109,7 @@ export function calculateDQS(
     physical: scorePhysical(recruit, config),
     positionFit: scorePositionFit(recruit, config),
     gradYear: scoreGradYearFit(recruit, config),
-    completeness: scoreCompleteness(recruit),
+    completeness: adjustedCompleteness.percent,
   };
 
   // Step 3: Determine which components have data
@@ -143,9 +151,7 @@ export function calculateDQS(
 
   // Step 7: Completeness penalty
   const completenessRatio =
-    recruit.fields_total > 0
-      ? recruit.fields_extracted / recruit.fields_total
-      : 0;
+    config.weight_completeness > 0 ? adjustedCompleteness.ratio : 1;
   // Penalty multiplier: 0.6 (0% complete) to 1.0 (100% complete)
   const penaltyMultiplier = 0.6 + 0.4 * completenessRatio;
 

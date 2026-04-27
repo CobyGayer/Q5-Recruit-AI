@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useConfig } from "@/hooks/use-config";
+import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -87,7 +89,8 @@ interface SourceEmail {
 export default function RecruitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const { config } = useConfig();
 
   const [recruit, setRecruit] = useState<Recruit | null>(null);
   const [dqsScore, setDqsScore] = useState<RecruitDqsScore | null>(null);
@@ -134,14 +137,88 @@ export default function RecruitDetailPage() {
     loadRecruit();
   }, [id, supabase]);
 
+  // Validation helpers
+  function validateAndParseEditData(): { valid: true; data: Record<string, unknown> } | { valid: false; error: string } {
+    const processed: Record<string, unknown> = { ...editData };
+
+    // Helper to parse numeric fields
+    const parseNumber = (value: unknown, fieldLabel: string, min?: number): number | null => {
+      if (value === null || value === "" || value === undefined) return null;
+      const strValue = String(value).trim();
+      if (strValue === "") return null;
+      if (!/^\d+$/.test(strValue)) {
+        throw new Error(`${fieldLabel} must be a whole number`);
+      }
+      const num = parseInt(strValue, 10);
+      if (min !== undefined && num < min) {
+        throw new Error(`${fieldLabel} must be at least ${min}`);
+      }
+      return num;
+    };
+
+    // Helper to parse GPA
+    const parseGpa = (value: unknown): number | null => {
+      if (value === null || value === "" || value === undefined) return null;
+      const strValue = String(value).trim();
+      if (strValue === "") return null;
+      if (!/^\d+(\.\d+)?$/.test(strValue)) {
+        throw new Error("GPA must be a number (e.g., 3.8)");
+      }
+      const num = parseFloat(strValue);
+      if (num < 0 || num > 4.0) {
+        throw new Error("GPA must be between 0.0 and 4.0");
+      }
+      return num;
+    };
+
+    // Helper to validate email
+    const validateEmail = (value: unknown): string | null => {
+      if (value === null || value === "" || value === undefined) return null;
+      const strValue = String(value).trim();
+      if (strValue === "") return null;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(strValue)) {
+        throw new Error("Email must be a valid email address");
+      }
+      return strValue;
+    };
+
+    try {
+      // Validate numeric fields
+      processed.graduation_year = parseNumber(editData.graduation_year, "Graduation Year", 1950);
+      processed.height_inches = parseNumber(editData.height_inches, "Height (inches)", 36);
+      processed.weight_lbs = parseNumber(editData.weight_lbs, "Weight (lbs)", 50);
+      processed.sat_score = parseNumber(editData.sat_score, "SAT Score", 200);
+      processed.act_score = parseNumber(editData.act_score, "ACT Score", 1);
+
+      // Validate GPA
+      processed.gpa = parseGpa(editData.gpa);
+
+      // Validate email format
+      processed.email = validateEmail(editData.email);
+
+      return { valid: true, data: processed };
+    } catch (error) {
+      return { valid: false, error: error instanceof Error ? error.message : "Invalid input" };
+    }
+  }
+
   async function handleSaveEdit() {
     if (!recruit) return;
     setSaving(true);
 
+    // Validate all fields
+    const validation = validateAndParseEditData();
+    if (!validation.valid) {
+      setSaveError(validation.error);
+      setSaving(false);
+      return;
+    }
+
     const saveRes = await fetch(`/api/recruits/${recruit.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editData),
+      body: JSON.stringify(validation.data),
     });
 
     if (!saveRes.ok) {
@@ -212,6 +289,25 @@ export default function RecruitDetailPage() {
     }
   }
 
+  const visibleMissingFields = useMemo(
+    () =>
+      recruit
+        ? adjustCompletenessForWeights(
+            recruit.fields_missing,
+            recruit.fields_extracted,
+            recruit.fields_total,
+            config,
+            recruit.club_level
+          ).missing
+        : [],
+    [recruit, config]
+  );
+
+  const selectedVisibleMissingFields = useMemo(
+    () => selectedMissingFields.filter((field) => visibleMissingFields.includes(field)),
+    [selectedMissingFields, visibleMissingFields]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -232,6 +328,10 @@ export default function RecruitDetailPage() {
   }
 
   const confidence = recruit.extraction_confidence as Record<string, ConfidenceLevel>;
+  const displayConfidence: Partial<Record<string, ConfidenceLevel>> = {
+    ...confidence,
+    ...(recruit.club_level === "unknown" ? { club_level: undefined } : {}),
+  };
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
@@ -331,7 +431,7 @@ export default function RecruitDetailPage() {
         recruitId={recruit.id}
         recruitName={recruit.full_name}
         recruitEmail={recruit.email}
-        selectedFields={selectedMissingFields}
+        selectedFields={selectedVisibleMissingFields}
         fieldLabels={FIELD_LABELS}
         coachEmail={coachEmail}
       />
@@ -385,6 +485,8 @@ export default function RecruitDetailPage() {
                 fieldsExtracted={recruit.fields_extracted}
                 fieldsTotal={recruit.fields_total}
                 fieldsMissing={recruit.fields_missing}
+                programConfig={config}
+                clubLevel={recruit.club_level}
               />
             </CardHeader>
             <CardContent>
@@ -401,14 +503,7 @@ export default function RecruitDetailPage() {
                           onChange={(e) =>
                             setEditData({
                               ...editData,
-                              [key]:
-                                e.target.value === ""
-                                  ? null
-                                  : ["graduation_year", "height_inches", "weight_lbs", "sat_score", "act_score"].includes(key)
-                                  ? parseInt(e.target.value)
-                                  : key === "gpa"
-                                  ? parseFloat(e.target.value)
-                                  : e.target.value,
+                              [key]: e.target.value === "" ? null : e.target.value,
                             })
                           }
                         />
@@ -462,14 +557,16 @@ export default function RecruitDetailPage() {
                       (key === "positions" &&
                         recruit.positions.filter((pos) => (POSITIONS as readonly string[]).includes(pos)).length === 0);
 
+
                     return (
                       <div
                         key={key}
                         className="grid grid-cols-3 gap-2 items-center py-1 border-b last:border-0"
                       >
                         <span className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          {confidence[key] && !isMissing && (
-                            <ConfidenceBadge confidence={confidence[key]} />
+                          {displayConfidence[key] && (
+                            <ConfidenceBadge confidence={displayConfidence[key]} />
+
                           )}
                           {label}
                         </span>
@@ -588,7 +685,11 @@ export default function RecruitDetailPage() {
                 <DqsInfoDialog />
               </CardHeader>
               <CardContent>
-                <ScoreBreakdown score={dqsScore} rigorGrade={transcriptAnalysis?.rigor_grade} />
+                <ScoreBreakdown
+                  score={dqsScore}
+                  rigorGrade={transcriptAnalysis?.rigor_grade}
+                  programConfig={config}
+                />
               </CardContent>
             </Card>
           )}
@@ -696,11 +797,11 @@ export default function RecruitDetailPage() {
             </Card>
           )}
 
-          {recruit.fields_missing.length > 0 && (
+          {visibleMissingFields.length > 0 && (
             <Card className="border-amber-200 bg-amber-50">
               <CardHeader>
                 <CardTitle className="text-amber-700 text-sm">
-                  Missing Data ({recruit.fields_missing.length} fields)
+                  Missing Data ({visibleMissingFields.length} fields)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -708,17 +809,21 @@ export default function RecruitDetailPage() {
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
                     checked={
-                      selectedMissingFields.length === recruit.fields_missing.length
+                      selectedVisibleMissingFields.length === visibleMissingFields.length
                         ? true
-                        : selectedMissingFields.length > 0
+                        : selectedVisibleMissingFields.length > 0
                         ? "indeterminate"
                         : false
                     }
                     onCheckedChange={() => {
-                      if (selectedMissingFields.length === recruit.fields_missing.length) {
-                        setSelectedMissingFields([]);
+                      if (selectedVisibleMissingFields.length === visibleMissingFields.length) {
+                        setSelectedMissingFields((prev) =>
+                          prev.filter((field) => !visibleMissingFields.includes(field))
+                        );
                       } else {
-                        setSelectedMissingFields([...recruit.fields_missing]);
+                        setSelectedMissingFields((prev) =>
+                          Array.from(new Set([...prev, ...visibleMissingFields]))
+                        );
                       }
                     }}
                   />
@@ -729,13 +834,13 @@ export default function RecruitDetailPage() {
 
                 {/* Individual field checkboxes */}
                 <div className="flex flex-wrap gap-2">
-                  {recruit.fields_missing.map((field) => (
+                  {visibleMissingFields.map((field) => (
                     <label
                       key={field}
                       className="flex items-center gap-1.5 cursor-pointer"
                     >
                       <Checkbox
-                        checked={selectedMissingFields.includes(field)}
+                        checked={selectedVisibleMissingFields.includes(field)}
                         onCheckedChange={() => {
                           setSelectedMissingFields((prev) =>
                             prev.includes(field)
@@ -757,12 +862,12 @@ export default function RecruitDetailPage() {
                     size="sm"
                     variant="outline"
                     className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
-                    disabled={selectedMissingFields.length === 0}
+                    disabled={selectedVisibleMissingFields.length === 0}
                     onClick={() => setRequestInfoOpen(true)}
                   >
                     <Mail className="h-3.5 w-3.5 mr-1.5" />
-                    Request Info ({selectedMissingFields.length} field
-                    {selectedMissingFields.length !== 1 ? "s" : ""})
+                    Request Info ({selectedVisibleMissingFields.length} field
+                    {selectedVisibleMissingFields.length !== 1 ? "s" : ""})
                   </Button>
                 )}
               </CardContent>
