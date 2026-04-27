@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,9 +61,9 @@ const DEFAULT_ROSTER: RosterContextFormData = {
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
-  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [thresholds, setThresholds] = useState<ThresholdFormData>(DEFAULT_THRESHOLDS);
@@ -149,22 +149,34 @@ export default function OnboardingPage() {
 
   async function handleComplete() {
     setLoading(true);
+    setSaveError(null);
 
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
-    if (!user) return;
+    if (userError || !user) {
+      setLoading(false);
+      setSaveError("Unable to verify your session. Please refresh and try again.");
+      return;
+    }
 
     if (!selectedProgramId) {
       setLoading(false);
+      setSaveError("Select a program before continuing.");
       return;
     }
 
     // Save program selection
-    await supabase
+    const { error: programUpdateError } = await supabase
       .from("coaches")
       .update({ program_id: selectedProgramId })
       .eq("id", user.id);
+    if (programUpdateError) {
+      setLoading(false);
+      setSaveError("Could not save your program selection. Please try again.");
+      return;
+    }
 
     // Save config
     const configData = {
@@ -175,26 +187,31 @@ export default function OnboardingPage() {
       ...roster,
     };
 
-    await supabase.from("program_config").upsert(configData, {
+    const { error: configError } = await supabase.from("program_config").upsert(configData, {
       onConflict: "program_id",
     });
+    if (configError) {
+      setLoading(false);
+      setSaveError("Could not save your onboarding settings. Please try again.");
+      return;
+    }
 
     // Mark onboarding completed, pipeline awaiting admin setup
-    await supabase
+    const { error: onboardingError } = await supabase
       .from("coaches")
       .update({
         onboarding_completed: true,
         email_pipeline_status: "pending_setup",
       })
       .eq("id", user.id);
+    if (onboardingError) {
+      setLoading(false);
+      setSaveError("Could not finish onboarding. Please try again.");
+      return;
+    }
 
     setLoading(false);
     setStep(4); // Go to Gmail setup step
-  }
-
-  function handleFinish() {
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -328,11 +345,16 @@ export default function OnboardingPage() {
                 </Button>
               )}
               {step === 4 && (
-                <Button onClick={handleFinish} className="ml-auto">
-                  Go to Dashboard
+                <Button asChild className="ml-auto">
+                  <Link href="/dashboard" replace>
+                    Go to Dashboard
+                  </Link>
                 </Button>
               )}
             </div>
+            {saveError && (
+              <p className="mt-4 text-sm text-destructive">{saveError}</p>
+            )}
           </CardContent>
         </Card>
       </div>
