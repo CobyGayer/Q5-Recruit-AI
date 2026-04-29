@@ -77,11 +77,34 @@ export async function POST(request: NextRequest) {
 
   if (members && members.length > 0) {
     const adminDb = createAdminClient();
-    await Promise.allSettled(
+    const queueResults = await Promise.allSettled(
       members.map((m) =>
         maybeQueueMissingFieldsRequest(adminDb, m.recruit_id, effectiveProgramId, user.id)
       )
     );
+
+    const rejectedQueueResults = queueResults
+      .map((result, index) => ({ result, recruitId: members[index]?.recruit_id }))
+      .filter(
+        (
+          entry
+        ): entry is {
+          result: PromiseRejectedResult;
+          recruitId: string | null | undefined;
+        } => entry.result.status === "rejected"
+      );
+
+    if (rejectedQueueResults.length > 0) {
+      console.error(
+        "Failed to enqueue missing-fields requests after dismissing duplicate review group",
+        {
+          groupId,
+          effectiveProgramId,
+          rejectedRecruitIds: rejectedQueueResults.map((entry) => entry.recruitId),
+          errors: rejectedQueueResults.map((entry) => entry.result.reason),
+        }
+      );
+    }
   }
 
   return NextResponse.json({ success: true });
