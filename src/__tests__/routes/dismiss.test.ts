@@ -88,7 +88,8 @@ describe("POST /api/recruits/duplicate-review/dismiss", () => {
   it("returns 200 with success on valid dismiss", async () => {
     const fromFn = vi.fn()
       .mockReturnValueOnce(makeChain({ data: { id: "g1", status: "pending" } })) // fetch group
-      .mockReturnValueOnce(makeChain({ data: null, error: null }));               // update
+      .mockReturnValueOnce(makeChain({ data: null, error: null }))               // update
+      .mockReturnValueOnce(makeChain({ data: [] }));                              // fetch members (empty → no queue)
     setupAuth({ from: fromFn });
     const res = await POST(makeReq({ group_id: "g1" }));
     expect(res.status).toBe(200);

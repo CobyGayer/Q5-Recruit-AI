@@ -212,7 +212,7 @@ describe("upsertReviewGroup edge cases", () => {
       .mockReturnValue(makeChain());                                                      // group_members
 
     const db = { from: fromFn } as unknown as SupabaseClient;
-    await expect(checkAndQueueDuplicateReview(db, PROG, RID, null, "john smith")).resolves.toBeUndefined();
+    await expect(checkAndQueueDuplicateReview(db, PROG, RID, null, "john smith")).resolves.toBe(true);
     const tables = fromFn.mock.calls.map((c: unknown[]) => c[0] as string);
     expect(tables).toContain("recruit_duplicate_review_group_members");
   });

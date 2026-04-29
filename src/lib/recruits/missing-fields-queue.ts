@@ -5,7 +5,7 @@ import type { ClubLevel } from "@/types/database";
 /**
  * Attempt to add a recruit to the missing-fields request queue.
  * Silently no-ops if:
- *   - Recruit already queued (UNIQUE constraint → ON CONFLICT DO NOTHING)
+ *   - Recruit already queued (upsert with ON CONFLICT DO NOTHING on recruit_id)
  *   - Recruit has no weight-adjusted missing fields
  *
  * Caller must pass an admin client — inserts bypass RLS.
@@ -38,20 +38,25 @@ export async function maybeQueueMissingFieldsRequest(
 
   if (adjusted.missing.length === 0) return false;
 
-  const { error } = await db.from("recruit_missing_fields_queue").insert({
-    recruit_id: recruitId,
-    program_id: programId,
-    coach_id: coachId,
-    missing_fields_snapshot: adjusted.missing,
-  });
+  const { data: inserted, error } = await db
+    .from("recruit_missing_fields_queue")
+    .upsert(
+      {
+        recruit_id: recruitId,
+        program_id: programId,
+        coach_id: coachId,
+        missing_fields_snapshot: adjusted.missing,
+      },
+      { onConflict: "recruit_id", ignoreDuplicates: true }
+    )
+    .select("id");
 
-  // Unique constraint violation (code 23505) means recruit was already queued — that's fine.
-  if (error && error.code !== "23505") {
+  if (error) {
     console.error("[missing-fields-queue] insert failed:", error.message);
     return false;
   }
 
-  return !error;
+  return Array.isArray(inserted) && inserted.length > 0;
 }
 
 /** Mark a queue entry as "email sent", removing it from the pending view. Idempotent. */
