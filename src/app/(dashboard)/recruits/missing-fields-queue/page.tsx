@@ -53,20 +53,21 @@ function MissingFieldsBadges({ fields }: { fields: string[] }) {
 
 function MissingFieldsQueueCard({
   item,
-  loading,
   onRequested,
   onDismissed,
+  onError,
 }: {
   item: QueueItem;
-  loading: boolean;
   onRequested: (id: string) => void;
   onDismissed: (id: string) => void;
+  onError: (msg: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [editedSubject, setEditedSubject] = useState("");
   const [editedBody, setEditedBody] = useState("");
   const [copied, setCopied] = useState(false);
+  const [actionPending, setActionPending] = useState(false);
 
   function handleExpand() {
     if (!initialized) {
@@ -88,13 +89,23 @@ function MissingFieldsQueueCard({
 
     window.open(url, "_blank");
 
-    await fetch("/api/recruits/missing-fields-queue/mark-requested", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queue_id: item.id, subject, body, method }),
-    });
+    setActionPending(true);
+    try {
+      const res = await fetch("/api/recruits/missing-fields-queue/mark-requested", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queue_id: item.id, subject, body, method }),
+      });
 
-    onRequested(item.id);
+      if (!res.ok) {
+        onError("Failed to record the email send. Please try again.");
+        return;
+      }
+
+      onRequested(item.id);
+    } finally {
+      setActionPending(false);
+    }
   }
 
   async function handleCopy() {
@@ -105,26 +116,43 @@ function MissingFieldsQueueCard({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
 
-    await fetch("/api/recruits/missing-fields-queue/mark-requested", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queue_id: item.id, subject, body, method: "clipboard" }),
-    });
+    setActionPending(true);
+    try {
+      const res = await fetch("/api/recruits/missing-fields-queue/mark-requested", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queue_id: item.id, subject, body, method: "clipboard" }),
+      });
 
-    onRequested(item.id);
+      if (!res.ok) {
+        onError("Failed to record the copy. Please try again.");
+        return;
+      }
+
+      onRequested(item.id);
+    } finally {
+      setActionPending(false);
+    }
   }
 
   async function handleDismiss() {
-    const res = await fetch("/api/recruits/missing-fields-queue/dismiss", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queue_id: item.id }),
-    });
+    setActionPending(true);
+    try {
+      const res = await fetch("/api/recruits/missing-fields-queue/dismiss", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ queue_id: item.id }),
+      });
 
-    if (!res.ok) {
-      return;
+      if (!res.ok) {
+        onError("Failed to dismiss. Please try again.");
+        return;
+      }
+
+      onDismissed(item.id);
+    } finally {
+      setActionPending(false);
     }
-    onDismissed(item.id);
   }
 
   const recruit = item.recruit;
@@ -173,7 +201,7 @@ function MissingFieldsQueueCard({
               variant="outline"
               className="border-blue-300 text-blue-800 hover:bg-blue-50 text-xs"
               onClick={handleExpand}
-              disabled={loading}
+              disabled={actionPending}
             >
               {expanded ? (
                 <>
@@ -192,7 +220,7 @@ function MissingFieldsQueueCard({
               variant="ghost"
               className="text-muted-foreground text-xs"
               onClick={handleDismiss}
-              disabled={loading}
+              disabled={actionPending}
             >
               <X className="h-3 w-3 mr-1" />
               Dismiss
@@ -228,7 +256,7 @@ function MissingFieldsQueueCard({
               <Button
                 size="sm"
                 onClick={() => handleSend("gmail")}
-                disabled={loading}
+                disabled={actionPending}
               >
                 <Mail className="h-3.5 w-3.5 mr-1.5" />
                 Open in Gmail
@@ -237,7 +265,7 @@ function MissingFieldsQueueCard({
                 size="sm"
                 variant="outline"
                 onClick={() => handleSend("outlook")}
-                disabled={loading}
+                disabled={actionPending}
               >
                 <Mail className="h-3.5 w-3.5 mr-1.5" />
                 Open in Outlook
@@ -246,7 +274,7 @@ function MissingFieldsQueueCard({
                 size="sm"
                 variant="ghost"
                 onClick={handleCopy}
-                disabled={loading}
+                disabled={actionPending}
               >
                 <Copy className="h-3.5 w-3.5 mr-1.5" />
                 {copied ? "Copied!" : "Copy Text"}
@@ -342,9 +370,9 @@ export default function MissingFieldsQueuePage() {
             <MissingFieldsQueueCard
               key={item.id}
               item={item}
-              loading={false}
               onRequested={handleRequested}
               onDismissed={handleDismissed}
+              onError={setErrorMsg}
             />
           ))}
         </div>

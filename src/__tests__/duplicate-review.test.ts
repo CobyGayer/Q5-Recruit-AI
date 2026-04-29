@@ -41,7 +41,8 @@ const RID = "recruit-1";
 describe("checkAndQueueDuplicateReview — name unchanged", () => {
   it("no dismissed group → returns immediately without creating anything", async () => {
     const db = makeDb([{ data: null }]); // dismissed check → none
-    await checkAndQueueDuplicateReview(db, PROG, RID, "john smith", "john smith");
+    const result = await checkAndQueueDuplicateReview(db, PROG, RID, "john smith", "john smith");
+    expect(result).toBe(false);
     expect((db.from as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
   });
 
@@ -50,7 +51,8 @@ describe("checkAndQueueDuplicateReview — name unchanged", () => {
       { data: { id: "dismissed-1" } },   // dismissed check → found
       { data: [{ id: RID }] },            // recruits query → only 1 (below threshold)
     ]);
-    await checkAndQueueDuplicateReview(db, PROG, RID, "john smith", "john smith");
+    const result = await checkAndQueueDuplicateReview(db, PROG, RID, "john smith", "john smith");
+    expect(result).toBe(false);
     // 2 from() calls: dismissed check + recruits fetch; no group creation
     expect((db.from as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(2);
   });
@@ -62,7 +64,9 @@ describe("checkAndQueueDuplicateReview — name unchanged", () => {
       { data: null },                             // upsert: no existing pending
       { data: { id: "new-group" } },             // insert new group
     ]);
-    await checkAndQueueDuplicateReview(db, PROG, RID, "john smith", "john smith");
+    const result = await checkAndQueueDuplicateReview(db, PROG, RID, "john smith", "john smith");
+    // Name unchanged → always returns false regardless of resurfacing
+    expect(result).toBe(false);
     const tables = (db.from as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
     expect(tables).toContain("recruit_duplicate_review_group_members");
   });
@@ -75,7 +79,8 @@ describe("checkAndQueueDuplicateReview — name changed", () => {
       { data: null },                  // groups: no existing pending
       { data: { id: "group-1" } },    // groups: insert
     ]);
-    await checkAndQueueDuplicateReview(db, PROG, RID, null, "john smith");
+    const result = await checkAndQueueDuplicateReview(db, PROG, RID, null, "john smith");
+    expect(result).toBe(true);
     const tables = (db.from as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
     // group_members called once for member upsert, not for a prune
     expect(tables.filter((t) => t === "recruit_duplicate_review_group_members")).toHaveLength(1);
@@ -88,7 +93,8 @@ describe("checkAndQueueDuplicateReview — name changed", () => {
       { count: 2, data: null },       // prune: 2 remain → old group keeps pending
       { data: [] },                   // recruits: no matches in new cluster
     ]);
-    await checkAndQueueDuplicateReview(db, PROG, RID, "old name", "new name");
+    const result = await checkAndQueueDuplicateReview(db, PROG, RID, "old name", "new name");
+    expect(result).toBe(false);
     const tables = (db.from as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
     // group_members is called for prune (delete+count) but NOT for a member upsert
     expect(tables.filter((t) => t === "recruit_duplicate_review_group_members")).toHaveLength(2);
@@ -104,7 +110,8 @@ describe("checkAndQueueDuplicateReview — name changed", () => {
       { data: null },                 // prune: update group status to resolved
       { data: [] },                   // recruits: no matches in new cluster
     ]);
-    await checkAndQueueDuplicateReview(db, PROG, RID, "old name", "new name");
+    const result = await checkAndQueueDuplicateReview(db, PROG, RID, "old name", "new name");
+    expect(result).toBe(false);
     expect((db.from as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(5);
   });
 
@@ -117,7 +124,8 @@ describe("checkAndQueueDuplicateReview — name changed", () => {
       { data: null },                 // new group: no existing pending
       { data: { id: "new-group" } }, // new group: insert
     ]);
-    await checkAndQueueDuplicateReview(db, PROG, RID, "old name", "new name");
+    const result = await checkAndQueueDuplicateReview(db, PROG, RID, "old name", "new name");
+    expect(result).toBe(true);
     const tables = (db.from as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
     expect(tables).toContain("recruit_duplicate_review_group_members");
   });
@@ -196,7 +204,8 @@ describe("upsertReviewGroup edge cases", () => {
       { data: { id: "existing-group" } }, // groups: existing pending found
       { data: null },                      // groups: update timestamp (thenable)
     ]);
-    await checkAndQueueDuplicateReview(db, PROG, RID, null, "john smith");
+    const result = await checkAndQueueDuplicateReview(db, PROG, RID, null, "john smith");
+    expect(result).toBe(true);
     const tables = (db.from as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
     expect(tables).toContain("recruit_duplicate_review_group_members");
     // 2 group table calls: existing check + timestamp update (no insert)

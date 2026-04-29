@@ -52,13 +52,17 @@ export async function POST(request: NextRequest) {
 
   // Mark as requested (idempotent)
   if (!entry.info_requested_at) {
-    await db
+    const { error: updateError } = await db
       .from("recruit_missing_fields_queue")
       .update({
         info_requested_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", queueId);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
   }
 
   // Write to email_log for audit trail if email content provided
@@ -67,13 +71,17 @@ export async function POST(request: NextRequest) {
   const emailMethod = body.method as string | undefined;
 
   if (emailSubject && emailBody && emailMethod) {
-    await db.from("email_log").insert({
+    const { error: logError } = await db.from("email_log").insert({
       coach_id: user.id,
       recruit_id: entry.recruit_id,
       subject: emailSubject,
       body: emailBody,
       method: emailMethod,
     });
+
+    if (logError) {
+      return NextResponse.json({ error: logError.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ success: true });
