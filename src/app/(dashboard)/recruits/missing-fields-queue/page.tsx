@@ -115,11 +115,15 @@ function MissingFieldsQueueCard({
   }
 
   async function handleDismiss() {
-    await fetch("/api/recruits/missing-fields-queue/dismiss", {
+    const res = await fetch("/api/recruits/missing-fields-queue/dismiss", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queue_id: item.id }),
     });
+
+    if (!res.ok) {
+      return;
+    }
     onDismissed(item.id);
   }
 
