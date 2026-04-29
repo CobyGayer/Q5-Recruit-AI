@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getEffectiveProgramContext } from "@/lib/program-context";
+import { maybeQueueMissingFieldsRequest } from "@/lib/recruits/missing-fields-queue";
 
 /**
  * POST /api/recruits/duplicate-review/dismiss
@@ -64,6 +66,22 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // After dismissing the name-match group, add each member to the missing-fields
+  // queue if they have outstanding fields (coach decided these are new recruits).
+  const { data: members } = await db
+    .from("recruit_duplicate_review_group_members")
+    .select("recruit_id")
+    .eq("group_id", groupId);
+
+  if (members && members.length > 0) {
+    const adminDb = createAdminClient();
+    await Promise.allSettled(
+      members.map((m) =>
+        maybeQueueMissingFieldsRequest(adminDb, m.recruit_id, effectiveProgramId, user.id)
+      )
+    );
   }
 
   return NextResponse.json({ success: true });

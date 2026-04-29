@@ -158,7 +158,7 @@ interface RequestInfoContext {
   missingFields: string[];
 }
 
-const MISSING_FIELD_LABELS: Record<string, string> = {
+export const MISSING_FIELD_LABELS: Record<string, string> = {
   full_name: "full name",
   email: "email address",
   phone: "phone number",
@@ -217,6 +217,40 @@ Respond with ONLY a valid JSON object (no markdown, no explanation):
   "subject": "the email subject line",
   "body": "the full email body text"
 }`;
+}
+
+export interface MissingFieldsTemplateContext {
+  recruitFirstName: string | null;
+  coachName: string;
+  programName: string;
+  institution: string;
+  missingFields: string[];
+}
+
+/** Build a pre-filled missing-info request email from a static template (no AI call) */
+export function buildMissingFieldsRequestTemplate(ctx: MissingFieldsTemplateContext): EmailDraft {
+  const greeting = ctx.recruitFirstName ? `Hi ${ctx.recruitFirstName},` : "Hi there,";
+  const bulletList = ctx.missingFields
+    .map((f) => `• ${MISSING_FIELD_LABELS[f] ?? f}`)
+    .join("\n");
+
+  const subject = `Quick Question from ${ctx.coachName} at ${ctx.institution}`;
+  const body = `${greeting}
+
+Thank you for reaching out about ${ctx.programName} at ${ctx.institution}! We're excited to learn more about you.
+
+To complete your recruitment profile, we just need a few more details. Could you please reply with the following?
+
+${bulletList}
+
+Once we have this information, we'll be able to give your profile a full review.
+
+Looking forward to hearing from you!
+
+${ctx.coachName}
+${ctx.programName} | ${ctx.institution}`;
+
+  return { subject, body };
 }
 
 /** Generate an email requesting specific missing info from a recruit */

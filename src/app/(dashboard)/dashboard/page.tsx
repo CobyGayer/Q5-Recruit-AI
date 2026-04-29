@@ -280,6 +280,7 @@ function DashboardContent() {
   const { config } = useConfig();
   const [coachEmail, setCoachEmail] = useState<string | undefined>();
   const [pendingDuplicateCount, setPendingDuplicateCount] = useState(0);
+  const [pendingMissingFieldsCount, setPendingMissingFieldsCount] = useState(0);
   const {
     searchTerm,
     setSearchTerm,
@@ -314,10 +315,14 @@ function DashboardContent() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/recruits/duplicate-review/groups?count_only=true", { signal: controller.signal })
-      .then((res) => res.ok ? res.json() : { count: 0 })
-      .then((data: { count: number }) => setPendingDuplicateCount(data.count ?? 0))
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/recruits/duplicate-review/groups?count_only=true", { signal: controller.signal })
+        .then((res) => res.ok ? res.json() : { count: 0 })
+        .then((data: { count: number }) => setPendingDuplicateCount(data.count ?? 0)),
+      fetch("/api/recruits/missing-fields-queue?count_only=true", { signal: controller.signal })
+        .then((res) => res.ok ? res.json() : { count: 0 })
+        .then((data: { count: number }) => setPendingMissingFieldsCount(data.count ?? 0)),
+    ]).catch(() => {});
     return () => controller.abort();
   }, []);
 
@@ -432,6 +437,28 @@ function DashboardContent() {
             <Button size="sm" variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 shrink-0">
               <Users className="h-4 w-4 mr-1" />
               Review Duplicates
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Missing fields request banner */}
+      {pendingMissingFieldsCount > 0 && (
+        <div className="mb-4 flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+          <Mail className="h-5 w-5 text-blue-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-blue-900">
+              {pendingMissingFieldsCount} recruit{pendingMissingFieldsCount !== 1 ? "s" : ""}{" "}
+              {pendingMissingFieldsCount === 1 ? "is" : "are"} missing profile info
+            </p>
+            <p className="text-xs text-blue-700 mt-0.5">
+              Send template emails to request the missing details.
+            </p>
+          </div>
+          <Link href="/recruits/missing-fields-queue">
+            <Button size="sm" variant="outline" className="border-blue-300 text-blue-800 hover:bg-blue-100 shrink-0">
+              <Mail className="h-4 w-4 mr-1" />
+              Review Queue
             </Button>
           </Link>
         </div>

@@ -20,14 +20,14 @@ export async function checkAndQueueDuplicateReview(
   prevNameKey: string | null,
   newNameKey: string | null,
   source: DuplicateReviewGroupSource = "ingest"
-): Promise<void> {
+): Promise<boolean> {
   // Name unchanged — only re-surface a dismissed group (the email touch is the
   // promised re-prompt trigger). No pruning or pending-group logic needed.
   if (prevNameKey === newNameKey) {
     if (newNameKey) {
       await maybeSurfaceDismissedGroup(db, programId, newNameKey, source);
     }
-    return;
+    return false;
   }
 
   // When the name changed (or was removed), remove this recruit from the old pending group.
@@ -37,7 +37,7 @@ export async function checkAndQueueDuplicateReview(
   }
 
   // Name was removed — nothing left to queue.
-  if (!newNameKey) return;
+  if (!newNameKey) return false;
 
   // Find other recruits in the same program with the same name_key.
   const { data: matches } = await db
@@ -47,9 +47,10 @@ export async function checkAndQueueDuplicateReview(
     .eq("name_key", newNameKey)
     .neq("id", recruitId);
 
-  if (!matches || matches.length === 0) return; // no duplicates found
+  if (!matches || matches.length === 0) return false; // no duplicates found
 
   await upsertReviewGroup(db, programId, newNameKey, [recruitId, ...matches.map((r) => r.id)], source);
+  return true; // name-match group exists — blocks missing-fields queue
 }
 
 /**
