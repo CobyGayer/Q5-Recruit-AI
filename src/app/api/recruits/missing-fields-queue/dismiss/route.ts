@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
   const { data: entry } = await db
     .from("recruit_missing_fields_queue")
-    .select("id")
+    .select("id, info_requested_at")
     .eq("id", queueId)
     .eq("program_id", effectiveProgramId)
     .single();
@@ -48,13 +48,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Queue entry not found" }, { status: 404 });
   }
 
+  if (entry.info_requested_at) {
+    return NextResponse.json({ error: "Entry already marked as requested" }, { status: 409 });
+  }
+
   const { error } = await db
     .from("recruit_missing_fields_queue")
     .update({
       dismissed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", queueId);
+    .eq("id", queueId)
+    .is("info_requested_at", null);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
     { data: recruits },
     { data: config },
     { data: coach },
+    { data: program },
   ] = await Promise.all([
     db
       .from("recruits")
@@ -80,16 +81,12 @@ export async function GET(request: NextRequest) {
       .select("full_name, program_id")
       .eq("id", user.id)
       .single(),
+    db
+      .from("programs")
+      .select("name, institution")
+      .eq("id", effectiveProgramId)
+      .single(),
   ]);
-
-  // Fetch program for name/institution
-  const { data: program } = coach?.program_id
-    ? await db
-        .from("programs")
-        .select("name, institution")
-        .eq("id", effectiveProgramId)
-        .single()
-    : { data: null };
 
   const recruitMap = new Map((recruits ?? []).map((r) => [r.id, r]));
 

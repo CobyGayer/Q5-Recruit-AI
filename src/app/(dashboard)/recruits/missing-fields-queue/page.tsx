@@ -53,13 +53,11 @@ function MissingFieldsBadges({ fields }: { fields: string[] }) {
 
 function MissingFieldsQueueCard({
   item,
-  onRequested,
-  onDismissed,
+  onRemoved,
   onError,
 }: {
   item: QueueItem;
-  onRequested: (id: string) => void;
-  onDismissed: (id: string) => void;
+  onRemoved: (id: string) => void;
   onError: (msg: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -79,8 +77,8 @@ function MissingFieldsQueueCard({
   }
 
   async function handleSend(method: "gmail" | "outlook") {
-    const subject = initialized ? editedSubject : item.pre_filled_subject;
-    const body = initialized ? editedBody : item.pre_filled_body;
+    const subject = editedSubject;
+    const body = editedBody;
 
     const url =
       method === "gmail"
@@ -102,15 +100,15 @@ function MissingFieldsQueueCard({
         return;
       }
 
-      onRequested(item.id);
+      onRemoved(item.id);
     } finally {
       setActionPending(false);
     }
   }
 
   async function handleCopy() {
-    const subject = initialized ? editedSubject : item.pre_filled_subject;
-    const body = initialized ? editedBody : item.pre_filled_body;
+    const subject = editedSubject;
+    const body = editedBody;
 
     try {
       await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
@@ -135,7 +133,7 @@ function MissingFieldsQueueCard({
         return;
       }
 
-      onRequested(item.id);
+      onRemoved(item.id);
     } finally {
       setActionPending(false);
     }
@@ -155,7 +153,7 @@ function MissingFieldsQueueCard({
         return;
       }
 
-      onDismissed(item.id);
+      onRemoved(item.id);
     } finally {
       setActionPending(false);
     }
@@ -318,11 +316,7 @@ export default function MissingFieldsQueuePage() {
     loadItems();
   }, [loadItems]);
 
-  function handleRequested(id: string) {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  }
-
-  function handleDismissed(id: string) {
+  function handleRemoved(id: string) {
     setItems((prev) => prev.filter((item) => item.id !== id));
   }
 
@@ -376,8 +370,7 @@ export default function MissingFieldsQueuePage() {
             <MissingFieldsQueueCard
               key={item.id}
               item={item}
-              onRequested={handleRequested}
-              onDismissed={handleDismissed}
+              onRemoved={handleRemoved}
               onError={setErrorMsg}
             />
           ))}

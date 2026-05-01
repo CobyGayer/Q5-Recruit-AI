@@ -315,14 +315,14 @@ function DashboardContent() {
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([
-      fetch("/api/recruits/duplicate-review/groups?count_only=true", { signal: controller.signal })
-        .then((res) => res.ok ? res.json() : { count: 0 })
-        .then((data: { count: number }) => setPendingDuplicateCount(data.count ?? 0)),
-      fetch("/api/recruits/missing-fields-queue?count_only=true", { signal: controller.signal })
-        .then((res) => res.ok ? res.json() : { count: 0 })
-        .then((data: { count: number }) => setPendingMissingFieldsCount(data.count ?? 0)),
-    ]).catch(() => {});
+    fetch("/api/recruits/duplicate-review/groups?count_only=true", { signal: controller.signal })
+      .then((res) => res.ok ? res.json() : { count: 0 })
+      .then((data: { count: number }) => setPendingDuplicateCount(data.count ?? 0))
+      .catch(() => {});
+    fetch("/api/recruits/missing-fields-queue?count_only=true", { signal: controller.signal })
+      .then((res) => res.ok ? res.json() : { count: 0 })
+      .then((data: { count: number }) => setPendingMissingFieldsCount(data.count ?? 0))
+      .catch(() => {});
     return () => controller.abort();
   }, []);
 

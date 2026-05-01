@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   // Verify ownership and fetch recruit_id for email log
   const { data: entry } = await db
     .from("recruit_missing_fields_queue")
-    .select("id, recruit_id, info_requested_at")
+    .select("id, recruit_id, info_requested_at, dismissed_at")
     .eq("id", queueId)
     .eq("program_id", effectiveProgramId)
     .single();
@@ -50,7 +50,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Queue entry not found" }, { status: 404 });
   }
 
-  // Mark as requested (idempotent)
+  if (entry.dismissed_at) {
+    return NextResponse.json({ error: "Entry already dismissed" }, { status: 409 });
+  }
+
+  // Mark as requested (idempotent — DB filter ensures no double-write under race)
   if (!entry.info_requested_at) {
     const { error: updateError } = await db
       .from("recruit_missing_fields_queue")
@@ -58,7 +62,8 @@ export async function POST(request: NextRequest) {
         info_requested_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", queueId);
+      .eq("id", queueId)
+      .is("info_requested_at", null);
 
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
