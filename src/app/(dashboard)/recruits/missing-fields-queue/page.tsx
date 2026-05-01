@@ -112,7 +112,13 @@ function MissingFieldsQueueCard({
     const subject = initialized ? editedSubject : item.pre_filled_subject;
     const body = initialized ? editedBody : item.pre_filled_body;
 
-    await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+    try {
+      await navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+    } catch {
+      onError("Failed to copy email. Please copy it manually.");
+      return;
+    }
+
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
 
@@ -125,7 +131,7 @@ function MissingFieldsQueueCard({
       });
 
       if (!res.ok) {
-        onError("Failed to record the copy. Please try again.");
+        onError("Email copied. Failed to record it — please note it was sent manually.");
         return;
       }
 

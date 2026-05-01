@@ -58,26 +58,3 @@ export async function maybeQueueMissingFieldsRequest(
 
   return Array.isArray(inserted) && inserted.length > 0;
 }
-
-/** Mark a queue entry as "email sent", removing it from the pending view. Idempotent. */
-export async function markMissingFieldsRequested(
-  db: SupabaseClient,
-  queueId: string
-): Promise<void> {
-  await db
-    .from("recruit_missing_fields_queue")
-    .update({ info_requested_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", queueId)
-    .is("info_requested_at", null);
-}
-
-/** Dismiss a queue entry without sending an email. */
-export async function dismissMissingFieldsQueueEntry(
-  db: SupabaseClient,
-  queueId: string
-): Promise<void> {
-  await db
-    .from("recruit_missing_fields_queue")
-    .update({ dismissed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", queueId);
-}
