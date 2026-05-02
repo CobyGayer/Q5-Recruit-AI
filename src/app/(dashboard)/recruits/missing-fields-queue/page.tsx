@@ -96,7 +96,7 @@ function MissingFieldsQueueCard({
       });
 
       if (!res.ok) {
-        onError("Failed to record the email send. Please try again.");
+        onError("Failed to record the email send. If you already sent it, you can safely try again — it won't duplicate.");
         return;
       }
 

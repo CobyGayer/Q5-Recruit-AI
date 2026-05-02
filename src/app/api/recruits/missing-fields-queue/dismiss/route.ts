@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getEffectiveProgramContext } from "@/lib/program-context";
 
-/**
- * POST /api/recruits/missing-fields-queue/dismiss
- *
- * Dismisses a single queue entry without sending an email.
- * The recruit remains in the system but leaves the pending view.
- */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const {
@@ -47,6 +41,10 @@ export async function POST(request: NextRequest) {
 
   if (!entry) {
     return NextResponse.json({ error: "Queue entry not found" }, { status: 404 });
+  }
+
+  if (entry.dismissed_at) {
+    return NextResponse.json({ success: true });
   }
 
   if (entry.info_requested_at) {

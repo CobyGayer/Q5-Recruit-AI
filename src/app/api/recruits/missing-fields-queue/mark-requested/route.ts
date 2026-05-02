@@ -2,13 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getEffectiveProgramContext } from "@/lib/program-context";
 
-/**
- * POST /api/recruits/missing-fields-queue/mark-requested
- *
- * Marks a queue entry as "info requested", removing it from the pending view.
- * Idempotent: repeated calls after info_requested_at is already set are no-ops.
- * Optionally writes an audit row to email_log if subject/body/method are provided.
- */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const {

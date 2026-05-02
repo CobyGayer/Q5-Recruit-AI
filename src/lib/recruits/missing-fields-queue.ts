@@ -23,7 +23,7 @@ export async function maybeQueueMissingFieldsRequest(
       .select("fields_missing, fields_extracted, fields_total, club_level")
       .eq("id", recruitId)
       .single(),
-    db.from("program_config").select("*").eq("program_id", programId).single(),
+    db.from("program_config").select("*").eq("program_id", programId).maybeSingle(),
   ]);
 
   if (!recruit) return false;
@@ -47,6 +47,9 @@ export async function maybeQueueMissingFieldsRequest(
         coach_id: coachId,
         missing_fields_snapshot: adjusted.missing,
       },
+      // ignoreDuplicates: one-time-ask rule — if recruit already queued, do nothing.
+      // missing_fields_snapshot is intentionally stale after initial insert; effective_missing_fields
+      // is live-computed in the GET response so email templates stay accurate.
       { onConflict: "recruit_id", ignoreDuplicates: true }
     )
     .select("id");
@@ -76,15 +79,13 @@ export async function bulkScanProgramForMissingFields(
 
   if (!recruits || recruits.length === 0) return 0;
 
-  let queued = 0;
-  for (const recruit of recruits) {
-    const inserted = await maybeQueueMissingFieldsRequest(
-      db,
-      recruit.id,
-      programId,
-      recruit.coach_id
-    );
-    if (inserted) queued++;
-  }
-  return queued;
+  const results = await Promise.allSettled(
+    recruits.map((recruit) =>
+      maybeQueueMissingFieldsRequest(db, recruit.id, programId, recruit.coach_id)
+    )
+  );
+
+  return results.filter(
+    (r): r is PromiseFulfilledResult<boolean> => r.status === "fulfilled" && r.value
+  ).length;
 }
