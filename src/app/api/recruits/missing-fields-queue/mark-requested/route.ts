@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     .select("id, recruit_id, info_requested_at, dismissed_at")
     .eq("id", queueId)
     .eq("program_id", effectiveProgramId)
+    .eq("coach_id", user.id)
     .single();
 
   if (!entry) {
