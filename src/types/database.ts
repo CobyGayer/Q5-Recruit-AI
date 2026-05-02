@@ -221,15 +221,3 @@ export interface DuplicateReviewGroupMember {
 export interface DuplicateReviewGroupWithMembers extends DuplicateReviewGroup {
   members: Recruit[];
 }
-
-export interface MissingFieldsQueueEntry {
-  id: string;
-  program_id: string;
-  coach_id: string;
-  recruit_id: string;
-  missing_fields_snapshot: string[];
-  info_requested_at: string | null;
-  dismissed_at: string | null;
-  queued_at: string;
-  updated_at: string;
-}

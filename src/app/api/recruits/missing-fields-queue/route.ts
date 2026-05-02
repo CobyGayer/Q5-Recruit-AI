@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
   // Fetch queue rows
   const { data: queueRows, error: queueError } = await db
     .from("recruit_missing_fields_queue")
-    .select("*")
+    .select("id, recruit_id, queued_at, missing_fields_snapshot")
     .eq("program_id", effectiveProgramId)
     .eq("coach_id", user.id)
     .is("info_requested_at", null)

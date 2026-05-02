@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   const { data: entry } = await db
     .from("recruit_missing_fields_queue")
-    .select("id, info_requested_at")
+    .select("id, info_requested_at, dismissed_at")
     .eq("id", queueId)
     .eq("program_id", effectiveProgramId)
     .eq("coach_id", user.id)
