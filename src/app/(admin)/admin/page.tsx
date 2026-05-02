@@ -69,6 +69,10 @@ export default function AdminPage() {
   const [dupScanLoading, setDupScanLoading] = useState(false);
   const [dupScanResult, setDupScanResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  const [missingFieldsScanCoachId, setMissingFieldsScanCoachId] = useState<string>("");
+  const [missingFieldsScanLoading, setMissingFieldsScanLoading] = useState(false);
+  const [missingFieldsScanResult, setMissingFieldsScanResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const [programs, setPrograms] = useState<Program[]>([]);
   const [programsLoading, setProgramsLoading] = useState(false);
   const [newProgram, setNewProgram] = useState({ name: "", institution: "", domain: "", division: "", conference: "" });
@@ -211,6 +215,26 @@ export default function AdminPage() {
     }
     setResetLoading(false);
     setResetDialogOpen(false);
+  }
+
+  async function handleMissingFieldsScan() {
+    if (!missingFieldsScanCoachId) return;
+    setMissingFieldsScanLoading(true);
+    setMissingFieldsScanResult(null);
+    try {
+      const res = await fetch(`/api/admin/coaches/${missingFieldsScanCoachId}/missing-fields-scan`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMissingFieldsScanResult({ success: true, message: data.message });
+      } else {
+        setMissingFieldsScanResult({ success: false, message: data.error || "Scan failed" });
+      }
+    } catch {
+      setMissingFieldsScanResult({ success: false, message: "Network error" });
+    }
+    setMissingFieldsScanLoading(false);
   }
 
   async function handleDuplicateScan() {
@@ -918,6 +942,60 @@ export default function AdminPage() {
                     }`}
                   >
                     {dupScanResult.message}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Temporary missing-fields-scan trigger */}
+            <Card className="border-amber-200 bg-amber-50">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-5 w-5 text-amber-500" />
+                  Missing Fields Scan
+                  <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Temporary</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Bulk-scan a coach&apos;s program for recruits with missing fields and queue them for
+                  review. Coaches will see the missing-fields queue on their next dashboard visit.
+                  Recruits already in the queue or with no weight-adjusted missing fields are skipped.
+                </p>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Select Coach</Label>
+                  <Select value={missingFieldsScanCoachId} onValueChange={setMissingFieldsScanCoachId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a coach..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {coaches.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.full_name} ({c.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={handleMissingFieldsScan}
+                  disabled={!missingFieldsScanCoachId || missingFieldsScanLoading}
+                >
+                  <Users className="h-4 w-4 mr-1" />
+                  {missingFieldsScanLoading ? "Scanning..." : "Run Missing Fields Scan"}
+                </Button>
+
+                {missingFieldsScanResult && (
+                  <div
+                    className={`p-3 rounded text-sm ${
+                      missingFieldsScanResult.success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                    }`}
+                  >
+                    {missingFieldsScanResult.message}
                   </div>
                 )}
               </CardContent>

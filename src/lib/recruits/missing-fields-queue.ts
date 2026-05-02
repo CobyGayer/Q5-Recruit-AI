@@ -58,3 +58,33 @@ export async function maybeQueueMissingFieldsRequest(
 
   return Array.isArray(inserted) && inserted.length > 0;
 }
+
+/**
+ * Bulk-scan all recruits in a program and queue missing-fields requests for
+ * any that have weight-adjusted missing fields and aren't already queued.
+ * Caller must pass an admin client — inserts bypass RLS.
+ * @returns count of new queue rows inserted
+ */
+export async function bulkScanProgramForMissingFields(
+  db: SupabaseClient,
+  programId: string
+): Promise<number> {
+  const { data: recruits } = await db
+    .from("recruits")
+    .select("id, coach_id")
+    .eq("program_id", programId);
+
+  if (!recruits || recruits.length === 0) return 0;
+
+  let queued = 0;
+  for (const recruit of recruits) {
+    const inserted = await maybeQueueMissingFieldsRequest(
+      db,
+      recruit.id,
+      programId,
+      recruit.coach_id
+    );
+    if (inserted) queued++;
+  }
+  return queued;
+}
