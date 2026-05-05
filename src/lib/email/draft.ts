@@ -178,6 +178,7 @@ const MISSING_FIELD_LABELS: Record<string, string> = {
   club_level: "club level (e.g., MLS Next, ECNL)",
   high_school_team: "high school team name",
   video_url: "highlight video link",
+  transcript: "transcript",
 };
 
 function buildRequestInfoPrompt(ctx: RequestInfoContext): string {

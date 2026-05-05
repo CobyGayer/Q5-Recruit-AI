@@ -26,7 +26,7 @@ export function scoreAcademic(
   }
 
   let gpaScore: number | null = null;
-  let testScore: number | null = null;
+  const testScores: number[] = [];
 
   // GPA: linear mapping from 2.0→0 to 4.0→100
   if (recruit.gpa != null) {
@@ -36,17 +36,23 @@ export function scoreAcademic(
   // Test scores: normalize to 0-100
   if (recruit.sat_score != null) {
     // SAT: 400-1600 mapped to 0-100
-    testScore = Math.max(
+    testScores.push(Math.max(
       0,
       Math.min(100, ((recruit.sat_score - 400) / 1200) * 100)
-    );
-  } else if (recruit.act_score != null) {
+    ));
+  }
+  if (recruit.act_score != null) {
     // ACT: 1-36 mapped to 0-100
-    testScore = Math.max(
+    testScores.push(Math.max(
       0,
       Math.min(100, ((recruit.act_score - 1) / 35) * 100)
-    );
+    ));
   }
+
+  const testScore =
+    testScores.length > 0
+      ? testScores.reduce((sum, score) => sum + score, 0) / testScores.length
+      : null;
 
   // Blend: 70% GPA, 30% test if both available
   let baseScore: number;

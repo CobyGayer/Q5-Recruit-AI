@@ -15,6 +15,8 @@ const ClubLevelUpdateSchema = z.preprocess((value) => {
   return value;
 }, z.enum(["mls_next", "ecnl", "ga", "regional", "other", "unknown"]));
 
+const VALID_POSITIONS = ["GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "ST", "CF"] as const;
+
 const RecruitUpdateSchema = z.object({
   full_name: z.string().nullable().optional(),
   email: z.string().nullable().optional().refine((v) => v == null || z.string().email().safeParse(v).success, { message: "Invalid email" }),
@@ -24,7 +26,7 @@ const RecruitUpdateSchema = z.object({
   city: z.string().nullable().optional(),
   state: z.string().nullable().optional(),
   country: z.string().nullable().optional(),
-  positions: z.array(z.string()).optional(),
+  positions: z.array(z.enum(VALID_POSITIONS)).optional(),
   preferred_foot: z.string().nullable().optional(),
   height_inches: z.number().int().min(48).max(96).nullable().optional(),
   weight_lbs: z.number().int().min(80).max(350).nullable().optional(),
@@ -140,13 +142,22 @@ export async function PUT(
   // future duplicate merges. merge-payload prefers higher confidence; a field
   // with no confidence entry would be overwritten by any extracted value.
   const manualConfidencePatch: Record<string, ConfidenceLevel> = {};
+  const clearedFields: string[] = [];
   for (const [field, value] of Object.entries(parsed.data)) {
     const isUnknownClubLevel = field === "club_level" && value === "unknown";
     if (value != null && !isUnknownClubLevel) {
       manualConfidencePatch[field] = "high";
+    } else if (value == null && !isUnknownClubLevel) {
+      // Track fields that are being cleared (set to null)
+      clearedFields.push(field);
     }
   }
   const updatedConfidence = { ...prevConfidence, ...manualConfidencePatch };
+
+  // Remove confidence entries for fields that were explicitly cleared
+  for (const field of clearedFields) {
+    delete updatedConfidence[field];
+  }
 
   // A manual clear maps club_level to "unknown". Keep storage non-nullable,
   // but ensure the clear does not remain an authoritative high-confidence value.
@@ -157,6 +168,7 @@ export async function PUT(
 
   const shouldPersistConfidence =
     Object.keys(manualConfidencePatch).length > 0 ||
+    clearedFields.length > 0 ||
     (clearedClubLevelToUnknown && Object.hasOwn(prevConfidence, "club_level"));
 
   const updateData = {
@@ -165,19 +177,39 @@ export async function PUT(
     ...(shouldPersistConfidence && { extraction_confidence: updatedConfidence }),
   };
 
-  // When override is active, scope the update to the overridden program_id to
-  // prevent cross-program writes if the recruit ID somehow belongs elsewhere.
-  let query = db.from("recruits").update(updateData).eq("id", id);
-  if (overrideProgramId) {
-    query = query.eq("program_id", overrideProgramId);
-  }
-  const { data, error } = await query.select().single();
+  // Check if there are any actual changes to persist
+  const hasChanges = Object.keys(updateData).length > 0;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  let persistedRecruit: any;
 
-  let persistedRecruit = data;
+  if (!hasChanges) {
+    // No changes to persist; fetch and return current recruit without updating
+    let fetchQuery = db.from("recruits").select("*").eq("id", id);
+    if (overrideProgramId) {
+      fetchQuery = fetchQuery.eq("program_id", overrideProgramId);
+    }
+    const { data: currentRecruit, error: fetchError } = await fetchQuery.single();
+    
+    if (fetchError || !currentRecruit) {
+      return NextResponse.json({ error: "Recruit not found" }, { status: 404 });
+    }
+    
+    persistedRecruit = currentRecruit;
+  } else {
+    // When override is active, scope the update to the overridden program_id to
+    // prevent cross-program writes if the recruit ID somehow belongs elsewhere.
+    let query = db.from("recruits").update(updateData).eq("id", id);
+    if (overrideProgramId) {
+      query = query.eq("program_id", overrideProgramId);
+    }
+    const { data, error } = await query.select().single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    persistedRecruit = data;
+  }
   const completeness = computeCompletenessMetadata(
     (persistedRecruit ?? {}) as Record<string, unknown>
   );

@@ -84,6 +84,6 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 - If the document is NOT a transcript (e.g., it's a resume, letter, or unrelated document), set "transcript_readable" to false and "confidence" to "low"
 - If the transcript is too blurry, cropped, or otherwise unreadable, set "transcript_readable" to false
 - Empty arrays are fine for red_flags, strengths, etc. if none apply
-- For cumulative_gpa_from_transcript, only include if explicitly shown on the transcript
+- For cumulative_gpa_from_transcript, only include if explicitly shown on the transcript. If both weighted and unweighted GPAs are shown, extract the unweighted GPA.
 - Return raw JSON only — no markdown code blocks, no explanation text`;
 }

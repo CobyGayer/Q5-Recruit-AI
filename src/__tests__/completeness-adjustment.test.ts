@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 
 describe("adjustCompletenessForWeights", () => {
-  it("keeps existing SAT/ACT either-or behavior without config", () => {
+  it("keeps the SAT/ACT completeness slot stable without config", () => {
     const result = adjustCompletenessForWeights(
       ["act_score", "city"],
       10,
-      19
+      18
     );
 
-    expect(result.missing).toEqual(["city"]);
+    expect(result.missing).toEqual(["act_score", "city"]);
     expect(result.total).toBe(18);
     expect(result.extracted).toBe(10);
   });
@@ -18,7 +18,7 @@ describe("adjustCompletenessForWeights", () => {
     const result = adjustCompletenessForWeights(
       ["gpa", "sat_score", "act_score"],
       16,
-      19,
+      18,
       {
         weight_academic: 0,
         weight_competition: 50,
@@ -39,7 +39,7 @@ describe("adjustCompletenessForWeights", () => {
     const result = adjustCompletenessForWeights(
       ["club_team", "club_level", "height_inches", "weight_lbs", "phone"],
       14,
-      19,
+      18,
       {
         weight_academic: 70,
         weight_competition: 0,
@@ -51,7 +51,7 @@ describe("adjustCompletenessForWeights", () => {
     );
 
     expect(result.missing).toEqual(["phone"]);
-    expect(result.total).toBe(15);
+    expect(result.total).toBe(14);
     expect(result.extracted).toBe(14);
   });
 
@@ -59,22 +59,22 @@ describe("adjustCompletenessForWeights", () => {
     const result = adjustCompletenessForWeights(
       ["phone"],
       15,
-      19,
+      18,
       undefined,
       "unknown"
     );
 
     expect(result.missing).toEqual(["phone", "club_level"]);
-    expect(result.total).toBe(19);
+    expect(result.total).toBe(18);
     expect(result.extracted).toBe(14);
-    expect(result.percent).toBe(74);
+    expect(result.percent).toBe(78);
   });
 
   it("does not penalize unknown club level when competition weight is zero", () => {
     const result = adjustCompletenessForWeights(
       ["phone"],
       15,
-      19,
+      18,
       {
         weight_academic: 70,
         weight_competition: 0,
@@ -87,7 +87,7 @@ describe("adjustCompletenessForWeights", () => {
     );
 
     expect(result.missing).toEqual(["phone"]);
-    expect(result.total).toBe(17);
+    expect(result.total).toBe(16);
     expect(result.extracted).toBe(13);
   });
 });

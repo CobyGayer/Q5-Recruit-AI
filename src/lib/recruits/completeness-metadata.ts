@@ -30,17 +30,23 @@ export function computeCompletenessMetadata(
     }
   }
 
-  let total: number = EXTRACTABLE_FIELDS.length;
   const hasSat = hasExtractedValue("sat_score", recruit.sat_score);
   const hasAct = hasExtractedValue("act_score", recruit.act_score);
+  const hasTestScore = hasSat || hasAct;
 
-  // SAT/ACT is treated as either-or when exactly one score is available.
-  if ((hasSat && !hasAct) || (!hasSat && hasAct)) {
-    total = Math.max(0, total - 1);
-    const droppedMissingField = hasSat ? "act_score" : "sat_score";
-    const index = missing.indexOf(droppedMissingField);
-    if (index !== -1) {
-      missing.splice(index, 1);
+  let total: number = EXTRACTABLE_FIELDS.length - 1;
+
+  // SAT/ACT count as a single completeness slot. When both are present, the
+  // pair still contributes only once to the completeness total.
+  if (hasTestScore) {
+    if (hasSat && hasAct) {
+      extracted--;
+    } else {
+      const droppedMissingField = hasSat ? "act_score" : "sat_score";
+      const index = missing.indexOf(droppedMissingField);
+      if (index !== -1) {
+        missing.splice(index, 1);
+      }
     }
   }
 

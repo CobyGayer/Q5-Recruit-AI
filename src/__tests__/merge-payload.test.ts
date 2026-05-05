@@ -143,16 +143,16 @@ describe("buildMergedPayload", () => {
     const payload = buildMergedPayload([a, b]);
     expect(payload.sat_score).toBe(1400);
     expect(payload.act_score).toBe(32);
-    // MERGEABLE_FIELDS.length + 1 (positions) = 19. Both test scores present → no deduction.
-    expect(payload.fields_total).toBe(19);
+    // SAT/ACT now count as one completeness slot, so the merged total stays flat.
+    expect(payload.fields_total).toBe(18);
+    expect(payload.fields_extracted).toBe(3);
   });
 
-  it("only SAT present → fields_total deducts one slot for missing ACT", () => {
+  it("only SAT present → fields_total still counts the shared test slot once", () => {
     const a = makeRecruit({ id: "a", sat_score: 1400, extraction_confidence: { sat_score: "high" }, fields_extracted: 1 });
     const payload = buildMergedPayload([a]);
     expect(payload.sat_score).toBe(1400);
     expect(payload.act_score).toBeUndefined();
-    // One test-score slot excluded when only one is present.
     expect(payload.fields_total).toBe(18);
   });
 

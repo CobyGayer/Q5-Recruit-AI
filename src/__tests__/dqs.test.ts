@@ -30,7 +30,7 @@ function makeRecruit(overrides: Partial<Recruit> = {}): Recruit {
     extraction_confidence: {},
     fields_missing: ["gpa", "sat_score", "act_score", "club_team"],
     fields_extracted: 14,
-    fields_total: 19,
+    fields_total: 18,
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
     ...overrides,
@@ -78,7 +78,7 @@ describe("calculateDQS zero-weight completeness behavior", () => {
     const recruit = makeRecruit({
       fields_missing: ["gpa", "sat_score", "act_score"],
       fields_extracted: 16,
-      fields_total: 19,
+      fields_total: 18,
     });
     const config = makeConfig({
       weight_academic: 0,
@@ -101,7 +101,7 @@ describe("calculateDQS zero-weight completeness behavior", () => {
       gpa: null,
       fields_missing: ["phone"],
       fields_extracted: 15,
-      fields_total: 19,
+      fields_total: 18,
       club_level: "unknown",
     });
     const config = makeConfig({
@@ -115,8 +115,31 @@ describe("calculateDQS zero-weight completeness behavior", () => {
 
     const result = calculateDQS(recruit, config);
 
-    expect(result.componentScores.completeness).toBe(58);
+    expect(result.componentScores.completeness).toBe(67);
     expect(result.completenessPenalty).toBeGreaterThan(0);
     expect(result.score).toBeLessThan(100);
+  });
+
+  it("uses both SAT and ACT when both are present for academic scoring", () => {
+    const recruit = makeRecruit({
+      gpa: null,
+      sat_score: 1200,
+      act_score: 30,
+      fields_missing: ["phone"],
+      fields_extracted: 18,
+      fields_total: 18,
+    });
+    const config = makeConfig({
+      weight_academic: 100,
+      weight_competition: 0,
+      weight_physical: 0,
+      weight_position_fit: 0,
+      weight_grad_year: 0,
+      weight_completeness: 0,
+    });
+
+    const result = calculateDQS(recruit, config);
+
+    expect(result.componentScores.academic).toBeCloseTo(74.8, 1);
   });
 });

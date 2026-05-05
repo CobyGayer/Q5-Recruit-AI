@@ -26,27 +26,6 @@ const WEIGHTED_FIELDS = {
   gradYear: ["graduation_year"],
 } as const;
 
-function adjustForAlternativeTestFields(
-  missing: string[],
-  extracted: number,
-  total: number
-): { missing: string[]; extracted: number; total: number } {
-  const hasMissingSat = missing.includes("sat_score");
-  const hasMissingAct = missing.includes("act_score");
-
-  // If exactly one test score is missing, SAT/ACT already behaves as an either-or requirement.
-  if (hasMissingSat !== hasMissingAct) {
-    const drop = hasMissingSat ? "sat_score" : "act_score";
-    return {
-      missing: missing.filter((f) => f !== drop),
-      extracted,
-      total: Math.max(0, total - 1),
-    };
-  }
-
-  return { missing, extracted, total };
-}
-
 function adjustForUnknownClubLevel(
   missing: string[],
   extracted: number,
@@ -98,47 +77,38 @@ export function adjustCompletenessForWeights(
     clubLevel
   );
 
-  const initial = adjustForAlternativeTestFields(
-    withClubLevelAdjustment.missing,
-    withClubLevelAdjustment.extracted,
-    fieldsTotal
-  );
-
   const excluded = getExcludedFields(weights);
   if (excluded.size === 0) {
-    const ratio = initial.total > 0 ? initial.extracted / initial.total : 0;
+    const ratio = fieldsTotal > 0 ? withClubLevelAdjustment.extracted / fieldsTotal : 0;
     return {
-      missing: initial.missing,
-      extracted: initial.extracted,
-      total: initial.total,
+      missing: withClubLevelAdjustment.missing,
+      extracted: withClubLevelAdjustment.extracted,
+      total: fieldsTotal,
       ratio,
       percent: Math.round(ratio * 100),
     };
   }
 
-  let adjustedMissing = [...initial.missing];
-  let adjustedExtracted = initial.extracted;
-  let adjustedTotal = initial.total;
+  let adjustedMissing = [...withClubLevelAdjustment.missing];
+  let adjustedExtracted = withClubLevelAdjustment.extracted;
+  let adjustedTotal = fieldsTotal;
 
-  const excludesAcademic = excluded.has("gpa") && excluded.has("sat_score") && excluded.has("act_score");
+  const excludesAcademic =
+    excluded.has("gpa") && excluded.has("sat_score") && excluded.has("act_score");
 
-  // Handle SAT/ACT together because they collapse to a single requirement when only one exists.
+  // SAT/ACT count as one completeness slot. Excluding academics removes GPA and
+  // the shared test slot from the completeness denominator.
   if (excludesAcademic) {
     const hasMissingSat = adjustedMissing.includes("sat_score");
     const hasMissingAct = adjustedMissing.includes("act_score");
+    const testSlotFilled = !(hasMissingSat && hasMissingAct);
 
-    if (hasMissingSat && hasMissingAct) {
-      adjustedMissing = adjustedMissing.filter(
-        (f) => f !== "sat_score" && f !== "act_score"
-      );
-      adjustedTotal = Math.max(0, adjustedTotal - 2);
-    } else if (!hasMissingSat && !hasMissingAct) {
-      // Derive whether SAT/ACT was already collapsed to a single either-or slot
-      // from the input state instead of inferring it from a hard-coded base total.
-      const testsCollapsedToSingleRequirement = initial.total < fieldsTotal;
-      const testSlots = testsCollapsedToSingleRequirement ? 1 : 2;
-      adjustedTotal = Math.max(0, adjustedTotal - testSlots);
-      adjustedExtracted = Math.max(0, adjustedExtracted - testSlots);
+    adjustedMissing = adjustedMissing.filter(
+      (f) => f !== "sat_score" && f !== "act_score"
+    );
+    adjustedTotal = Math.max(0, adjustedTotal - 1);
+    if (testSlotFilled) {
+      adjustedExtracted = Math.max(0, adjustedExtracted - 1);
     }
   }
 
