@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
   const [
     { data: recruits },
     { data: config },
-    { data: coach },
+    { data: coach, error: coachError },
     { data: program },
   ] = await Promise.all([
     db
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
     db.from("program_config").select("*").eq("program_id", effectiveProgramId).single(),
     db
       .from("coaches")
-      .select("full_name, program_id")
+      .select("full_name, program_id, missing_fields_email_subject, missing_fields_email_body")
       .eq("id", user.id)
       .single(),
     db
@@ -90,6 +90,10 @@ export async function GET(request: NextRequest) {
       .eq("id", effectiveProgramId)
       .single(),
   ]);
+
+  if (coachError) {
+    console.error("[missing-fields-queue] coach query failed:", coachError.message);
+  }
 
   const recruitMap = new Map((recruits ?? []).map((r) => [r.id, r]));
 
@@ -118,12 +122,17 @@ export async function GET(request: NextRequest) {
       ? (recruit.full_name as string).trim().split(/\s+/)[0]
       : null;
 
+    const customSubject = (coach?.missing_fields_email_subject as string | null) ?? null;
+    const customBody    = (coach?.missing_fields_email_body    as string | null) ?? null;
+    console.log("[missing-fields-queue] template values — customSubject:", JSON.stringify(customSubject), "customBody:", JSON.stringify(customBody?.slice(0, 60)));
     const { subject, body } = buildMissingFieldsRequestTemplate({
       recruitFirstName: firstName,
       coachName,
       programName,
       institution,
       missingFields: adjusted.missing,
+      customSubjectTemplate: customSubject,
+      customBodyTemplate:    customBody,
     });
 
     result.push({

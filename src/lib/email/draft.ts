@@ -223,17 +223,44 @@ export interface MissingFieldsTemplateContext {
   programName: string;
   institution: string;
   missingFields: string[];
+  customSubjectTemplate: string | null;
+  customBodyTemplate: string | null;
+}
+
+type TokenReplacer = (ctx: MissingFieldsTemplateContext, bulletList: string) => string;
+
+export const TEMPLATE_TOKEN_KEYS = [
+  "{{recruit_name}}",
+  "{{missing_fields_list}}",
+  "{{coach_name}}",
+  "{{program_name}}",
+  "{{institution}}",
+] as const;
+
+const TEMPLATE_TOKENS: Record<string, TokenReplacer> = {
+  "{{recruit_name}}":        (ctx) => ctx.recruitFirstName ?? "there",
+  "{{coach_name}}":          (ctx) => ctx.coachName,
+  "{{program_name}}":        (ctx) => ctx.programName,
+  "{{institution}}":         (ctx) => ctx.institution,
+  "{{missing_fields_list}}": (_ctx, list) => list,
+};
+
+function renderTemplate(template: string, ctx: MissingFieldsTemplateContext, bulletList: string): string {
+  return Object.entries(TEMPLATE_TOKENS).reduce(
+    (text, [token, replacer]) => text.replaceAll(token, replacer(ctx, bulletList)),
+    template
+  );
 }
 
 /** Build a pre-filled missing-info request email from a static template (no AI call) */
 export function buildMissingFieldsRequestTemplate(ctx: MissingFieldsTemplateContext): EmailDraft {
-  const greeting = ctx.recruitFirstName ? `Hi ${ctx.recruitFirstName},` : "Hi there,";
   const bulletList = [...new Set(ctx.missingFields.map((f) => MISSING_FIELD_LABELS[f] ?? f))]
     .map((label) => `• ${label}`)
     .join("\n");
 
-  const subject = `Quick Question from ${ctx.coachName} at ${ctx.institution}`;
-  const body = `${greeting}
+  const greeting = ctx.recruitFirstName ? `Hi ${ctx.recruitFirstName},` : "Hi there,";
+  const defaultSubject = `Quick Question from ${ctx.coachName} at ${ctx.institution}`;
+  const defaultBody = `${greeting}
 
 Thank you for reaching out about ${ctx.programName} at ${ctx.institution}! We're excited to learn more about you.
 
@@ -248,7 +275,14 @@ Looking forward to hearing from you!
 ${ctx.coachName}
 ${ctx.programName} | ${ctx.institution}`;
 
-  return { subject, body };
+  return {
+    subject: ctx.customSubjectTemplate
+      ? renderTemplate(ctx.customSubjectTemplate, ctx, bulletList)
+      : defaultSubject,
+    body: ctx.customBodyTemplate
+      ? renderTemplate(ctx.customBodyTemplate, ctx, bulletList)
+      : defaultBody,
+  };
 }
 
 /** Generate an email requesting specific missing info from a recruit */

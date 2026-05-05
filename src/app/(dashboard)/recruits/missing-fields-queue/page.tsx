@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ChevronDown, ChevronUp, Mail, Copy, X } from "lucide-react";
-import { MISSING_FIELD_LABELS } from "@/lib/email/draft";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { ArrowLeft, ChevronDown, ChevronUp, Mail, Copy, X, Settings2 } from "lucide-react";
+import { MISSING_FIELD_LABELS, TEMPLATE_TOKEN_KEYS } from "@/lib/email/draft";
 import { buildGmailComposeUrl, buildOutlookComposeUrl } from "@/lib/email/compose";
 
 interface QueueRecruit {
@@ -69,18 +76,17 @@ function MissingFieldsQueueCard({
   onError: (msg: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [initialized, setInitialized] = useState(false);
-  const [editedSubject, setEditedSubject] = useState("");
-  const [editedBody, setEditedBody] = useState("");
+  const [editedSubject, setEditedSubject] = useState(item.pre_filled_subject);
+  const [editedBody, setEditedBody] = useState(item.pre_filled_body);
   const [copied, setCopied] = useState(false);
   const [actionPending, setActionPending] = useState(false);
 
+  useEffect(() => {
+    setEditedSubject(item.pre_filled_subject);
+    setEditedBody(item.pre_filled_body);
+  }, [item.pre_filled_subject, item.pre_filled_body]);
+
   function handleExpand() {
-    if (!initialized) {
-      setEditedSubject(item.pre_filled_subject);
-      setEditedBody(item.pre_filled_body);
-      setInitialized(true);
-    }
     setExpanded((v) => !v);
   }
 
@@ -299,11 +305,278 @@ function MissingFieldsQueueCard({
   );
 }
 
+const TOKEN_LABELS: Record<string, string> = {
+  "{{recruit_name}}":        "Recruit Name",
+  "{{missing_fields_list}}": "Missing Fields",
+  "{{coach_name}}":          "Coach Name",
+  "{{program_name}}":        "Program Name",
+  "{{institution}}":         "Institution",
+};
+
+const TOKENS = TEMPLATE_TOKEN_KEYS.map((token) => ({ token, label: TOKEN_LABELS[token] }));
+
+const PREVIEW_SAMPLE = {
+  "{{recruit_name}}": "Alex",
+  "{{missing_fields_list}}": "• GPA\n• highlight video link",
+  "{{coach_name}}": "Coach",
+  "{{program_name}}": "Your Program",
+  "{{institution}}": "Your University",
+};
+
+function previewRender(template: string): string {
+  return Object.entries(PREVIEW_SAMPLE).reduce(
+    (text, [token, val]) => text.replaceAll(token, val),
+    template
+  );
+}
+
+const DEFAULT_SUBJECT_PLACEHOLDER = "Quick Question from {{coach_name}} at {{institution}}";
+const DEFAULT_BODY_PLACEHOLDER = `Hi {{recruit_name}},
+
+Thank you for reaching out about {{program_name}} at {{institution}}! We're excited to learn more about you.
+
+To complete your recruitment profile, we just need a few more details. Could you please reply with the following?
+
+{{missing_fields_list}}
+
+Once we have this information, we'll be able to give your profile a full review.
+
+Looking forward to hearing from you!
+
+{{coach_name}}
+{{program_name}} | {{institution}}`;
+
+function TemplateEditorDialog({
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [subject, setSubject] = useState<string>("");
+  const [body, setBody] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const subjectRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const lastFocusedField = useRef<"subject" | "body">("body");
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    setSaveError(null);
+    setLoadError(false);
+    fetch("/api/coaches/email-template")
+      .then((r) => {
+        if (!r.ok) throw new Error("server error");
+        return r.json();
+      })
+      .then((data) => {
+        setSubject(data.missing_fields_email_subject ?? "");
+        setBody(data.missing_fields_email_body ?? "");
+      })
+      .catch(() => {
+        setLoadError(true);
+      })
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  function insertToken(token: string) {
+    if (lastFocusedField.current === "subject" && subjectRef.current) {
+      const el = subjectRef.current;
+      const start = el.selectionStart ?? subject.length;
+      const end = el.selectionEnd ?? subject.length;
+      const next = subject.slice(0, start) + token + subject.slice(end);
+      setSubject(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(start + token.length, start + token.length);
+      });
+    } else if (bodyRef.current) {
+      const el = bodyRef.current;
+      const start = el.selectionStart ?? body.length;
+      const end = el.selectionEnd ?? body.length;
+      const next = body.slice(0, start) + token + body.slice(end);
+      setBody(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(start + token.length, start + token.length);
+      });
+    }
+  }
+
+  async function handleSave() {
+    const knownTokens = new Set(TOKENS.map((t) => t.token));
+    const allUnknown = [
+      ...(subject.match(/\{\{[^}]+\}\}/g) ?? []),
+      ...(body.match(/\{\{[^}]+\}\}/g) ?? []),
+    ].filter((t) => !knownTokens.has(t));
+    const uniqueUnknown = [...new Set(allUnknown)];
+    if (uniqueUnknown.length > 0) {
+      setSaveError(`Unknown tokens found — remove them before saving: ${uniqueUnknown.join(", ")}`);
+      return;
+    }
+    if (body.trim() && !body.includes("{{missing_fields_list}}")) {
+      setSaveError("Body template must include {{missing_fields_list}} so recruits know what to send.");
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch("/api/coaches/email-template", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          missing_fields_email_subject: subject.trim() || null,
+          missing_fields_email_body: body.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        setSaveError("Failed to save template. Please try again.");
+        return;
+      }
+      await onSaved();
+      onOpenChange(false);
+    } catch {
+      setSaveError("Failed to save template. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleReset() {
+    setSubject("");
+    setBody("");
+    setSaveError(null);
+  }
+
+  const previewSubject = subject.trim()
+    ? previewRender(subject)
+    : previewRender(DEFAULT_SUBJECT_PLACEHOLDER);
+  const previewBody = body.trim()
+    ? previewRender(body)
+    : previewRender(DEFAULT_BODY_PLACEHOLDER);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Customize Email Template</DialogTitle>
+          <DialogDescription>
+            Edit the template used when requesting missing profile info. Use tokens to insert
+            recruit-specific content. Leave blank to use the built-in default.
+          </DialogDescription>
+        </DialogHeader>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground py-4">Loading...</p>
+        ) : (
+          <div className="space-y-4 mt-2">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Insert token</p>
+              <div className="flex flex-wrap gap-1.5">
+                {TOKENS.map(({ token, label }) => (
+                  <button
+                    key={token}
+                    type="button"
+                    onClick={() => insertToken(token)}
+                    className="text-xs px-2 py-1 rounded border border-input bg-muted hover:bg-accent font-mono"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="template-subject" className="text-xs font-medium text-muted-foreground block mb-1">Subject</label>
+              <input
+                id="template-subject"
+                ref={subjectRef}
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                onFocus={() => { lastFocusedField.current = "subject"; }}
+                placeholder={DEFAULT_SUBJECT_PLACEHOLDER}
+                disabled={loadError}
+                className="w-full text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="template-body" className="text-xs font-medium text-muted-foreground block mb-1">Body</label>
+              <textarea
+                id="template-body"
+                ref={bodyRef}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                onFocus={() => { lastFocusedField.current = "body"; }}
+                placeholder={DEFAULT_BODY_PLACEHOLDER}
+                rows={10}
+                disabled={loadError}
+                className="w-full text-sm border border-input rounded-md px-3 py-1.5 bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-y font-mono disabled:opacity-50"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Preview</p>
+              <div className="rounded border border-input bg-muted/30 p-3 space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Subject: {previewSubject}</p>
+                <pre className="text-xs whitespace-pre-wrap font-sans mt-2">{previewBody}</pre>
+              </div>
+            </div>
+
+            {loadError && (
+              <p className="text-xs text-rose-600">Failed to load saved template.</p>
+            )}
+            {saveError && (
+              <p className="text-xs text-rose-600">{saveError}</p>
+            )}
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={handleReset}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+              >
+                Clear
+              </button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleSave} disabled={saving || loadError}>
+                  {saving ? "Saving..." : "Save Template"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function MissingFieldsQueuePage() {
   const router = useRouter();
   const [items, setItems] = useState<QueueItem[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
+
+  const refreshItems = useCallback(async () => {
+    try {
+      const res = await fetch("/api/recruits/missing-fields-queue");
+      if (!res.ok) return;
+      const data = await res.json();
+      setItems(data);
+    } catch { /* silent */ }
+  }, []);
 
   const loadItems = useCallback(async () => {
     setPageLoading(true);
@@ -339,6 +612,15 @@ export default function MissingFieldsQueuePage() {
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">Missing Profile Info</h1>
           <Badge variant="secondary" className="text-xs font-medium">Beta</Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto text-xs text-muted-foreground"
+            onClick={() => setTemplateOpen(true)}
+          >
+            <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+            Customize Template
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
           These recruits are missing profile information. Review the pre-filled email for each
@@ -346,6 +628,12 @@ export default function MissingFieldsQueuePage() {
           only be asked once.
         </p>
       </div>
+
+      <TemplateEditorDialog
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        onSaved={refreshItems}
+      />
 
       {errorMsg && (
         <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded text-sm text-rose-700">
