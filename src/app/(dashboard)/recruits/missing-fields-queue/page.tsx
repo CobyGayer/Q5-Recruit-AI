@@ -36,13 +36,21 @@ interface QueueItem {
 }
 
 function MissingFieldsBadges({ fields }: { fields: string[] }) {
+  const seen = new Set<string>();
+  const deduped = fields.filter((f) => {
+    const label = MISSING_FIELD_LABELS[f] ?? f;
+    if (seen.has(label)) return false;
+    seen.add(label);
+    return true;
+  });
+
   return (
     <div className="flex flex-wrap gap-1 mt-1.5">
-      {fields.map((f) => (
+      {deduped.map((f) => (
         <Badge
           key={f}
           variant="outline"
-          className="text-xs bg-blue-50 border-blue-200 text-blue-700"
+          className="text-xs"
         >
           {MISSING_FIELD_LABELS[f] ?? f}
         </Badge>
@@ -163,7 +171,7 @@ function MissingFieldsQueueCard({
   const queuedDate = new Date(item.queued_at).toLocaleDateString();
 
   return (
-    <Card className="border-blue-200">
+    <Card>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -203,7 +211,7 @@ function MissingFieldsQueueCard({
             <Button
               size="sm"
               variant="outline"
-              className="border-blue-300 text-blue-800 hover:bg-blue-50 text-xs"
+              className="text-xs"
               onClick={handleExpand}
               disabled={actionPending}
             >
@@ -328,7 +336,10 @@ export default function MissingFieldsQueuePage() {
       </Button>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Missing Profile Info</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Missing Profile Info</h1>
+          <Badge variant="secondary" className="text-xs font-medium">Beta</Badge>
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
           These recruits are missing profile information. Review the pre-filled email for each
           recruit, edit if needed, then send it to request the missing details. Each recruit will

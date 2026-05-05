@@ -1,9 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Recruit, RecruitDqsScore } from "@/types/database";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
+function getClient() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+}
 
 interface DraftContext {
   recruit: Recruit;
@@ -135,8 +135,8 @@ function parseJsonResponse(text: string): EmailDraft {
 export async function generateRecruitDraft(ctx: DraftContext): Promise<EmailDraft> {
   const prompt = buildOutreachPrompt(ctx);
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+  const message = await getClient().messages.create({
+    model: "claude-sonnet-4-6",
     max_tokens: 1000,
     messages: [{ role: "user", content: prompt }],
   });
@@ -172,19 +172,17 @@ export const MISSING_FIELD_LABELS: Record<string, string> = {
   height_inches: "height",
   weight_lbs: "weight",
   gpa: "GPA",
-  sat_score: "SAT score",
-  act_score: "ACT score",
+  sat_score: "SAT or ACT score",
+  act_score: "SAT or ACT score",
   club_team: "club team name",
-  club_level: "club level (e.g., MLS Next, ECNL)",
+  club_level: "club level",
   high_school_team: "high school team name",
   video_url: "highlight video link",
 };
 
 function buildRequestInfoPrompt(ctx: RequestInfoContext): string {
   const recruitSummary = buildRecruitSummary(ctx.recruit, ctx.dqsScore);
-  const fieldNames = ctx.missingFields
-    .map((f) => MISSING_FIELD_LABELS[f] ?? f)
-    .join(", ");
+  const fieldNames = [...new Set(ctx.missingFields.map((f) => MISSING_FIELD_LABELS[f] ?? f))].join(", ");
 
   return `You are a college soccer coach writing a short, friendly email to a prospective student-athlete asking them to provide some missing information from their recruiting profile.
 
@@ -230,8 +228,8 @@ export interface MissingFieldsTemplateContext {
 /** Build a pre-filled missing-info request email from a static template (no AI call) */
 export function buildMissingFieldsRequestTemplate(ctx: MissingFieldsTemplateContext): EmailDraft {
   const greeting = ctx.recruitFirstName ? `Hi ${ctx.recruitFirstName},` : "Hi there,";
-  const bulletList = ctx.missingFields
-    .map((f) => `• ${MISSING_FIELD_LABELS[f] ?? f}`)
+  const bulletList = [...new Set(ctx.missingFields.map((f) => MISSING_FIELD_LABELS[f] ?? f))]
+    .map((label) => `• ${label}`)
     .join("\n");
 
   const subject = `Quick Question from ${ctx.coachName} at ${ctx.institution}`;
@@ -257,8 +255,8 @@ ${ctx.programName} | ${ctx.institution}`;
 export async function generateRequestInfoDraft(ctx: RequestInfoContext): Promise<EmailDraft> {
   const prompt = buildRequestInfoPrompt(ctx);
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+  const message = await getClient().messages.create({
+    model: "claude-sonnet-4-6",
     max_tokens: 1000,
     messages: [{ role: "user", content: prompt }],
   });
@@ -281,8 +279,8 @@ export async function generateAnnouncementDraft(
 ): Promise<EmailDraft> {
   const prompt = buildAnnouncementPrompt(coachName, programName, institution, purpose, recruitCount);
 
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+  const message = await getClient().messages.create({
+    model: "claude-sonnet-4-6",
     max_tokens: 1000,
     messages: [{ role: "user", content: prompt }],
   });

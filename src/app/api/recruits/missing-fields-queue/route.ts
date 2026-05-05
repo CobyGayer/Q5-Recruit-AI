@@ -13,6 +13,7 @@ import type { ClubLevel } from "@/types/database";
  * Full response includes weight-adjusted missing fields and pre-filled email template.
  */
 export async function GET(request: NextRequest) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -151,4 +152,8 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json(result);
+  } catch (err) {
+    console.error("[missing-fields-queue GET]", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
 }
