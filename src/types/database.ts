@@ -41,6 +41,8 @@ export interface Coach {
   api_key: string | null;
   onboarding_completed: boolean;
   email_pipeline_status: EmailPipelineStatus;
+  missing_fields_email_subject: string | null;
+  missing_fields_email_body: string | null;
   created_at: string;
   updated_at: string;
 }

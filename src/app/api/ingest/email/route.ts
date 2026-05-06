@@ -12,6 +12,7 @@ import { findFirstPdfAttachment, analyzeTranscript } from "@/lib/transcript";
 import { findAndParseEmlAttachments, looksLikeEml, type ParsedEmail } from "@/lib/email/parse-eml";
 import { buildUpdateData } from "@/lib/recruits/update-data";
 import { checkAndQueueDuplicateReview } from "@/lib/recruits/duplicate-review";
+import { maybeQueueMissingFieldsRequest } from "@/lib/recruits/missing-fields-queue";
 import type { Recruit, ProgramConfig, TranscriptAnalysis } from "@/types/database";
 
 export const maxDuration = 300;
@@ -474,9 +475,16 @@ async function processEmail(
       // diverges from the TS helper for chars like ł, ß, ı.
       const newNameKey = (newRecruit.name_key as string | null) ?? null;
       if (newNameKey) {
-        checkAndQueueDuplicateReview(supabase, programId, recruitId, null, newNameKey, "ingest").catch((err) =>
-          console.error("[ingest] duplicate-review queue failed:", err)
-        );
+        checkAndQueueDuplicateReview(supabase, programId, recruitId, null, newNameKey, "ingest")
+          .then((groupCreated) => {
+            if (!groupCreated) {
+              return maybeQueueMissingFieldsRequest(supabase, recruitId, programId, coachId);
+            }
+          })
+          .catch((err) => console.error("[ingest] post-create queue failed:", err));
+      } else {
+        maybeQueueMissingFieldsRequest(supabase, recruitId, programId, coachId)
+          .catch((err) => console.error("[ingest] missing-fields queue failed:", err));
       }
     }
 
