@@ -410,7 +410,7 @@ function TemplateEditorDialog({
   }
 
   async function handleSave() {
-    const knownTokens = new Set(TOKENS.map((t) => t.token));
+    const knownTokens: Set<string> = new Set(TOKENS.map((t) => t.token));
     const allUnknown = [
       ...(subject.match(/\{\{[^}]+\}\}/g) ?? []),
       ...(body.match(/\{\{[^}]+\}\}/g) ?? []),
