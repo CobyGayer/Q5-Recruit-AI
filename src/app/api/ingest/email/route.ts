@@ -477,7 +477,6 @@ async function processEmail(
       if (newNameKey) {
         checkAndQueueDuplicateReview(supabase, programId, recruitId, null, newNameKey, "ingest")
           .then((groupCreated) => {
-            console.log(`[ingest] post-create: groupCreated=${groupCreated} recruit=${recruitId}`);
             if (!groupCreated) {
               return maybeQueueMissingFieldsRequest(supabase, recruitId, programId, coachId);
             }

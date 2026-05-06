@@ -49,8 +49,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Mark as requested (idempotent — DB filter ensures no double-write under race)
+  let didUpdate = false;
   if (!entry.info_requested_at) {
-    const { error: updateError } = await db
+    const { error: updateError, count } = await db
       .from("recruit_missing_fields_queue")
       .update({
         info_requested_at: new Date().toISOString(),
@@ -62,14 +63,15 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
+    didUpdate = (count ?? 0) > 0;
   }
 
-  // Write to email_log for audit trail if email content provided
+  // Write to email_log only when this request won the race (or was first)
   const emailSubject = body.subject as string | undefined;
   const emailBody = body.body as string | undefined;
   const emailMethod = body.method as string | undefined;
 
-  if (emailSubject && emailBody && emailMethod) {
+  if (didUpdate && emailSubject && emailBody && emailMethod) {
     const { error: logError } = await db.from("email_log").insert({
       coach_id: user.id,
       recruit_id: entry.recruit_id,

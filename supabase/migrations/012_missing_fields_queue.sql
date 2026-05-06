@@ -26,6 +26,9 @@ CREATE INDEX recruit_missing_fields_queue_program_id_idx
 
 ALTER TABLE recruit_missing_fields_queue ENABLE ROW LEVEL SECURITY;
 
+-- No INSERT policy: all inserts must go through the service-role admin client.
+-- Session-client inserts will be rejected by RLS — this is intentional.
+
 CREATE POLICY "coaches_read_own_program_missing_fields_queue"
   ON recruit_missing_fields_queue FOR SELECT
   USING (

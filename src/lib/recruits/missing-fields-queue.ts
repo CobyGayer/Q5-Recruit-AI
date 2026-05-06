@@ -36,7 +36,6 @@ export async function maybeQueueMissingFieldsRequest(
     (recruit.club_level as ClubLevel | null) ?? null
   );
 
-  console.log(`[missing-fields-queue] recruit=${recruitId} adjusted.missing=${JSON.stringify(adjusted.missing)}`);
   if (adjusted.missing.length === 0) return false;
 
   const { data: inserted, error } = await db

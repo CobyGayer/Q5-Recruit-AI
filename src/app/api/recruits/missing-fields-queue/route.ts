@@ -124,7 +124,6 @@ export async function GET(request: NextRequest) {
 
     const customSubject = (coach?.missing_fields_email_subject as string | null) ?? null;
     const customBody    = (coach?.missing_fields_email_body    as string | null) ?? null;
-    console.log("[missing-fields-queue] template values — customSubject:", JSON.stringify(customSubject), "customBody:", JSON.stringify(customBody?.slice(0, 60)));
     const { subject, body } = buildMissingFieldsRequestTemplate({
       recruitFirstName: firstName,
       coachName,
