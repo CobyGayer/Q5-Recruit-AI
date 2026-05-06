@@ -84,7 +84,8 @@ describe("GET /api/recruits/duplicate-review/groups", () => {
     const fromFn = vi.fn()
       .mockReturnValueOnce(makeChain({ data: [group] }))    // groups
       .mockReturnValueOnce(makeChain({ data: [member] }))   // members
-      .mockReturnValueOnce(makeChain({ data: [recruit] })); // recruits
+      .mockReturnValueOnce(makeChain({ data: [recruit] }))  // recruits
+      .mockReturnValueOnce(makeChain({ data: [] }));         // ingested_emails
 
     setupAuth({ from: fromFn });
     const res = await GET(makeReq());

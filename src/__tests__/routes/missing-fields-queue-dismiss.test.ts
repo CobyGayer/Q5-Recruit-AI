@@ -3,13 +3,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/program-context", () => ({ getEffectiveProgramContext: vi.fn() }));
 
-import { POST } from "@/app/api/recruits/duplicate-review/dismiss/route";
+import { POST } from "@/app/api/recruits/missing-fields-queue/dismiss/route";
 import { createClient } from "@/lib/supabase/server";
 import { getEffectiveProgramContext } from "@/lib/program-context";
 
 function makeChain(result: { data?: unknown; error?: unknown } = { data: null }) {
   const chain: Record<string, unknown> = {};
-  for (const m of ["select", "eq", "neq", "not", "in", "limit", "order", "insert", "update", "delete"]) {
+  for (const m of ["select", "eq", "neq", "not", "in", "limit", "order", "insert", "update", "delete", "is"]) {
     chain[m] = vi.fn().mockReturnValue(chain);
   }
   chain.single = vi.fn().mockResolvedValue(result);
@@ -37,12 +37,12 @@ function setupAuth(db: unknown, user: { id: string } | null = { id: "user-1" }) 
   );
 }
 
-describe("POST /api/recruits/duplicate-review/dismiss", () => {
+describe("POST /api/recruits/missing-fields-queue/dismiss", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns 401 when unauthenticated", async () => {
     setupAuth(null, null);
-    const res = await POST(makeReq({ group_id: "g1" }));
+    const res = await POST(makeReq({ queue_id: "q1" }));
     expect(res.status).toBe(401);
   });
 
@@ -51,57 +51,57 @@ describe("POST /api/recruits/duplicate-review/dismiss", () => {
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u1" } } }) },
     } as never);
     vi.mocked(getEffectiveProgramContext).mockResolvedValue(null);
-    const res = await POST(makeReq({ group_id: "g1" }));
+    const res = await POST(makeReq({ queue_id: "q1" }));
     expect(res.status).toBe(400);
   });
 
   it("returns 400 on invalid JSON body", async () => {
     setupAuth({ from: vi.fn() });
-    const res = await POST(makeReq()); // no body → json() rejects
+    const res = await POST(makeReq());
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/invalid json/i);
   });
 
-  it("returns 400 when group_id missing from body", async () => {
+  it("returns 400 when queue_id missing", async () => {
     setupAuth({ from: vi.fn() });
-    const res = await POST(makeReq({})); // body without group_id
+    const res = await POST(makeReq({}));
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toMatch(/group_id/i);
+    expect((await res.json()).error).toMatch(/queue_id/i);
   });
 
-  it("returns 404 when group not found in program", async () => {
+  it("returns 404 when entry not found", async () => {
     const db = { from: vi.fn().mockReturnValue(makeChain({ data: null })) };
     setupAuth(db);
-    const res = await POST(makeReq({ group_id: "missing" }));
+    const res = await POST(makeReq({ queue_id: "missing" }));
     expect(res.status).toBe(404);
   });
 
-  it("returns 400 when group is not pending", async () => {
-    const fromFn = vi.fn()
-      .mockReturnValueOnce(makeChain({ data: { id: "g1", status: "dismissed" } }));
+  it("returns 409 when entry already info_requested_at set", async () => {
+    const fromFn = vi.fn().mockReturnValueOnce(
+      makeChain({ data: { id: "q1", info_requested_at: "2024-01-01T00:00:00Z" } })
+    );
     setupAuth({ from: fromFn });
-    const res = await POST(makeReq({ group_id: "g1" }));
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toMatch(/not pending/i);
-  });
-
-  it("returns 200 with success on valid dismiss", async () => {
-    const fromFn = vi.fn()
-      .mockReturnValueOnce(makeChain({ data: { id: "g1", status: "pending" } })) // fetch group
-      .mockReturnValueOnce(makeChain({ data: null, error: null }))               // update
-      .mockReturnValueOnce(makeChain({ data: [] }));                              // fetch members (empty → no queue)
-    setupAuth({ from: fromFn });
-    const res = await POST(makeReq({ group_id: "g1" }));
-    expect(res.status).toBe(200);
-    expect((await res.json()).success).toBe(true);
+    const res = await POST(makeReq({ queue_id: "q1" }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/already marked/i);
   });
 
   it("returns 500 when DB update fails", async () => {
     const fromFn = vi.fn()
-      .mockReturnValueOnce(makeChain({ data: { id: "g1", status: "pending" } }))
+      .mockReturnValueOnce(makeChain({ data: { id: "q1", info_requested_at: null } }))
       .mockReturnValueOnce(makeChain({ data: null, error: { message: "db fail" } }));
     setupAuth({ from: fromFn });
-    const res = await POST(makeReq({ group_id: "g1" }));
+    const res = await POST(makeReq({ queue_id: "q1" }));
     expect(res.status).toBe(500);
+  });
+
+  it("returns 200 on successful dismiss", async () => {
+    const fromFn = vi.fn()
+      .mockReturnValueOnce(makeChain({ data: { id: "q1", info_requested_at: null } }))
+      .mockReturnValueOnce(makeChain({ data: null, error: null }));
+    setupAuth({ from: fromFn });
+    const res = await POST(makeReq({ queue_id: "q1" }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).success).toBe(true);
   });
 });
