@@ -69,6 +69,9 @@ export interface ProgramConfig {
   high_need_positions: Record<string, Array<{ position: string; rank: number }>>;
   priority_grad_years: Array<{ year: number; rank: number }>;
   roster_spots: Record<string, number>;
+  // Section D: League Preferences & Ratings
+  league_preferences: ClubLevel[];
+  league_ratings: Record<ClubLevel, number>;
   created_at: string;
   updated_at: string;
 }
@@ -113,6 +116,7 @@ export interface Recruit {
   act_score: number | null;
   club_team: string | null;
   club_level: ClubLevel;
+  is_outside_selected_leagues: boolean;
   high_school_team: string | null;
   video_url: string | null;
   extraction_confidence: Record<string, ConfidenceLevel>;

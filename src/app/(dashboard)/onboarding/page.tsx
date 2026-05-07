@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,11 +19,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThresholdForm } from "@/components/config/threshold-form";
 import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
-import type { ThresholdFormData, WeightFormData, RosterContextFormData } from "@/types/config";
-import type { Program } from "@/types/database";
+import { LeagueSelector } from "@/components/config/league-selector";
+import { LeagueRater } from "@/components/config/league-rater";
+import {
+  createDefaultLeaguePreferences,
+  createDefaultLeagueRatings,
+} from "@/lib/data/leagues";
+import type {
+  ThresholdFormData,
+  WeightFormData,
+  RosterContextFormData,
+} from "@/types/config";
+import type { ClubLevel, Program } from "@/types/database";
 import { Check } from "lucide-react";
 
 const STEPS = [
@@ -31,6 +42,7 @@ const STEPS = [
   "Minimum Thresholds",
   "Priority Weights",
   "Roster Context",
+  "League Preferences",
   "Complete",
 ];
 
@@ -58,42 +70,47 @@ const DEFAULT_ROSTER: RosterContextFormData = {
   roster_spots: {},
 };
 
+const DEFAULT_LEAGUE_PREFERENCES = createDefaultLeaguePreferences();
+const DEFAULT_LEAGUE_RATINGS = createDefaultLeagueRatings();
+
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
-  const supabase = useMemo(() => createClient(), []);
+  const [leagueTab, setLeagueTab] = useState<"select" | "rate">("select");
 
   const [thresholds, setThresholds] = useState<ThresholdFormData>(DEFAULT_THRESHOLDS);
-
   const [weights, setWeights] = useState<WeightFormData>(DEFAULT_WEIGHTS);
-
   const [roster, setRoster] = useState<RosterContextFormData>(DEFAULT_ROSTER);
+  const [leaguePreferences, setLeaguePreferences] =
+    useState<ClubLevel[]>(DEFAULT_LEAGUE_PREFERENCES);
+  const [leagueRatings, setLeagueRatings] =
+    useState<Record<ClubLevel, number>>(DEFAULT_LEAGUE_RATINGS);
+
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
 
   useEffect(() => {
     async function loadPrograms() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user?.email) return;
 
-      // Extract email domain
       const emailDomain = user.email.split("@")[1];
-
-      // Load all programs
       const { data } = await supabase.from("programs").select("*").order("name");
-      
-      if (data) {
-        // Filter to only programs matching the user's email domain
-        const matchingPrograms = data.filter(p => p.domain === emailDomain);
-        setPrograms(matchingPrograms);
-        
-        // Auto-select if only one matching program
-        if (matchingPrograms.length === 1) {
-          setSelectedProgramId(matchingPrograms[0].id);
-        }
+
+      if (!data) return;
+
+      const matchingPrograms = data.filter((p) => p.domain === emailDomain);
+      setPrograms(matchingPrograms);
+      if (matchingPrograms.length === 1) {
+        setSelectedProgramId(matchingPrograms[0].id);
       }
     }
+
     loadPrograms();
   }, [supabase]);
 
@@ -103,6 +120,8 @@ export default function OnboardingPage() {
         setThresholds(DEFAULT_THRESHOLDS);
         setWeights(DEFAULT_WEIGHTS);
         setRoster(DEFAULT_ROSTER);
+        setLeaguePreferences(DEFAULT_LEAGUE_PREFERENCES);
+        setLeagueRatings(DEFAULT_LEAGUE_RATINGS);
         return;
       }
 
@@ -116,6 +135,8 @@ export default function OnboardingPage() {
         setThresholds(DEFAULT_THRESHOLDS);
         setWeights(DEFAULT_WEIGHTS);
         setRoster(DEFAULT_ROSTER);
+        setLeaguePreferences(DEFAULT_LEAGUE_PREFERENCES);
+        setLeagueRatings(DEFAULT_LEAGUE_RATINGS);
         return;
       }
 
@@ -134,7 +155,8 @@ export default function OnboardingPage() {
         weight_physical: existingConfig.weight_physical ?? DEFAULT_WEIGHTS.weight_physical,
         weight_position_fit: existingConfig.weight_position_fit ?? DEFAULT_WEIGHTS.weight_position_fit,
         weight_grad_year: existingConfig.weight_grad_year ?? DEFAULT_WEIGHTS.weight_grad_year,
-        weight_completeness: existingConfig.weight_completeness ?? DEFAULT_WEIGHTS.weight_completeness,
+        weight_completeness:
+          existingConfig.weight_completeness ?? DEFAULT_WEIGHTS.weight_completeness,
       });
 
       setRoster({
@@ -142,6 +164,9 @@ export default function OnboardingPage() {
         priority_grad_years: existingConfig.priority_grad_years ?? [],
         roster_spots: existingConfig.roster_spots ?? {},
       });
+
+      setLeaguePreferences(existingConfig.league_preferences ?? DEFAULT_LEAGUE_PREFERENCES);
+      setLeagueRatings(existingConfig.league_ratings ?? DEFAULT_LEAGUE_RATINGS);
     }
 
     loadProgramConfig();
@@ -155,6 +180,7 @@ export default function OnboardingPage() {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
+
     if (userError || !user) {
       setLoading(false);
       setSaveError("Unable to verify your session. Please refresh and try again.");
@@ -167,36 +193,37 @@ export default function OnboardingPage() {
       return;
     }
 
-    // Save program selection
     const { error: programUpdateError } = await supabase
       .from("coaches")
       .update({ program_id: selectedProgramId })
       .eq("id", user.id);
+
     if (programUpdateError) {
       setLoading(false);
       setSaveError("Could not save your program selection. Please try again.");
       return;
     }
 
-    // Save config
     const configData = {
       updated_by_coach_id: user.id,
       program_id: selectedProgramId,
       ...thresholds,
       ...weights,
       ...roster,
+      league_preferences: leaguePreferences,
+      league_ratings: leagueRatings,
     };
 
     const { error: configError } = await supabase.from("program_config").upsert(configData, {
       onConflict: "program_id",
     });
+
     if (configError) {
       setLoading(false);
       setSaveError("Could not save your onboarding settings. Please try again.");
       return;
     }
 
-    // Mark onboarding completed, pipeline awaiting admin setup
     const { error: onboardingError } = await supabase
       .from("coaches")
       .update({
@@ -204,6 +231,7 @@ export default function OnboardingPage() {
         email_pipeline_status: "pending_setup",
       })
       .eq("id", user.id);
+
     if (onboardingError) {
       setLoading(false);
       setSaveError("Could not finish onboarding. Please try again.");
@@ -211,13 +239,12 @@ export default function OnboardingPage() {
     }
 
     setLoading(false);
-    setStep(4); // Go to Gmail setup step
+    router.replace("/dashboard");
   }
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        {/* Progress steps */}
         <div className="flex items-center justify-center gap-2 mb-8">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
@@ -226,18 +253,14 @@ export default function OnboardingPage() {
                   i < step
                     ? "bg-primary text-white"
                     : i === step
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
                 }`}
               >
                 {i < step ? <Check className="h-4 w-4" /> : i + 1}
               </div>
               {i < STEPS.length - 1 && (
-                <div
-                  className={`w-8 h-0.5 ${
-                    i < step ? "bg-primary" : "bg-muted"
-                  }`}
-                />
+                <div className={`w-8 h-0.5 ${i < step ? "bg-primary" : "bg-muted"}`} />
               )}
             </div>
           ))}
@@ -250,16 +273,13 @@ export default function OnboardingPage() {
               Step {step + 1} of {STEPS.length}
             </CardDescription>
           </CardHeader>
+
           <CardContent>
-            {/* Step 0: Program Setup */}
             {step === 0 && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Select Your Program</Label>
-                  <Select
-                    value={selectedProgramId}
-                    onValueChange={setSelectedProgramId}
-                  >
+                  <Select value={selectedProgramId} onValueChange={setSelectedProgramId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Choose your program..." />
                     </SelectTrigger>
@@ -272,89 +292,85 @@ export default function OnboardingPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Don&apos;t see your program? Contact your admin to add it.
+                    Do not see your program? Contact your admin to add it.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Step 1: Thresholds */}
-            {step === 1 && (
-              <ThresholdForm data={thresholds} onChange={setThresholds} />
-            )}
+            {step === 1 && <ThresholdForm data={thresholds} onChange={setThresholds} />}
 
-            {/* Step 2: Weights */}
-            {step === 2 && (
-              <WeightSelector data={weights} onChange={setWeights} />
-            )}
+            {step === 2 && <WeightSelector data={weights} onChange={setWeights} />}
 
-            {/* Step 3: Roster Context */}
-            {step === 3 && (
-              <RosterContextForm data={roster} onChange={setRoster} />
-            )}
+            {step === 3 && <RosterContextForm data={roster} onChange={setRoster} />}
 
-            {/* Step 4: Complete */}
             {step === 4 && (
+              <div className="space-y-4">
+                <Tabs value={leagueTab} onValueChange={(v) => setLeagueTab(v as "select" | "rate")}>
+                  <TabsList className="mb-4">
+                    <TabsTrigger value="select">Select Leagues</TabsTrigger>
+                    <TabsTrigger value="rate">Rate Leagues</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="select" className="mt-0">
+                    <LeagueSelector
+                      selected={leaguePreferences}
+                      onChange={setLeaguePreferences}
+                      disabled={loading}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="rate" className="mt-0">
+                    <LeagueRater
+                      ratings={leagueRatings}
+                      onChange={setLeagueRatings}
+                      selectedLeagues={leaguePreferences}
+                      disabled={loading}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
+
+            {step === 5 && (
               <div className="space-y-6 text-center py-4">
                 <div className="mx-auto w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center">
                   <Check className="h-8 w-8 text-emerald-600" />
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">You&apos;re all set!</h3>
+                  <h3 className="text-lg font-semibold">You are all set</h3>
                   <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    Your email pipeline is ready to go. Forward recruit
-                    emails to the address below and they&apos;ll be
-                    automatically processed and scored.
+                    Save your onboarding configuration to start evaluating recruits with your
+                    program-specific thresholds, weights, roster context, and league preferences.
                   </p>
-                </div>
-                <div className="bg-primary/10 rounded-lg p-4 text-left space-y-3">
-                  <p className="text-sm text-primary">
-                    <strong>How it works:</strong> Forward any recruit email to:
-                  </p>
-                  <p className="text-center font-mono text-sm bg-background rounded px-3 py-2 select-all">
-                    intake@q5recruit.ai
-                  </p>
-                  <ul className="text-sm text-primary space-y-1 list-disc list-inside">
-                    <li>You can forward multiple emails at once — each will be processed separately</li>
-                    <li>Recruits will automatically appear in your dashboard, scored and ready for review</li>
-                    <li>PDF transcripts attached to emails will be analyzed automatically</li>
-                  </ul>
                 </div>
               </div>
             )}
 
-            {/* Navigation */}
             <div className="flex justify-between mt-8">
-              {step > 0 && step < 4 && (
-                <Button
-                  variant="outline"
-                  onClick={() => setStep(step - 1)}
-                >
+              {step > 0 ? (
+                <Button variant="outline" onClick={() => setStep(step - 1)} disabled={loading}>
                   Back
                 </Button>
+              ) : (
+                <div />
               )}
-              {step === 0 && <div />}
-              {step < 3 && (
-                <Button onClick={() => setStep(step + 1)}>
+
+              {step < 5 ? (
+                <Button
+                  onClick={() => setStep(step + 1)}
+                  disabled={loading || (step === 0 && !selectedProgramId)}
+                >
                   Next
                 </Button>
-              )}
-              {step === 3 && (
-                <Button onClick={handleComplete} disabled={loading}>
+              ) : (
+                <Button onClick={handleComplete} disabled={loading || !selectedProgramId}>
                   {loading ? "Saving..." : "Save & Continue"}
                 </Button>
               )}
-              {step === 4 && (
-                <Button asChild className="ml-auto">
-                  <Link href="/dashboard" replace>
-                    Go to Dashboard
-                  </Link>
-                </Button>
-              )}
             </div>
-            {saveError && (
-              <p className="mt-4 text-sm text-destructive">{saveError}</p>
-            )}
+
+            {saveError && <p className="mt-4 text-sm text-destructive">{saveError}</p>}
           </CardContent>
         </Card>
       </div>

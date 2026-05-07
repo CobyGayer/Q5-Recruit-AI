@@ -10,6 +10,7 @@ import { FlagButton } from "./flag-button";
 import { Play } from "lucide-react";
 import type { RecruitWithScore, FlagType, ProgramConfig } from "@/types/database";
 import { POSITIONS } from "@/types/config";
+import { getDisplayLeagueLabel } from "@/lib/data/league-preferences";
 
 
 interface RecruitCardProps {
@@ -19,15 +20,6 @@ interface RecruitCardProps {
   onToggleSelect?: (recruitId: string) => void;
   programConfig?: ProgramConfig | null;
 }
-
-const CLUB_LEVEL_LABELS: Record<string, string> = {
-  mls_next: "MLS Next",
-  ecnl: "ECNL",
-  ga: "GA",
-  regional: "Regional",
-  other: "Other",
-  unknown: "Unknown",
-};
 
 function formatHeight(inches: number): string {
   return `${Math.floor(inches / 12)}'${inches % 12}"`;
@@ -49,8 +41,8 @@ function getAvailableStats(recruit: RecruitWithScore): Stat[] {
     recruit.height_inches != null
       ? { label: "Height", value: formatHeight(recruit.height_inches) }
       : null,
-    recruit.club_level && recruit.club_level !== "unknown"
-      ? { label: "Club", value: CLUB_LEVEL_LABELS[recruit.club_level] }
+    recruit.club_level
+      ? { label: "League", value: getDisplayLeagueLabel(recruit) }
       : null,
     recruit.city || recruit.state
       ? {

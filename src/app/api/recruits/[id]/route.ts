@@ -9,6 +9,7 @@ import { computeCompletenessMetadata } from "@/lib/recruits/completeness-metadat
 import { calculateDQS } from "@/lib/scoring/dqs";
 import type { ConfidenceLevel } from "@/types/database";
 import type { ProgramConfig, Recruit, TranscriptAnalysis } from "@/types/database";
+import { shouldMarkOutsideSelection } from "@/lib/data/league-preferences";
 
 const ClubLevelUpdateSchema = z.preprocess((value) => {
   if (value === null || value === "") return "unknown";
@@ -302,6 +303,28 @@ export async function PUT(
 
     if (dqsError) {
       return NextResponse.json({ error: dqsError.message }, { status: 500 });
+      // Update is_outside_selected_leagues flag based on league preferences
+      if (configResult.data) {
+        const leaguePreferences = (configResult.data as ProgramConfig).league_preferences || [];
+        const isOutside = shouldMarkOutsideSelection(persistedRecruit.club_level, leaguePreferences);
+
+        if (persistedRecruit.is_outside_selected_leagues !== isOutside) {
+          let flagUpdateQuery = db
+            .from("recruits")
+            .update({ is_outside_selected_leagues: isOutside })
+            .eq("id", id);
+          if (overrideProgramId) {
+            flagUpdateQuery = flagUpdateQuery.eq("program_id", overrideProgramId);
+          }
+
+          const { data: updatedWithFlag, error: flagError } = await flagUpdateQuery.select().single();
+
+          if (!flagError && updatedWithFlag) {
+            persistedRecruit = updatedWithFlag;
+          }
+        }
+      }
+
     }
   }
 

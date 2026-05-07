@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,11 +14,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThresholdForm } from "@/components/config/threshold-form";
 import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
+import { LeagueSelector } from "@/components/config/league-selector";
+import { LeagueRater } from "@/components/config/league-rater";
 import type {
   ThresholdFormData,
   WeightFormData,
   RosterContextFormData,
 } from "@/types/config";
+import type { ClubLevel } from "@/types/database";
+import { createDefaultLeaguePreferences, createDefaultLeagueRatings } from "@/lib/data/leagues";
 import { Check, Copy, RefreshCw } from "lucide-react";
 
 export default function SettingsPage() {
@@ -28,9 +31,11 @@ export default function SettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+  const [updatingRecruitsFlags, setUpdatingRecruitsFlags] = useState(false);
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [apiKeyCopied, setApiKeyCopied] = useState(false);
-  const router = useRouter();
+  const [leagueTab, setLeagueTab] = useState<"select" | "rate">("select");
+
   const supabase = createClient();
 
   const [thresholds, setThresholds] = useState<ThresholdFormData>({
@@ -57,6 +62,11 @@ export default function SettingsPage() {
     roster_spots: {},
   });
 
+  const [leaguePreferences, setLeaguePreferences] =
+    useState<ClubLevel[]>(createDefaultLeaguePreferences());
+  const [leagueRatings, setLeagueRatings] =
+    useState<Record<ClubLevel, number>>(createDefaultLeagueRatings());
+
   useEffect(() => {
     async function loadConfig() {
       const res = await fetch("/api/config");
@@ -80,14 +90,19 @@ export default function SettingsPage() {
             weight_completeness: data.weight_completeness ?? 20,
           });
           setRoster({
-            high_need_positions: Array.isArray(data.high_need_positions) ? {} : (data.high_need_positions || {}),
+            high_need_positions: Array.isArray(data.high_need_positions)
+              ? {}
+              : (data.high_need_positions || {}),
             priority_grad_years: data.priority_grad_years || [],
             roster_spots: data.roster_spots || {},
           });
+          setLeaguePreferences(data.league_preferences || createDefaultLeaguePreferences());
+          setLeagueRatings(data.league_ratings || createDefaultLeagueRatings());
         }
       }
       setLoading(false);
     }
+
     loadConfig();
   }, []);
 
@@ -96,20 +111,54 @@ export default function SettingsPage() {
     setSaveError(null);
     setSaveSuccess(false);
 
-    const res = await fetch("/api/config", {
+    const body = {
+      ...thresholds,
+      ...weights,
+      ...roster,
+      league_preferences: leaguePreferences,
+      league_ratings: leagueRatings,
+    };
+
+    const saveRes = await fetch("/api/config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...thresholds, ...weights, ...roster }),
+      body: JSON.stringify(body),
     });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
+    if (!saveRes.ok) {
+      const data = await saveRes.json().catch(() => ({}));
       setSaveError(data.error ?? "Failed to save preferences. Please try again.");
       setSaving(false);
       return;
     }
 
-    // Trigger DQS recalculation
+    setUpdatingRecruitsFlags(true);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user?.id) {
+        const { data: coach } = await supabase
+          .from("coaches")
+          .select("program_id")
+          .eq("id", user.id)
+          .single();
+
+        if (coach?.program_id) {
+          await fetch("/api/recruits/batch-update-league-flags", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ programId: coach.program_id }),
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to batch update recruit flags:", err);
+    } finally {
+      setUpdatingRecruitsFlags(false);
+    }
+
     setRecalculating(true);
     await fetch("/api/config/recalculate", { method: "POST" });
     setRecalculating(false);
@@ -132,11 +181,11 @@ export default function SettingsPage() {
   }
 
   function copyApiKey() {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey);
-      setApiKeyCopied(true);
-      setTimeout(() => setApiKeyCopied(false), 2000);
-    }
+    if (!apiKey) return;
+
+    navigator.clipboard.writeText(apiKey);
+    setApiKeyCopied(true);
+    setTimeout(() => setApiKeyCopied(false), 2000);
   }
 
   if (loading) {
@@ -156,9 +205,15 @@ export default function SettingsPage() {
             Update your program configuration and scoring preferences
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
+
+        <Button onClick={handleSave} disabled={saving || updatingRecruitsFlags}>
           {saving ? (
-            recalculating ? (
+            updatingRecruitsFlags ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Updating profiles...
+              </>
+            ) : recalculating ? (
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 Recalculating scores...
@@ -184,10 +239,11 @@ export default function SettingsPage() {
       )}
 
       <Tabs defaultValue="thresholds">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex flex-wrap h-auto">
           <TabsTrigger value="thresholds">Thresholds</TabsTrigger>
           <TabsTrigger value="weights">Weights</TabsTrigger>
           <TabsTrigger value="roster">Roster Context</TabsTrigger>
+          <TabsTrigger value="leagues">League Preferences</TabsTrigger>
           <TabsTrigger value="api">API Key</TabsTrigger>
         </TabsList>
 
@@ -215,6 +271,42 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="leagues">
+          <Card className="border-primary/10">
+            <CardHeader>
+              <CardTitle>League Preferences</CardTitle>
+              <CardDescription>
+                Select the leagues you track and rate each league from 0 to 10.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={leagueTab} onValueChange={(v) => setLeagueTab(v as "select" | "rate")}>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="select">Select Leagues</TabsTrigger>
+                  <TabsTrigger value="rate">Rate Leagues</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="select" className="mt-0">
+                  <LeagueSelector
+                    selected={leaguePreferences}
+                    onChange={setLeaguePreferences}
+                    disabled={saving}
+                  />
+                </TabsContent>
+
+                <TabsContent value="rate" className="mt-0">
+                  <LeagueRater
+                    ratings={leagueRatings}
+                    onChange={setLeagueRatings}
+                    selectedLeagues={leaguePreferences}
+                    disabled={saving}
+                  />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="api">
           <Card className="border-primary/10">
             <CardHeader>
@@ -231,17 +323,12 @@ export default function SettingsPage() {
                     {apiKey}
                   </code>
                   <Button size="sm" variant="outline" onClick={copyApiKey}>
-                    {apiKeyCopied ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
+                    {apiKeyCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Your current API key is stored securely. If you need a new
-                  one, click regenerate below.
+                  Your current API key is stored securely. If you need a new one, click regenerate.
                 </p>
               )}
               <Button variant="outline" onClick={handleRegenerateApiKey}>

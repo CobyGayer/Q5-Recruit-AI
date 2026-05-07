@@ -27,6 +27,7 @@ const CLUB_LEVELS = [
   { value: "ga", label: "GA" },
   { value: "regional", label: "Regional" },
   { value: "other", label: "Other" },
+  { value: "unknown", label: "Unknown" },
 ];
 
 export function RecruitFilterPanel({

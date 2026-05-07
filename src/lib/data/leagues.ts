@@ -1,0 +1,157 @@
+import type { ClubLevel } from "@/types/database";
+
+/**
+ * League Definition - Centralized source of truth for all league tiers
+ * Easily extendable for adding more leagues in the future
+ */
+export interface LeagueDefinition {
+  id: ClubLevel;
+  name: string;
+  displayLabel: string;
+  defaultRating: number; // 0-10 scale
+}
+
+/** Centralized league tier definitions */
+export const LEAGUE_TIERS: LeagueDefinition[] = [
+  {
+    id: "mls_next",
+    name: "MLS NEXT",
+    displayLabel: "MLS NEXT",
+    defaultRating: 10,
+  },
+  {
+    id: "ecnl",
+    name: "ECNL",
+    displayLabel: "ECNL",
+    defaultRating: 9,
+  },
+  {
+    id: "ga",
+    name: "GA",
+    displayLabel: "Girls Academy",
+    defaultRating: 7.5,
+  },
+  {
+    id: "regional",
+    name: "Regional",
+    displayLabel: "Regional",
+    defaultRating: 5.5,
+  },
+  {
+    id: "other",
+    name: "Other",
+    displayLabel: "Other",
+    defaultRating: 3.5,
+  },
+  {
+    id: "unknown",
+    name: "Unknown",
+    displayLabel: "Unknown",
+    defaultRating: 5,
+  },
+];
+
+/** Type for league preferences (array of selected league IDs) */
+export type LeaguePreferences = ClubLevel[];
+
+/** Type for league ratings (object mapping league ID to 0-10 rating) */
+export type LeagueRatings = Record<ClubLevel, number>;
+
+/**
+ * Get a league definition by ID
+ */
+export function getLeagueDefinition(leagueId: ClubLevel): LeagueDefinition | null {
+  return LEAGUE_TIERS.find((league) => league.id === leagueId) ?? null;
+}
+
+/**
+ * Get display label for a league
+ */
+export function getLeagueLabel(leagueId: ClubLevel): string {
+  const league = getLeagueDefinition(leagueId);
+  return league?.displayLabel ?? "Unknown";
+}
+
+/**
+ * Check if a league is in the coach's selected preferences
+ */
+export function isLeagueSelected(
+  leagueId: ClubLevel,
+  preferences: LeaguePreferences
+): boolean {
+  return preferences.includes(leagueId);
+}
+
+/**
+ * Get the rating for a league
+ * Returns the rating if set, or defaults to 5 (neutral) if not found
+ */
+export function getLeagueRating(
+  leagueId: ClubLevel,
+  ratings: LeagueRatings
+): number {
+  return ratings[leagueId] ?? 5;
+}
+
+/**
+ * Create default league ratings based on tier definitions
+ */
+export function createDefaultLeagueRatings(): LeagueRatings {
+  const ratings: Partial<LeagueRatings> = {};
+  for (const league of LEAGUE_TIERS) {
+    ratings[league.id] = league.defaultRating;
+  }
+  return ratings as LeagueRatings;
+}
+
+/**
+ * Create default league preferences (all leagues selected)
+ */
+export function createDefaultLeaguePreferences(): LeaguePreferences {
+  return LEAGUE_TIERS.map((league) => league.id);
+}
+
+/**
+ * Validate that ratings are within 0-10 range
+ */
+export function validateLeagueRatings(ratings: LeagueRatings): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  for (const [leagueId, rating] of Object.entries(ratings)) {
+    if (typeof rating !== "number") {
+      errors.push(`Rating for ${leagueId} must be a number`);
+    } else if (rating < 0 || rating > 10) {
+      errors.push(`Rating for ${leagueId} must be between 0 and 10`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * Validate that all selected league preferences exist in the tier definitions
+ */
+export function validateLeaguePreferences(preferences: LeaguePreferences): {
+  valid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  const validIds = new Set(LEAGUE_TIERS.map((l) => l.id));
+
+  for (const pref of preferences) {
+    if (!validIds.has(pref)) {
+      errors.push(`Unknown league ID: ${pref}`);
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}

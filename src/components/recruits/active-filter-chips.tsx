@@ -95,6 +95,7 @@ function getActiveChips(
       ga: "GA",
       regional: "Regional",
       other: "Other",
+      unknown: "Unknown",
     };
     chips.push({
       key: "club_levels",

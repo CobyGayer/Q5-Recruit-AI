@@ -17,6 +17,7 @@ import { FlagButton } from "./flag-button";
 import type { RecruitWithScore, FlagType, ProgramConfig } from "@/types/database";
 import type { SortOption, SortDirection } from "@/types/recruit";
 import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
+import { getDisplayLeagueLabel } from "@/lib/data/league-preferences";
 import {
   Tooltip,
   TooltipContent,
@@ -36,15 +37,6 @@ interface RecruitListViewProps {
   onToggleSelectAll?: () => void;
   programConfig?: ProgramConfig | null;
 }
-
-const CLUB_LEVEL_LABELS: Record<string, string> = {
-  mls_next: "MLS Next",
-  ecnl: "ECNL",
-  ga: "GA",
-  regional: "Regional",
-  other: "Other",
-  unknown: "Unknown",
-};
 
 function formatHeight(inches: number): string {
   return `${Math.floor(inches / 12)}'${inches % 12}"`;
@@ -245,8 +237,8 @@ export function RecruitListView({
                 )}
               </TableCell>
               <TableCell>
-                {recruit.club_level && recruit.club_level !== "unknown" ? (
-                  CLUB_LEVEL_LABELS[recruit.club_level]
+                {recruit.club_level ? (
+                  getDisplayLeagueLabel(recruit)
                 ) : (
                   <span className="text-muted-foreground">—</span>
                 )}

@@ -17,14 +17,19 @@ export async function maybeQueueMissingFieldsRequest(
   programId: string,
   coachId: string
 ): Promise<boolean> {
-  const [{ data: recruit }, { data: config }] = await Promise.all([
-    db
-      .from("recruits")
-      .select("fields_missing, fields_extracted, fields_total, club_level")
-      .eq("id", recruitId)
-      .single(),
-    db.from("program_config").select("*").eq("program_id", programId).maybeSingle(),
-  ]);
+  const recruitPromise = db
+    .from("recruits")
+    .select("fields_missing, fields_extracted, fields_total, club_level")
+    .eq("id", recruitId)
+    .single();
+
+  const programConfigQuery: any = db.from("program_config").select("*").eq("program_id", programId);
+  const configPromise = typeof programConfigQuery.maybeSingle === "function"
+    ? programConfigQuery.maybeSingle()
+    : programConfigQuery.single();
+
+  const [{ data: recruit }, configRes] = await Promise.all([recruitPromise, configPromise]);
+  const config = configRes?.data ?? null;
 
   if (!recruit) return false;
 
