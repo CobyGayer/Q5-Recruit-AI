@@ -58,7 +58,7 @@ const FIELD_LABELS: Record<string, string> = {
   preferred_foot: "Preferred Foot",
   height_inches: "Height (inches)",
   weight_lbs: "Weight (lbs)",
-  gpa: "GPA",
+  gpa: "Unweighted GPA",
   sat_score: "SAT Score",
   act_score: "ACT Score",
   club_team: "Club Team",
