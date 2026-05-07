@@ -95,7 +95,8 @@ RECRUIT PROFILE:
 DQS SCORING RESULT:
 - Overall Score: ${dqsResult.score != null ? `${dqsResult.score}/100` : "N/A (disqualified)"}
 - Qualified: ${dqsResult.isQualified ? "Yes" : "No"}
-${!dqsResult.isQualified ? `- Disqualification Reasons: ${dqsResult.disqualificationReasons.join("; ")}\n` : ""}- Academic Score: ${formatSummaryScore(dqsResult.componentScores.academic, config.weight_academic)}
+${!dqsResult.isQualified ? `- Disqualification Reasons: ${dqsResult.disqualificationReasons.join("; ")}` : ""}
+- Academic Score: ${formatSummaryScore(dqsResult.componentScores.academic, config.weight_academic)}
 - Competition Score: ${formatSummaryScore(dqsResult.componentScores.competition, config.weight_competition)}
 - Physical Score: ${formatSummaryScore(dqsResult.componentScores.physical, config.weight_physical)}
 - Position Fit Score: ${formatSummaryScore(dqsResult.componentScores.positionFit, config.weight_position_fit)}
