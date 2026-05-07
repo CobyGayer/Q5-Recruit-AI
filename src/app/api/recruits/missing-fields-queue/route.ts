@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
       .from("recruit_missing_fields_queue")
       .select("id", { count: "exact", head: true })
       .eq("program_id", effectiveProgramId)
-      .eq("coach_id", user.id)
       .is("info_requested_at", null)
       .is("dismissed_at", null);
 
@@ -50,7 +49,6 @@ export async function GET(request: NextRequest) {
     .from("recruit_missing_fields_queue")
     .select("id, recruit_id, queued_at, missing_fields_snapshot")
     .eq("program_id", effectiveProgramId)
-    .eq("coach_id", user.id)
     .is("info_requested_at", null)
     .is("dismissed_at", null)
     .order("queued_at", { ascending: true });
