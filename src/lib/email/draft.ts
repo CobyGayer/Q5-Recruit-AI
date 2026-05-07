@@ -178,6 +178,7 @@ export const MISSING_FIELD_LABELS: Record<string, string> = {
   club_level: "club level",
   high_school_team: "high school team name",
   video_url: "highlight video link",
+  transcript: "transcript",
 };
 
 function buildRequestInfoPrompt(ctx: RequestInfoContext): string {

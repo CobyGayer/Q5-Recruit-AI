@@ -23,7 +23,6 @@ export const TranscriptAnalysisResultSchema = z.object({
   red_flags: z.array(z.string()),
   strengths: z.array(z.string()),
   schedule_assessment: z.string(),
-  admissions_notes: z.string(),
   cumulative_gpa_from_transcript: z.number().min(0).max(5).nullable(),
   transcript_readable: z.boolean(),
   confidence: z.enum(["high", "medium", "low"]),

@@ -67,6 +67,11 @@ const FIELD_LABELS: Record<string, string> = {
   video_url: "Highlight Video",
 };
 
+const REQUEST_INFO_FIELD_LABELS: Record<string, string> = {
+  ...FIELD_LABELS,
+  transcript: "Transcript",
+};
+
 const CLUB_LEVEL_LABELS: Record<string, string> = {
   mls_next: "MLS Next",
   ecnl: "ECNL",
@@ -139,8 +144,6 @@ export default function RecruitDetailPage() {
 
   // Validation helpers
   function validateAndParseEditData(): { valid: true; data: Record<string, unknown> } | { valid: false; error: string } {
-    const processed: Record<string, unknown> = { ...editData };
-
     // Helper to parse numeric fields
     const parseNumber = (value: unknown, fieldLabel: string, min?: number): number | null => {
       if (value === null || value === "" || value === undefined) return null;
@@ -183,19 +186,58 @@ export default function RecruitDetailPage() {
       return strValue;
     };
 
+    // Helper to compare values for equality
+    const valuesEqual = (a: unknown, b: unknown): boolean => {
+      if (Array.isArray(a) && Array.isArray(b)) {
+        return a.length === b.length && a.every((v, i) => v === b[i]);
+      }
+      return a === b;
+    };
+
     try {
-      // Validate numeric fields
-      processed.graduation_year = parseNumber(editData.graduation_year, "Graduation Year", 1950);
-      processed.height_inches = parseNumber(editData.height_inches, "Height (inches)", 36);
-      processed.weight_lbs = parseNumber(editData.weight_lbs, "Weight (lbs)", 50);
-      processed.sat_score = parseNumber(editData.sat_score, "SAT Score", 200);
-      processed.act_score = parseNumber(editData.act_score, "ACT Score", 1);
+      const processed: Record<string, unknown> = {};
 
-      // Validate GPA
-      processed.gpa = parseGpa(editData.gpa);
+      // Only include fields that have actually changed
+      for (const key of Object.keys(editData)) {
+        const editValue = editData[key];
+        const originalValue = (recruit as unknown as Record<string, unknown>)[key];
+        
+        let parsedValue: unknown = editValue;
 
-      // Validate email format
-      processed.email = validateEmail(editData.email);
+        // Parse and validate specific fields
+        if (key === "graduation_year") {
+          parsedValue = parseNumber(editValue, "Graduation Year", 1950);
+        } else if (key === "height_inches") {
+          parsedValue = parseNumber(editValue, "Height (inches)", 36);
+        } else if (key === "weight_lbs") {
+          parsedValue = parseNumber(editValue, "Weight (lbs)", 50);
+        } else if (key === "sat_score") {
+          parsedValue = parseNumber(editValue, "SAT Score", 200);
+        } else if (key === "act_score") {
+          parsedValue = parseNumber(editValue, "ACT Score", 1);
+        } else if (key === "gpa") {
+          parsedValue = parseGpa(editValue);
+        } else if (key === "email") {
+          parsedValue = validateEmail(editValue);
+        } else if (key === "positions") {
+          if (Array.isArray(editValue)) {
+            const validPositions = editValue.filter((pos) =>
+              (POSITIONS as readonly string[]).includes(pos)
+            );
+            if (validPositions.length !== editValue.length) {
+              throw new Error("All positions must be from the allowed list");
+            }
+            parsedValue = validPositions.length > 0 ? validPositions : [];
+          } else {
+            parsedValue = [];
+          }
+        }
+
+        // Only include in update if value has changed
+        if (!valuesEqual(parsedValue, originalValue)) {
+          processed[key] = parsedValue;
+        }
+      }
 
       return { valid: true, data: processed };
     } catch (error) {
@@ -292,15 +334,18 @@ export default function RecruitDetailPage() {
   const visibleMissingFields = useMemo(
     () =>
       recruit
-        ? adjustCompletenessForWeights(
-            recruit.fields_missing,
-            recruit.fields_extracted,
-            recruit.fields_total,
-            config,
-            recruit.club_level
-          ).missing
+        ? [
+            ...adjustCompletenessForWeights(
+              recruit.fields_missing,
+              recruit.fields_extracted,
+              recruit.fields_total,
+              config,
+              recruit.club_level
+            ).missing,
+            ...(transcriptAnalysis?.transcript_readable ? [] : ["transcript"]),
+          ]
         : [],
-    [recruit, config]
+    [recruit, config, transcriptAnalysis]
   );
 
   const selectedVisibleMissingFields = useMemo(
@@ -432,7 +477,7 @@ export default function RecruitDetailPage() {
         recruitName={recruit.full_name}
         recruitEmail={recruit.email}
         selectedFields={selectedVisibleMissingFields}
-        fieldLabels={FIELD_LABELS}
+        fieldLabels={REQUEST_INFO_FIELD_LABELS}
         coachEmail={coachEmail}
       />
 
@@ -510,6 +555,35 @@ export default function RecruitDetailPage() {
                       </div>
                     );
                   })}
+                  {/* Positions editor */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Position(s)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {POSITIONS.map((pos) => (
+                        <Badge
+                          key={pos}
+                          variant={
+                            (editData.positions as string[])?.includes(pos)
+                              ? "default"
+                              : "outline"
+                          }
+                          className="cursor-pointer text-sm px-3 py-1"
+                          onClick={() => {
+                            const positions = (editData.positions as string[]) || [];
+                            const updated = positions.includes(pos)
+                              ? positions.filter((p) => p !== pos)
+                              : [...positions, pos];
+                            setEditData({
+                              ...editData,
+                              positions: updated.length > 0 ? updated : [],
+                            });
+                          }}
+                        >
+                          {pos}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                   <div className="space-y-2 pt-2">
                     {saveError && (
                       <p className="text-sm text-destructive">{saveError}</p>
@@ -584,6 +658,87 @@ export default function RecruitDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {transcriptAnalysis && transcriptAnalysis.transcript_readable && (
+            <Card className="border-primary/10 overflow-hidden">
+              <CardHeader
+                className="cursor-pointer"
+                onClick={() => setShowTranscript(!showTranscript)}
+              >
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    Transcript Analysis
+                    <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground/60">Beta</span>
+                    <Badge
+                      variant="secondary"
+                      className={`shrink-0 ${
+                        transcriptAnalysis.rigor_grade.startsWith("A")
+                          ? "bg-emerald-100 text-emerald-800"
+                          : transcriptAnalysis.rigor_grade.startsWith("B")
+                          ? "bg-blue-100 text-blue-800"
+                          : transcriptAnalysis.rigor_grade === "C+" || transcriptAnalysis.rigor_grade === "C"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      Rigor: {transcriptAnalysis.rigor_grade}
+                    </Badge>
+                  </span>
+                  {showTranscript ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {showTranscript && (
+                <CardContent className="space-y-3">
+                  {transcriptAnalysis.strengths.length > 0 && (
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Strengths</p>
+                      <ul className="space-y-1">
+                        {transcriptAnalysis.strengths.map((s, i) => (
+                          <li key={i} className="text-xs text-emerald-700 break-words">
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {transcriptAnalysis.red_flags.length > 0 && (
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Red Flags</p>
+                      <ul className="space-y-1">
+                        {transcriptAnalysis.red_flags.map((f, i) => (
+                          <li key={i} className="text-xs text-red-700 break-words">
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {transcriptAnalysis.grade_trend && (
+                    <div className="text-xs text-muted-foreground break-words">
+                      <span className="font-medium">
+                        Grade Trend: {transcriptAnalysis.grade_trend.charAt(0).toUpperCase() + transcriptAnalysis.grade_trend.slice(1)}
+                      </span>
+                      {transcriptAnalysis.grade_trend_notes && (
+                        <span> — {transcriptAnalysis.grade_trend_notes}</span>
+                      )}
+                    </div>
+                  )}
+                  {transcriptAnalysis.notable_courses.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notable Courses</p>
+                      <p className="text-xs text-muted-foreground break-words">
+                        {transcriptAnalysis.notable_courses.join(", ")}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           {/* Embedded video */}
           {recruit.video_url && (
@@ -694,92 +849,6 @@ export default function RecruitDetailPage() {
             </Card>
           )}
 
-          {transcriptAnalysis && transcriptAnalysis.transcript_readable && (
-            <Card className="border-primary/10 overflow-hidden">
-              <CardHeader
-                className="cursor-pointer"
-                onClick={() => setShowTranscript(!showTranscript)}
-              >
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    Transcript Analysis
-                    <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground/60">Beta</span>
-                    <Badge
-                      variant="secondary"
-                      className={`shrink-0 ${
-                        transcriptAnalysis.rigor_grade.startsWith("A")
-                          ? "bg-emerald-100 text-emerald-800"
-                          : transcriptAnalysis.rigor_grade.startsWith("B")
-                          ? "bg-blue-100 text-blue-800"
-                          : transcriptAnalysis.rigor_grade === "C+" || transcriptAnalysis.rigor_grade === "C"
-                          ? "bg-amber-100 text-amber-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      Rigor: {transcriptAnalysis.rigor_grade}
-                    </Badge>
-                  </span>
-                  {showTranscript ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </CardTitle>
-              </CardHeader>
-              {showTranscript && (
-                <CardContent className="space-y-3">
-                  {transcriptAnalysis.admissions_notes && (
-                    <p className="text-sm text-muted-foreground italic break-words">
-                      {transcriptAnalysis.admissions_notes}
-                    </p>
-                  )}
-                  {transcriptAnalysis.strengths.length > 0 && (
-                    <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Strengths</p>
-                      <ul className="space-y-1">
-                        {transcriptAnalysis.strengths.map((s, i) => (
-                          <li key={i} className="text-xs text-emerald-700 break-words">
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {transcriptAnalysis.red_flags.length > 0 && (
-                    <div className="min-w-0">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Red Flags</p>
-                      <ul className="space-y-1">
-                        {transcriptAnalysis.red_flags.map((f, i) => (
-                          <li key={i} className="text-xs text-red-700 break-words">
-                            {f}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {transcriptAnalysis.grade_trend && (
-                    <div className="text-xs text-muted-foreground break-words">
-                      <span className="font-medium">
-                        Grade Trend: {transcriptAnalysis.grade_trend.charAt(0).toUpperCase() + transcriptAnalysis.grade_trend.slice(1)}
-                      </span>
-                      {transcriptAnalysis.grade_trend_notes && (
-                        <span> — {transcriptAnalysis.grade_trend_notes}</span>
-                      )}
-                    </div>
-                  )}
-                  {transcriptAnalysis.notable_courses.length > 0 && (
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Notable Courses</p>
-                      <p className="text-xs text-muted-foreground break-words">
-                        {transcriptAnalysis.notable_courses.join(", ")}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              )}
-            </Card>
-          )}
-
           {dqsScore && !dqsScore.is_qualified && (
             <Card className="border-rose-200 bg-rose-50">
               <CardHeader>
@@ -850,7 +919,7 @@ export default function RecruitDetailPage() {
                         }}
                       />
                       <Badge variant="outline" className="text-xs bg-card">
-                        {FIELD_LABELS[field] ?? field}
+                        {REQUEST_INFO_FIELD_LABELS[field] ?? field}
                       </Badge>
                     </label>
                   ))}

@@ -73,7 +73,6 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
   "red_flags": [<string max 8 words each>, ...],
   "strengths": [<string max 8 words each>, ...],
   "schedule_assessment": "<one concise sentence on schedule rigor>",
-  "admissions_notes": "<1-2 sentences max — a brief coaching-relevant takeaway, not a full admissions review>",
   "cumulative_gpa_from_transcript": <number|null>,
   "transcript_readable": <boolean>,
   "confidence": "<high|medium|low>"
@@ -82,10 +81,9 @@ Return ONLY a JSON object with this exact structure (no markdown, no explanation
 ## Important Rules
 - Be concise — coaches skim this. Every string field should be short and actionable. Avoid filler language.
 - Strengths and red flags should each be a punchy phrase (max 8 words), not a full sentence
-- admissions_notes should read like a quick note a coach can act on, not an essay
 - If the document is NOT a transcript (e.g., it's a resume, letter, or unrelated document), set "transcript_readable" to false and "confidence" to "low"
 - If the transcript is too blurry, cropped, or otherwise unreadable, set "transcript_readable" to false
 - Empty arrays are fine for red_flags, strengths, etc. if none apply
-- For cumulative_gpa_from_transcript, only include if explicitly shown on the transcript
+- For cumulative_gpa_from_transcript, only include if explicitly shown on the transcript. If both weighted and unweighted GPAs are shown, extract the unweighted GPA.
 - Return raw JSON only — no markdown code blocks, no explanation text`;
 }

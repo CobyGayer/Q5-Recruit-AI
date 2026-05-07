@@ -6,6 +6,14 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
+export function formatSummaryScore(score: number | null, weight: number): string {
+  if (weight === 0) {
+    return "N/A";
+  }
+
+  return score != null ? String(Math.round(score)) : "N/A";
+}
+
 /**
  * Generate a 2-3 sentence scouting summary for a recruit using their
  * profile data and DQS scoring result. Uses Claude Haiku for speed/cost.
@@ -87,12 +95,13 @@ RECRUIT PROFILE:
 DQS SCORING RESULT:
 - Overall Score: ${dqsResult.score != null ? `${dqsResult.score}/100` : "N/A (disqualified)"}
 - Qualified: ${dqsResult.isQualified ? "Yes" : "No"}
-${!dqsResult.isQualified ? `- Disqualification Reasons: ${dqsResult.disqualificationReasons.join("; ")}` : ""}- Academic Score: ${dqsResult.componentScores.academic ?? "N/A"}
-- Competition Score: ${dqsResult.componentScores.competition ?? "N/A"}
-- Physical Score: ${dqsResult.componentScores.physical ?? "N/A"}
-- Position Fit Score: ${dqsResult.componentScores.positionFit ?? "N/A"}
-- Grad Year Score: ${dqsResult.componentScores.gradYear ?? "N/A"}
-- Completeness Score: ${dqsResult.componentScores.completeness ?? "N/A"}
+${!dqsResult.isQualified ? `- Disqualification Reasons: ${dqsResult.disqualificationReasons.join("; ")}` : ""}
+- Academic Score: ${formatSummaryScore(dqsResult.componentScores.academic, config.weight_academic)}
+- Competition Score: ${formatSummaryScore(dqsResult.componentScores.competition, config.weight_competition)}
+- Physical Score: ${formatSummaryScore(dqsResult.componentScores.physical, config.weight_physical)}
+- Position Fit Score: ${formatSummaryScore(dqsResult.componentScores.positionFit, config.weight_position_fit)}
+- Grad Year Score: ${formatSummaryScore(dqsResult.componentScores.gradYear, config.weight_grad_year)}
+- Completeness Score: ${formatSummaryScore(dqsResult.componentScores.completeness, config.weight_completeness)}
 - Bonus Points: ${dqsResult.bonusPoints}
 - Completeness Penalty: ${dqsResult.completenessPenalty}%
 

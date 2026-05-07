@@ -228,7 +228,6 @@ export async function POST(
                   red_flags: analysis.result.red_flags,
                   strengths: analysis.result.strengths,
                   schedule_assessment: analysis.result.schedule_assessment,
-                  admissions_notes: analysis.result.admissions_notes,
                   cumulative_gpa_from_transcript: analysis.result.cumulative_gpa_from_transcript,
                   raw_analysis: analysis.result as unknown as Record<string, unknown>,
                 },

@@ -185,7 +185,6 @@ export interface TranscriptAnalysis {
   red_flags: string[];
   strengths: string[];
   schedule_assessment: string | null;
-  admissions_notes: string | null;
   cumulative_gpa_from_transcript: number | null;
   raw_analysis: Record<string, unknown>;
   analyzed_at: string;

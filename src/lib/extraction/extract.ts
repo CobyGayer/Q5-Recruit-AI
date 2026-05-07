@@ -244,10 +244,13 @@ export async function extractRecruitData(
     }
   }
 
-  // SAT and ACT are either/or — having one satisfies the test score requirement
+  // SAT and ACT count as a single completeness slot. If both are present, the
+  // pair still contributes only once to completeness.
   const hasSat = parsed.sat_score.value != null;
   const hasAct = parsed.act_score.value != null;
-  if ((hasSat && !hasAct) || (!hasSat && hasAct)) {
+  if (hasSat && hasAct) {
+    fieldsExtracted--;
+  } else if (hasSat !== hasAct) {
     const missingTest = hasSat ? "act_score" : "sat_score";
     const idx = fieldsMissing.indexOf(missingTest);
     if (idx !== -1) {
@@ -289,9 +292,7 @@ export async function extractRecruitData(
     extraction_confidence: confidence,
     fields_missing: fieldsMissing,
     fields_extracted: fieldsExtracted,
-    fields_total: (hasSat && !hasAct) || (!hasSat && hasAct)
-      ? EXTRACTABLE_FIELDS.length - 1
-      : EXTRACTABLE_FIELDS.length,
+    fields_total: EXTRACTABLE_FIELDS.length - 1,
   };
 
   return {
