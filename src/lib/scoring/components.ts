@@ -74,17 +74,20 @@ export function scoreAcademic(
 
 /**
  * Score competition level (0-100).
- * Direct lookup based on club tier.
+ * Direct lookup based on club tier, using gender-specific club directory if provided.
+ *
+ * @param recruit The recruit record
+ * @param isBoys Optional: true for boys club directory, false for girls; defaults to true
  */
-export function scoreCompetition(recruit: Recruit): number | null {
+export function scoreCompetition(recruit: Recruit, isBoys: boolean = true): number | null {
   if (recruit.club_level === "unknown" && !recruit.club_team) {
     return null; // No competition data
   }
 
-  // Fallback: if club_level is unknown but club_team exists, try directory lookup
+  // Fallback: if club_level is unknown but club_team exists, try gender-aware directory lookup
   let level: ClubLevel = recruit.club_level;
   if (level === "unknown" && recruit.club_team) {
-    level = lookupClubLevel(recruit.club_team) ?? "unknown";
+    level = lookupClubLevel(recruit.club_team, isBoys);
   }
 
   return CLUB_LEVEL_SCORES[level] ?? 50;

@@ -352,12 +352,22 @@ async function processEmail(
       .eq("id", emailId);
     if (statusError) throw new Error(`Failed to update status to processing: ${statusError.message}`);
 
+    // Fetch program to get gender flag for club directory lookup
+    const { data: program } = await supabase
+      .from("programs")
+      .select("is_boys_team")
+      .eq("id", programId)
+      .single();
+
+    const isBoys = program?.is_boys_team ?? true; // Default to boys if not set
+
     const extraction = await extractRecruitData(
       payload.subject,
       payload.sender_name,
       payload.sender_email,
       payload.body_plain,
-      isForwarded
+      isForwarded,
+      isBoys
     );
 
     // Normalize emails for dedup comparison
@@ -566,7 +576,8 @@ async function processEmail(
         const dqsResult = calculateDQS(
           recruit as Recruit,
           config as ProgramConfig,
-          transcriptAnalysis
+          transcriptAnalysis,
+          isBoys
         );
 
         const aiSummary = await generateDQSSummary(

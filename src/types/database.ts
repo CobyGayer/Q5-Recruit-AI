@@ -27,6 +27,7 @@ export interface Program {
   domain: string;
   division: string | null;
   conference: string | null;
+  is_boys_team: boolean;
   created_at: string;
   updated_at: string;
 }

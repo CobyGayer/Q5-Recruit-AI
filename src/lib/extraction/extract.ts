@@ -181,13 +181,21 @@ const EXTRACT_RECRUIT_TOOL: Anthropic.Tool = {
 
 /**
  * Extract structured recruit data from an email using Claude API.
+ * 
+ * @param subject Email subject line
+ * @param senderName Email sender name
+ * @param senderEmail Email sender address
+ * @param bodyPlain Plain text email body
+ * @param isForwarded Whether the email was forwarded
+ * @param isBoys Optional: true for boys club directory, false for girls; defaults to true
  */
 export async function extractRecruitData(
   subject: string | undefined,
   senderName: string | undefined,
   senderEmail: string | undefined,
   bodyPlain: string,
-  isForwarded?: boolean
+  isForwarded?: boolean,
+  isBoys?: boolean
 ): Promise<ExtractionOutput> {
   const prompt = buildExtractionPrompt(subject, senderName, senderEmail, bodyPlain, isForwarded);
 
@@ -208,11 +216,19 @@ export async function extractRecruitData(
   const parsed = ExtractionResultSchema.parse(toolBlock.input);
 
   // Override club_level from authoritative directory when club_team is known
+  // Use gender-specific lookup if isBoys flag is provided
   if (parsed.club_team.value) {
-    const directoryLevel = lookupClubLevel(parsed.club_team.value);
-    if (directoryLevel) {
+    const directoryLevel = lookupClubLevel(
+      parsed.club_team.value,
+      isBoys !== undefined ? isBoys : true
+    );
+    if (directoryLevel !== "unknown") {
       parsed.club_level.value = directoryLevel;
       parsed.club_level.confidence = "high";
+    }
+    else {
+      parsed.club_level.value = "unknown";
+      parsed.club_level.confidence = "low";
     }
   }
 

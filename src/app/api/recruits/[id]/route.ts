@@ -259,7 +259,7 @@ export async function PUT(
     ).catch((err) => console.error("[recruits/PUT] duplicate-review queue failed:", err));
   }
 
-  const [configResult, transcriptResult] = await Promise.all([
+  const [configResult, transcriptResult, programResult] = await Promise.all([
     db
       .from("program_config")
       .select("*")
@@ -270,13 +270,20 @@ export async function PUT(
       .select("*")
       .eq("recruit_id", id)
       .maybeSingle(),
+    db
+      .from("programs")
+      .select("is_boys_team")
+      .eq("id", persistedRecruit.program_id)
+      .maybeSingle(),
   ]);
 
   if (configResult.data) {
+    const isBoys = programResult.data?.is_boys_team ?? true;
     const dqsResult = calculateDQS(
       persistedRecruit as Recruit,
       configResult.data as ProgramConfig,
-      (transcriptResult.data as TranscriptAnalysis | null) ?? null
+      (transcriptResult.data as TranscriptAnalysis | null) ?? null,
+      isBoys
     );
 
     const { error: dqsError } = await db.from("recruit_dqs_scores").upsert(
