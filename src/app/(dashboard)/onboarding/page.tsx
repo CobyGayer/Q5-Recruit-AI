@@ -25,6 +25,7 @@ import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
 import { LeagueSelector } from "@/components/config/league-selector";
 import { LeagueRater } from "@/components/config/league-rater";
+import { LeagueSelectorTabs } from "@/components/config/league-selector-tabs";
 import {
   createDefaultLeaguePreferences,
   createDefaultLeagueRatings,
@@ -305,31 +306,15 @@ export default function OnboardingPage() {
             {step === 3 && <RosterContextForm data={roster} onChange={setRoster} />}
 
             {step === 4 && (
-              <div className="space-y-4">
-                <Tabs value={leagueTab} onValueChange={(v) => setLeagueTab(v as "select" | "rate")}>
-                  <TabsList className="mb-4">
-                    <TabsTrigger value="select">Select Leagues</TabsTrigger>
-                    <TabsTrigger value="rate">Rate Leagues</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="select" className="mt-0">
-                    <LeagueSelector
-                      selected={leaguePreferences}
-                      onChange={setLeaguePreferences}
-                      disabled={loading}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="rate" className="mt-0">
-                    <LeagueRater
-                      ratings={leagueRatings}
-                      onChange={setLeagueRatings}
-                      selectedLeagues={leaguePreferences}
-                      disabled={loading}
-                    />
-                  </TabsContent>
-                </Tabs>
-              </div>
+              <LeagueSelectorTabs
+                leagueTab={leagueTab}
+                onTabChange={setLeagueTab}
+                leaguePreferences={leaguePreferences}
+                onLeaguePreferencesChange={setLeaguePreferences}
+                leagueRatings={leagueRatings}
+                onLeagueRatingsChange={setLeagueRatings}
+                disabled={loading}
+              />
             )}
 
             {step === 5 && (

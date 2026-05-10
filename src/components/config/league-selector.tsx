@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { LEAGUE_TIERS } from "@/lib/data/leagues";
 import type { ClubLevel } from "@/types/database";
+
+const ALWAYS_SELECTED_LEAGUES: ClubLevel[] = ["other", "unknown"];
+const EDITABLE_LEAGUES = LEAGUE_TIERS.filter(
+  (league) => !ALWAYS_SELECTED_LEAGUES.includes(league.id)
+);
 
 interface LeagueSelectorProps {
   selected: ClubLevel[];
@@ -15,25 +20,38 @@ interface LeagueSelectorProps {
  * Displays checkboxes for each available league tier
  */
 export function LeagueSelector({ selected, onChange, disabled = false }: LeagueSelectorProps) {
+  const normalizedSelected = Array.from(new Set([...selected, ...ALWAYS_SELECTED_LEAGUES]));
+
+  useEffect(() => {
+    if (normalizedSelected.length !== selected.length) {
+      onChange(normalizedSelected);
+    }
+  }, [normalizedSelected, onChange, selected.length]);
+
   const toggleLeague = (leagueId: ClubLevel) => {
-    if (selected.includes(leagueId)) {
-      onChange(selected.filter((id) => id !== leagueId));
+    if (ALWAYS_SELECTED_LEAGUES.includes(leagueId)) {
+      return;
+    }
+
+    if (normalizedSelected.includes(leagueId)) {
+      onChange(normalizedSelected.filter((id) => id !== leagueId));
     } else {
-      onChange([...selected, leagueId]);
+      onChange([...normalizedSelected, leagueId]);
     }
   };
 
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-600">
-        Select which leagues you want to track. Profiles with clubs outside these selections will be marked as "Unknown".
+        Select which leagues you want to track. Unknown and Other are always included so
+        unmatched profiles can still be categorized.
       </p>
       <div className="space-y-2">
-        {LEAGUE_TIERS.map((league) => (
+        {EDITABLE_LEAGUES.map((league) => (
           <label key={league.id} className="flex items-center space-x-3 cursor-pointer">
             <input
               type="checkbox"
-              checked={selected.includes(league.id)}
+              checked={normalizedSelected.includes(league.id)}
               onChange={() => toggleLeague(league.id)}
               disabled={disabled}
               className="rounded border-gray-300"

@@ -16,6 +16,7 @@ import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
 import { LeagueSelector } from "@/components/config/league-selector";
 import { LeagueRater } from "@/components/config/league-rater";
+import { LeagueSelectorTabs } from "@/components/config/league-selector-tabs";
 import type {
   ThresholdFormData,
   WeightFormData,
@@ -280,29 +281,15 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={leagueTab} onValueChange={(v) => setLeagueTab(v as "select" | "rate")}>
-                <TabsList className="mb-4">
-                  <TabsTrigger value="select">Select Leagues</TabsTrigger>
-                  <TabsTrigger value="rate">Rate Leagues</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="select" className="mt-0">
-                  <LeagueSelector
-                    selected={leaguePreferences}
-                    onChange={setLeaguePreferences}
-                    disabled={saving}
-                  />
-                </TabsContent>
-
-                <TabsContent value="rate" className="mt-0">
-                  <LeagueRater
-                    ratings={leagueRatings}
-                    onChange={setLeagueRatings}
-                    selectedLeagues={leaguePreferences}
-                    disabled={saving}
-                  />
-                </TabsContent>
-              </Tabs>
+              <LeagueSelectorTabs
+                leagueTab={leagueTab}
+                onTabChange={setLeagueTab}
+                leaguePreferences={leaguePreferences}
+                onLeaguePreferencesChange={setLeaguePreferences}
+                leagueRatings={leagueRatings}
+                onLeagueRatingsChange={setLeagueRatings}
+                disabled={saving}
+              />
             </CardContent>
           </Card>
         </TabsContent>
