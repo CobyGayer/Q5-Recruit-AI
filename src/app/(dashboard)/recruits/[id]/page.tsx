@@ -76,6 +76,7 @@ const CLUB_LEVEL_LABELS: Record<string, string> = {
   mls_next: "MLS Next",
   ecnl: "ECNL",
   ga: "GA",
+  ga_aspire: "GA Aspire",
   regional: "Regional",
   other: "Other",
   unknown: "Unknown",
@@ -249,41 +250,44 @@ export default function RecruitDetailPage() {
     if (!recruit) return;
     setSaving(true);
 
-    // Validate all fields
-    const validation = validateAndParseEditData();
-    if (!validation.valid) {
-      setSaveError(validation.error);
+    try {
+      // Validate all fields
+      const validation = validateAndParseEditData();
+      if (!validation.valid) {
+        setSaveError(validation.error);
+        setSaving(false);
+        return;
+      }
+
+      const saveRes = await fetch(`/api/recruits/${recruit.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validation.data),
+      });
+
+      if (!saveRes.ok) {
+        const errJson = await saveRes.json().catch(() => ({}));
+        setSaveError(errJson.error ?? "Failed to save changes. Please try again.");
+        setSaving(false);
+        return;
+      }
+
+      setSaveError(null);
+
+      // Reload data via the API route so override is respected
+      const detailRes = await fetch(`/api/recruits/${recruit.id}`);
+      if (detailRes.ok) {
+        const detail = await detailRes.json();
+        setRecruit(detail.recruit ?? null);
+        setDqsScore(detail.dqs_score ?? null);
+      } else {
+        console.warn("Failed to reload recruit details:", detailRes.statusText);
+      }
+
+      setEditing(false);
+    } finally {
       setSaving(false);
-      return;
     }
-
-    const saveRes = await fetch(`/api/recruits/${recruit.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(validation.data),
-    });
-
-    if (!saveRes.ok) {
-      const errJson = await saveRes.json().catch(() => ({}));
-      setSaveError(errJson.error ?? "Failed to save changes. Please try again.");
-      setSaving(false);
-      return;
-    }
-
-    setSaveError(null);
-
-    await fetch("/api/config/recalculate", { method: "POST" });
-
-    // Reload data via the API route so override is respected
-    const detailRes = await fetch(`/api/recruits/${recruit.id}`);
-    if (detailRes.ok) {
-      const detail = await detailRes.json();
-      setRecruit(detail.recruit ?? null);
-      setDqsScore(detail.dqs_score ?? null);
-    }
-
-    setEditing(false);
-    setSaving(false);
   }
 
   function startEditing() {

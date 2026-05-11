@@ -11,6 +11,13 @@ export interface LeagueDefinition {
   defaultRating: number; // 0-10 scale
 }
 
+const GA_ASPIRE_LEAGUE: LeagueDefinition = {
+  id: "ga_aspire",
+  name: "GA Aspire",
+  displayLabel: "GA Aspire",
+  defaultRating: 7.5,
+};
+
 /** Centralized league tier definitions */
 export const LEAGUE_TIERS: LeagueDefinition[] = [
   {
@@ -61,6 +68,10 @@ export type LeagueRatings = Record<ClubLevel, number>;
  * Get a league definition by ID
  */
 export function getLeagueDefinition(leagueId: ClubLevel): LeagueDefinition | null {
+  if (leagueId === "ga_aspire") {
+    return GA_ASPIRE_LEAGUE;
+  }
+
   return LEAGUE_TIERS.find((league) => league.id === leagueId) ?? null;
 }
 
@@ -79,6 +90,10 @@ export function isLeagueSelected(
   leagueId: ClubLevel,
   preferences: LeaguePreferences
 ): boolean {
+  if (leagueId === "ga_aspire") {
+    return preferences.includes("ga");
+  }
+
   return preferences.includes(leagueId);
 }
 
@@ -90,6 +105,10 @@ export function getLeagueRating(
   leagueId: ClubLevel,
   ratings: LeagueRatings
 ): number {
+  if (leagueId === "ga_aspire") {
+    return ratings.ga ?? 5;
+  }
+
   return ratings[leagueId] ?? 5;
 }
 

@@ -87,7 +87,8 @@ describe("PUT /api/recruits/[id] - manual field edit confidence update", () => {
         makeChain({ data: updatedRecruitData }, { onUpdate: (data) => (capturedUpdate = data) })
       ) // update query
       .mockReturnValueOnce(makeChain({ data: null })) // program_config query
-      .mockReturnValueOnce(makeChain({ data: null })); // transcript query
+      .mockReturnValueOnce(makeChain({ data: null })) // transcript query
+      .mockReturnValueOnce(makeChain({ data: null })); // program lookup query
 
     vi.mocked(createClient).mockResolvedValue({
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }) },
@@ -160,6 +161,7 @@ describe("PUT /api/recruits/[id] - manual field edit confidence update", () => {
         makeChain({ data: updatedRecruitData }, { onUpdate: (data) => (capturedUpdate = data) })
       )
       .mockReturnValueOnce(makeChain({ data: null }))
+      .mockReturnValueOnce(makeChain({ data: null }))
       .mockReturnValueOnce(makeChain({ data: null }));
 
     vi.mocked(createClient).mockResolvedValue({
@@ -186,5 +188,60 @@ describe("PUT /api/recruits/[id] - manual field edit confidence update", () => {
     // Other fields should be preserved
     expect(updatedConfidence.city).toBe("medium");
     expect(updatedConfidence.sat_score).toBe("low");
+  });
+
+  it("should accept ga_aspire as a club_level update", async () => {
+    let capturedUpdate: Record<string, unknown> | undefined;
+
+    const updatedRecruitData = {
+      id: "recruit-1",
+      program_id: "prog-1",
+      club_level: "ga_aspire",
+      name_key: "alex johnson",
+      fields_missing: [],
+      fields_extracted: 2,
+      fields_total: 10,
+      extraction_confidence: {
+        club_level: "high",
+      },
+    };
+
+    const fromFn = vi
+      .fn()
+      .mockReturnValueOnce(makeChain({ data: { role: "coach" } }))
+      .mockReturnValueOnce(
+        makeChain({
+          data: {
+            name_key: "alex johnson",
+            extraction_confidence: {},
+          },
+        })
+      )
+      .mockReturnValueOnce(
+        makeChain({ data: updatedRecruitData }, { onUpdate: (data) => (capturedUpdate = data) })
+      )
+      .mockReturnValueOnce(makeChain({ data: null }))
+      .mockReturnValueOnce(makeChain({ data: null }))
+      .mockReturnValueOnce(makeChain({ data: null }));
+
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }) },
+      from: fromFn,
+    } as never);
+
+    vi.mocked(computeCompletenessMetadata).mockReturnValue({
+      fields_missing: [],
+      fields_extracted: 2,
+      fields_total: 10,
+    });
+
+    const res = await PUT(makeReq({ club_level: "ga_aspire" }), {
+      params: Promise.resolve({ id: "recruit-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(capturedUpdate?.club_level).toBe("ga_aspire");
+    const body = await res.json();
+    expect(body.club_level).toBe("ga_aspire");
   });
 });

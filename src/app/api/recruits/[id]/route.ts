@@ -14,7 +14,7 @@ import { shouldMarkOutsideSelection } from "@/lib/data/league-preferences";
 const ClubLevelUpdateSchema = z.preprocess((value) => {
   if (value === null || value === "") return "unknown";
   return value;
-}, z.enum(["mls_next", "ecnl", "ga", "regional", "other", "unknown"]));
+}, z.enum(["mls_next", "ecnl", "ga", "ga_aspire", "regional", "other", "unknown"]));
 
 const VALID_POSITIONS = ["GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "ST", "CF"] as const;
 
@@ -310,28 +310,28 @@ export async function PUT(
 
     if (dqsError) {
       return NextResponse.json({ error: dqsError.message }, { status: 500 });
-      // Update is_outside_selected_leagues flag based on league preferences
-      if (configResult.data) {
-        const leaguePreferences = (configResult.data as ProgramConfig).league_preferences || [];
-        const isOutside = shouldMarkOutsideSelection(persistedRecruit.club_level, leaguePreferences);
+    }
 
-        if (persistedRecruit.is_outside_selected_leagues !== isOutside) {
-          let flagUpdateQuery = db
-            .from("recruits")
-            .update({ is_outside_selected_leagues: isOutside })
-            .eq("id", id);
-          if (overrideProgramId) {
-            flagUpdateQuery = flagUpdateQuery.eq("program_id", overrideProgramId);
-          }
+    // Update is_outside_selected_leagues flag based on league preferences.
+    if (configResult.data) {
+      const leaguePreferences = (configResult.data as ProgramConfig).league_preferences || [];
+      const isOutside = shouldMarkOutsideSelection(persistedRecruit.club_level, leaguePreferences);
 
-          const { data: updatedWithFlag, error: flagError } = await flagUpdateQuery.select().single();
+      if (persistedRecruit.is_outside_selected_leagues !== isOutside) {
+        let flagUpdateQuery = db
+          .from("recruits")
+          .update({ is_outside_selected_leagues: isOutside })
+          .eq("id", id);
+        if (overrideProgramId) {
+          flagUpdateQuery = flagUpdateQuery.eq("program_id", overrideProgramId);
+        }
 
-          if (!flagError && updatedWithFlag) {
-            persistedRecruit = updatedWithFlag;
-          }
+        const { data: updatedWithFlag, error: flagError } = await flagUpdateQuery.select().single();
+
+        if (!flagError && updatedWithFlag) {
+          persistedRecruit = updatedWithFlag;
         }
       }
-
     }
   }
 

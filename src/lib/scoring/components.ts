@@ -7,6 +7,7 @@ const CLUB_LEVEL_SCORES: Record<ClubLevel, number> = {
   mls_next: 100,
   ecnl: 90,
   ga: 75,
+  ga_aspire: 75,
   regional: 55,
   other: 35,
   unknown: 50,

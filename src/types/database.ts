@@ -10,6 +10,7 @@ export type ClubLevel =
   | "mls_next"
   | "ecnl"
   | "ga"
+  | "ga_aspire"
   | "regional"
   | "other"
   | "unknown";

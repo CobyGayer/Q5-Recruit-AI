@@ -19,6 +19,24 @@ interface ExtractionOutput {
   fieldsExtracted: number;
 }
 
+export function shouldInferGaAspireClubLevel(params: {
+  subject?: string;
+  bodyPlain: string;
+  isBoys?: boolean;
+  directoryLevel: ClubLevel;
+}): boolean {
+  if (params.isBoys !== false) {
+    return false;
+  }
+
+  const emailText = [params.subject ?? "", params.bodyPlain].join(" ").toLowerCase();
+  if (!/\baspire\b/.test(emailText)) {
+    return false;
+  }
+
+  return params.directoryLevel === "ga" || params.directoryLevel === "unknown";
+}
+
 /** All extractable field keys */
 export const EXTRACTABLE_FIELDS = [
   "full_name",
@@ -215,13 +233,16 @@ export async function extractRecruitData(
   // Validate with Zod schema
   const parsed = ExtractionResultSchema.parse(toolBlock.input);
 
-  // Override club_level from authoritative directory when club_team is known
-  // Use gender-specific lookup if isBoys flag is provided
+  // Override club_level from authoritative directory when club_team is known.
+  // Use gender-specific lookup if isBoys flag is provided.
+  const directoryLevel = parsed.club_team.value
+    ? lookupClubLevel(
+        parsed.club_team.value,
+        isBoys !== undefined ? isBoys : true
+      )
+    : "unknown";
+
   if (parsed.club_team.value) {
-    const directoryLevel = lookupClubLevel(
-      parsed.club_team.value,
-      isBoys !== undefined ? isBoys : true
-    );
     if (directoryLevel !== "unknown") {
       parsed.club_level.value = directoryLevel;
       parsed.club_level.confidence = "high";
@@ -230,6 +251,16 @@ export async function extractRecruitData(
       parsed.club_level.value = "unknown";
       parsed.club_level.confidence = "low";
     }
+  }
+
+  if (shouldInferGaAspireClubLevel({
+    subject,
+    bodyPlain,
+    isBoys,
+    directoryLevel,
+  })) {
+    parsed.club_level.value = "ga_aspire";
+    parsed.club_level.confidence = "high";
   }
 
   // Filter positions to recognized values only — unrecognized strings (e.g. "forward")
