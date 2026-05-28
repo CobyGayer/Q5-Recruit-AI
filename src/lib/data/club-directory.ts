@@ -58,7 +58,10 @@ function buildClubLevelSets(
 ): Record<ClubLevel, Set<string>> {
   const sets: Record<ClubLevel, Set<string>> = {
     mls_next: new Set(),
+    mls_next_academy: new Set(),
+    mls_next_homegrown: new Set(),
     ecnl: new Set(),
+    ecrl: new Set(),
     ga: new Set(),
     ga_aspire: new Set(),
     regional: new Set(),
