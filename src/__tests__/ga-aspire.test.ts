@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getLeagueLabel, getLeagueRating, isLeagueSelected } from "@/lib/data/leagues";
-import { shouldInferGaAspireClubLevel } from "@/lib/extraction/extract";
+import { shouldInferEcrlClubLevel, shouldInferGaAspireClubLevel } from "@/lib/extraction/extract";
 
 describe("GA Aspire handling", () => {
   it("inherits GA preference selection", () => {
@@ -11,6 +11,13 @@ describe("GA Aspire handling", () => {
   it("uses GA Aspire label and GA rating fallback", () => {
     expect(getLeagueLabel("ga_aspire")).toBe("GA Aspire");
     expect(getLeagueRating("ga_aspire", { ga: 7.5 } as never)).toBe(7.5);
+  });
+
+  it("treats ECRL as an ECNL sublevel for selection and rating fallback", () => {
+    expect(isLeagueSelected("ecrl", ["ecnl"])).toBe(true);
+    expect(isLeagueSelected("ecrl", [])).toBe(false);
+    expect(getLeagueLabel("ecrl")).toBe("ECRL");
+    expect(getLeagueRating("ecrl", { ecnl: 9 } as never)).toBe(9);
   });
 
   it("only promotes Aspire when the recruit context is girls and the email mentions Aspire", () => {
@@ -40,5 +47,43 @@ describe("GA Aspire handling", () => {
         directoryLevel: "unknown",
       })
     ).toBe(true);
+  });
+
+  it("promotes ECNL clubs to ECRL when the email mentions ECRL variants", () => {
+    expect(
+      shouldInferEcrlClubLevel({
+        subject: "Update",
+        bodyPlain: "We compete in ECNL-RL and want to connect.",
+        isBoys: false,
+        directoryLevel: "ecnl",
+      })
+    ).toBe(true);
+
+    expect(
+      shouldInferEcrlClubLevel({
+        subject: "Update",
+        bodyPlain: "We compete in ECNL regional and want to connect.",
+        isBoys: false,
+        directoryLevel: "ecnl",
+      })
+    ).toBe(true);
+
+    expect(
+      shouldInferEcrlClubLevel({
+        subject: "Update",
+        bodyPlain: "We compete in ECRL.",
+        isBoys: true,
+        directoryLevel: "ecnl",
+      })
+    ).toBe(false);
+
+    expect(
+      shouldInferEcrlClubLevel({
+        subject: "Update",
+        bodyPlain: "We compete in ECRL.",
+        isBoys: false,
+        directoryLevel: "ga",
+      })
+    ).toBe(false);
   });
 });

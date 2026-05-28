@@ -124,7 +124,6 @@ export async function POST(request: NextRequest) {
       message: "No recruits needed flag updates",
     });
   }
-
   // Batch update the flagged recruits
   const updatePromises = toUpdate.map(({ recruitId, newFlagValue }) =>
     db
@@ -134,12 +133,23 @@ export async function POST(request: NextRequest) {
   );
 
   const results = await Promise.all(updatePromises);
-  const failedUpdates = results.filter((r) => r.error).length;
+  const failed = results.filter((r) => (r as any).error);
+  const failedUpdates = failed.length;
+  const failedErrors = failed.map((r) => {
+    const err = (r as any).error;
+    return err?.message ?? err ?? null;
+  });
+
+  // Log failures for server-side debugging
+  if (failedUpdates > 0) {
+    failedErrors.forEach((err, i) => console.error("batch-update-league-flags failed:", err, failed[i]));
+  }
 
   return NextResponse.json({
     success: failedUpdates === 0,
     updated_count: toUpdate.length,
     failed_count: failedUpdates,
+    failed_errors: failedErrors,
     message: `Updated ${toUpdate.length - failedUpdates} of ${toUpdate.length} recruits`,
   });
 }

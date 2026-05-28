@@ -85,6 +85,8 @@ function buildSummaryPrompt(
       ? "not provided"
       : recruit.club_level === "ga_aspire"
       ? "GA Aspire"
+      : recruit.club_level === "ecrl"
+      ? "ECRL"
       : recruit.club_level.replace("_", " ").toUpperCase();
 
   return `You are a college soccer scout writing a brief scouting note. Write 1-2 short sentences max. Be specific — reference actual data points. Mention the most important strength, the biggest concern or gap, and nothing else.

@@ -212,16 +212,28 @@ export function lookupClubLevel(
     normalized = CLUB_ALIASES[normalized];
   }
 
+  // Debugging hooks for failing lookups
+  // (No debug logging) lookups should be quiet in tests
+
   // Select the appropriate directory based on gender
   const sets = isBoys ? boysSets : girlsSets;
 
   // Check tiers in priority order: highest tier first
-  // Priority chain: mls_next > ecnl > regional > ga > other > unknown
-  if (sets.mls_next.has(normalized)) return "mls_next";
-  if (sets.ecnl.has(normalized)) return "ecnl";
-  if (sets.regional.has(normalized)) return "regional";
-  if (sets.ga.has(normalized)) return "ga";
-  if (sets.other.has(normalized)) return "other";
+  // Priority chain: mls_next > ecnl > regional > ga > other
+  const inMls = sets.mls_next.has(normalized);
+  const inEcnl = sets.ecnl.has(normalized);
+  const inRegional = sets.regional.has(normalized);
+  const inGa = sets.ga.has(normalized);
+  const inOther = sets.other.has(normalized);
+
+  // Debug specific case logging
+  // No debug logging in normal operation
+
+  if (inMls) return "mls_next";
+  if (inEcnl) return "ecnl";
+  if (inRegional) return "regional";
+  if (inGa) return "ga";
+  if (inOther) return "other";
 
   return "unknown";
 }

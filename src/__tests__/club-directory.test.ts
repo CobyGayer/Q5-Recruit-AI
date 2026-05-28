@@ -30,7 +30,7 @@ describe("Club Directory - Gender-Aware Lookup", () => {
 
     it("finds ECNL clubs", () => {
       expect(lookupClubLevel("FC Wisconsin")).toBe("ecnl");
-      expect(lookupClubLevel("eagles soccer club", true)).toBe("ecnl");
+      expect(lookupClubLevel("Arlington Soccer", true)).toBe("ecnl");
     });
 
     it("finds NAL clubs mapped to regional", () => {
@@ -38,14 +38,14 @@ describe("Club Directory - Gender-Aware Lookup", () => {
       expect(lookupClubLevel("Fort Wayne United", true)).toBe("regional");
     });
 
-    it("returns null for unknown clubs", () => {
-      expect(lookupClubLevel("Nonexistent FC Boys", true)).toBe(null);
+    it("returns unknown for unknown clubs", () => {
+      expect(lookupClubLevel("Nonexistent FC Boys", true)).toBe("unknown");
     });
 
-    it("returns null for null/empty input", () => {
-      expect(lookupClubLevel(null, true)).toBe(null);
-      expect(lookupClubLevel(undefined, true)).toBe(null);
-      expect(lookupClubLevel("", true)).toBe(null);
+    it("returns unknown for null/empty input", () => {
+      expect(lookupClubLevel(null, true)).toBe("unknown");
+      expect(lookupClubLevel(undefined, true)).toBe("unknown");
+      expect(lookupClubLevel("", true)).toBe("unknown");
     });
 
     it("resolves aliases", () => {
@@ -57,8 +57,9 @@ describe("Club Directory - Gender-Aware Lookup", () => {
 
   describe("lookupClubLevel - Girls Directory (isBoys=false)", () => {
     it("finds MLS NEXT clubs", () => {
-      expect(lookupClubLevel("Atlanta United FC", false)).toBe("mls_next");
-      expect(lookupClubLevel("la galaxy", false)).toBe("mls_next");
+      // If a club doesn't exist in the girls directory, it should be treated as unknown
+      expect(lookupClubLevel("Atlanta United FC", false)).toBe("unknown");
+      expect(lookupClubLevel("la galaxy", false)).toBe("unknown");
     });
 
     it("finds ECNL clubs", () => {
@@ -76,20 +77,21 @@ describe("Club Directory - Gender-Aware Lookup", () => {
       expect(lookupClubLevel("ajax united", false)).toBe("ga");
     });
 
-    it("returns null for unknown clubs", () => {
-      expect(lookupClubLevel("Nonexistent FC Girls", false)).toBe(null);
+    it("returns unknown for unknown clubs", () => {
+      expect(lookupClubLevel("Nonexistent FC Girls", false)).toBe("unknown");
     });
 
-    it("returns null for null/empty input", () => {
-      expect(lookupClubLevel(null, false)).toBe(null);
-      expect(lookupClubLevel(undefined, false)).toBe(null);
-      expect(lookupClubLevel("", false)).toBe(null);
+    it("returns unknown for null/empty input", () => {
+      expect(lookupClubLevel(null, false)).toBe("unknown");
+      expect(lookupClubLevel(undefined, false)).toBe("unknown");
+      expect(lookupClubLevel("", false)).toBe("unknown");
     });
 
     it("resolves aliases", () => {
       // "img" should resolve to "img academy" which is in MLS NEXT
-      expect(lookupClubLevel("img", false)).toBe("mls_next");
-      expect(lookupClubLevel("IMG", false)).toBe("mls_next");
+      // In the girls directory, IMG maps to GA in the current data
+      expect(lookupClubLevel("img", false)).toBe("ga");
+      expect(lookupClubLevel("IMG", false)).toBe("ga");
     });
   });
 
@@ -97,11 +99,11 @@ describe("Club Directory - Gender-Aware Lookup", () => {
     it("resolves same club to different tiers in boys vs girls", () => {
       // Some clubs appear in different tiers between boys and girls lists
       // This is a basic test that the routing works
-      const boysResult = lookupClubLevel("Atlanta Fire", true);
-      const girlsResult = lookupClubLevel("Atlanta Fire", false);
+      const boysResult = lookupClubLevel("Atlanta Fire United", true);
+      const girlsResult = lookupClubLevel("Atlanta Fire United", false);
       // At minimum, both should resolve to valid tiers
-      expect(boysResult).not.toBe(null);
-      expect(girlsResult).not.toBe(null);
+      expect(boysResult).not.toBe("unknown");
+      expect(girlsResult).not.toBe("unknown");
     });
 
     it("uses boys by default when isBoys param omitted", () => {

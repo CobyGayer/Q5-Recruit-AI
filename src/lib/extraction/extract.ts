@@ -37,6 +37,52 @@ export function shouldInferGaAspireClubLevel(params: {
   return params.directoryLevel === "ga" || params.directoryLevel === "unknown";
 }
 
+export function shouldInferEcrlClubLevel(params: {
+  subject?: string;
+  bodyPlain: string;
+  isBoys?: boolean;
+  directoryLevel: ClubLevel;
+}): boolean {
+  if (params.isBoys !== false) {
+    return false;
+  }
+
+  const emailText = [params.subject ?? "", params.bodyPlain].join(" ").toLowerCase();
+  if (!/\b(?:ecrl|ecnl[-\s]?rl|ecnl\s+regional)\b/.test(emailText)) {
+    return false;
+  }
+
+  return params.directoryLevel === "ecnl";
+}
+
+export function shouldInferMlsNextSublevel(params: {
+  subject?: string;
+  bodyPlain: string;
+  isBoys?: boolean;
+  directoryLevel: ClubLevel;
+  originalClubLevel?: ClubLevel | null;
+}): boolean {
+  // Only consider for boys or when isBoys omitted (MLS NEXT is primarily boys data)
+  // but allow checks regardless — caller can pass isBoys as needed
+  const emailText = [params.subject ?? "", params.bodyPlain].join(" ").toLowerCase();
+
+  // Explicit cues we accept for sublevel inference
+  const explicitCue = /\bhome-?grown\b|\bmls\s*next\s*academy\b|\bhomegrown academy\b/;
+
+  const hasCue = explicitCue.test(emailText);
+
+  // Feature flag to allow permissive acceptance of LLM sublevels even without explicit cue
+  const permissive = process.env.ENABLE_MLS_NEXT_SUBLEVEL_INFERENCE === "true";
+
+  // Only consider when the model returned a MLS Next sublevel
+  if (params.originalClubLevel !== "mls_next_homegrown" && params.originalClubLevel !== "mls_next_academy") {
+    return false;
+  }
+
+  // Accept the sublevel if we have an explicit cue or the feature-flag is enabled
+  return hasCue || permissive;
+}
+
 /** All extractable field keys */
 export const EXTRACTABLE_FIELDS = [
   "full_name",
@@ -168,7 +214,7 @@ const EXTRACT_RECRUIT_TOOL: Anthropic.Tool = {
       club_level: {
         type: "object",
         properties: {
-          value: { type: ["string", "null"], enum: ["mls_next", "ecnl", "ga", "regional", "other", "unknown", null] },
+          value: { type: ["string", "null"], enum: ["mls_next", "mls_next_homegrown", "mls_next_academy", "ecnl", "ecrl", "ga", "ga_aspire", "regional", "other", "unknown", null] },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
         },
         required: ["value", "confidence"],
@@ -232,6 +278,7 @@ export async function extractRecruitData(
 
   // Validate with Zod schema
   const parsed = ExtractionResultSchema.parse(toolBlock.input);
+  const originalClubLevel = parsed.club_level.value as ClubLevel | null;
 
   // Override club_level from authoritative directory when club_team is known.
   // Use gender-specific lookup if isBoys flag is provided.
@@ -244,10 +291,25 @@ export async function extractRecruitData(
 
   if (parsed.club_team.value) {
     if (directoryLevel !== "unknown") {
-      parsed.club_level.value = directoryLevel;
-      parsed.club_level.confidence = "high";
-    }
-    else {
+      // If the directory maps to MLS Next and the LLM originally returned
+      // a MLS Next sublevel, only accept the more specific LLM result when
+      // explicit cues are present or the permissive feature-flag is enabled.
+      if (
+        directoryLevel === "mls_next" &&
+        (originalClubLevel === "mls_next_homegrown" || originalClubLevel === "mls_next_academy")
+      ) {
+        if (shouldInferMlsNextSublevel({ subject, bodyPlain, isBoys, directoryLevel, originalClubLevel })) {
+          parsed.club_level.value = originalClubLevel;
+          // keep the model-provided confidence
+        } else {
+          parsed.club_level.value = directoryLevel;
+          parsed.club_level.confidence = "high";
+        }
+      } else {
+        parsed.club_level.value = directoryLevel;
+        parsed.club_level.confidence = "high";
+      }
+    } else {
       parsed.club_level.value = "unknown";
       parsed.club_level.confidence = "low";
     }
@@ -260,6 +322,16 @@ export async function extractRecruitData(
     directoryLevel,
   })) {
     parsed.club_level.value = "ga_aspire";
+    parsed.club_level.confidence = "high";
+  }
+
+  if (shouldInferEcrlClubLevel({
+    subject,
+    bodyPlain,
+    isBoys,
+    directoryLevel,
+  })) {
+    parsed.club_level.value = "ecrl";
     parsed.club_level.confidence = "high";
   }
 

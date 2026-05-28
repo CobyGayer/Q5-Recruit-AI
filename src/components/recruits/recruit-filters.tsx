@@ -23,7 +23,10 @@ interface RecruitFiltersProps {
 
 const CLUB_LEVELS = [
   { value: "mls_next", label: "MLS Next" },
+  { value: "mls_next_homegrown", label: "MLS Next - Homegrown" },
+  { value: "mls_next_academy", label: "MLS Next - Academy" },
   { value: "ecnl", label: "ECNL" },
+  { value: "ecrl", label: "ECRL" },
   { value: "ga", label: "GA" },
   { value: "regional", label: "Regional" },
   { value: "other", label: "Other" },

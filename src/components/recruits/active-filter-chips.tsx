@@ -92,6 +92,7 @@ function getActiveChips(
     const CLUB_LABELS: Record<string, string> = {
       mls_next: "MLS Next",
       ecnl: "ECNL",
+      ecrl: "ECRL",
       ga: "GA",
       ga_aspire: "GA Aspire",
       regional: "Regional",

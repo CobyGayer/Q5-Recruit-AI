@@ -133,29 +133,23 @@ export default function SettingsPage() {
       return;
     }
 
+    const savedConfig = await saveRes.json().catch(() => ({}));
+    const programId = savedConfig?.program_id;
+
     setUpdatingRecruitsFlags(true);
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      if (programId) {
+        const flagRes = await fetch("/api/recruits/batch-update-league-flags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ programId }),
+        });
 
-      if (user?.id) {
-        const { data: coach } = await supabase
-          .from("coaches")
-          .select("program_id")
-          .eq("id", user.id)
-          .single();
-
-        if (coach?.program_id) {
-          await fetch("/api/recruits/batch-update-league-flags", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ programId: coach.program_id }),
-          });
+        const flagText = await flagRes.text();
+        if (!flagRes.ok) {
+          setSaveError(flagText || "Failed to update recruit flags. Please try again.");
         }
       }
-    } catch (err) {
-      console.error("Failed to batch update recruit flags:", err);
     } finally {
       setUpdatingRecruitsFlags(false);
     }

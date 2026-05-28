@@ -8,7 +8,10 @@ export type ProcessingStatus =
   | "failed";
 export type ClubLevel =
   | "mls_next"
+  | "mls_next_homegrown"
+  | "mls_next_academy"
   | "ecnl"
+  | "ecrl"
   | "ga"
   | "ga_aspire"
   | "regional"
