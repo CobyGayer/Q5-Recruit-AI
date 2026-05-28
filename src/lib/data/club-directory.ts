@@ -60,6 +60,7 @@ function buildClubLevelSets(
     mls_next: new Set(),
     ecnl: new Set(),
     ga: new Set(),
+    ga_aspire: new Set(),
     regional: new Set(),
     other: new Set(),
     unknown: new Set(),
