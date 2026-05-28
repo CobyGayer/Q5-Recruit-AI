@@ -4,7 +4,9 @@ import { POSITIONS } from "@/types/config";
 
 /** Club level tier scores */
 const CLUB_LEVEL_SCORES: Record<ClubLevel, number> = {
-  mls_next: 100,
+  mls_next: 95,
+  mls_next_academy: 100,
+  mls_next_homegrown: 90,
   ecnl: 90,
   ecrl: 85,
   ga: 75,

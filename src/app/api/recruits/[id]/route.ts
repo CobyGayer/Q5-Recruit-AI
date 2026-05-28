@@ -14,7 +14,7 @@ import { shouldMarkOutsideSelection } from "@/lib/data/league-preferences";
 const ClubLevelUpdateSchema = z.preprocess((value) => {
   if (value === null || value === "") return "unknown";
   return value;
-}, z.enum(["mls_next", "ecnl", "ecrl", "ga", "ga_aspire", "regional", "other", "unknown"]));
+}, z.enum(["mls_next", "mls_next_homegrown", "mls_next_academy", "ecnl", "ecrl", "ga", "ga_aspire", "regional", "other", "unknown"]));
 
 const VALID_POSITIONS = ["GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "ST", "CF"] as const;
 

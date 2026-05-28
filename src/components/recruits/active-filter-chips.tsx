@@ -91,6 +91,8 @@ function getActiveChips(
   if (filters.club_levels.length > 0) {
     const CLUB_LABELS: Record<string, string> = {
       mls_next: "MLS Next",
+      mls_next_homegrown: "MLS Next - Homegrown",
+      mls_next_academy: "MLS Next - Academy",
       ecnl: "ECNL",
       ecrl: "ECRL",
       ga: "GA",
