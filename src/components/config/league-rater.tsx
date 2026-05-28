@@ -21,7 +21,7 @@ export function LeagueRater({
   selectedLeagues,
   disabled = false,
 }: LeagueRaterProps) {
-  const [errors, setErrors] = useState<Record<ClubLevel, string>>({});
+  const [errors, setErrors] = useState<Partial<Record<ClubLevel, string>>>({});
 
   const handleRatingChange = (leagueId: ClubLevel, value: string) => {
     const num = parseFloat(value);
