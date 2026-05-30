@@ -14,6 +14,8 @@ export type ClubLevel =
   | "ecrl"
   | "ga"
   | "ga_aspire"
+  | "nal"
+  | "dpl"
   | "regional"
   | "other"
   | "unknown";

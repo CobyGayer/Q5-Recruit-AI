@@ -28,6 +28,8 @@ const CLUB_LEVELS = [
   { value: "ecnl", label: "ECNL" },
   { value: "ecrl", label: "ECRL" },
   { value: "ga", label: "GA" },
+  { value: "nal", label: "NAL" },
+  { value: "dpl", label: "DPL" },
   { value: "regional", label: "Regional" },
   { value: "other", label: "Other" },
   { value: "unknown", label: "Unknown" },

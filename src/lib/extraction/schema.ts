@@ -10,6 +10,8 @@ const ClubLevelEnum = z.enum([
   "ecrl",
   "ga",
   "ga_aspire",
+  "nal",
+  "dpl",
   "regional",
   "other",
   "unknown",

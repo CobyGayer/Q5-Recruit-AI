@@ -62,6 +62,18 @@ export const LEAGUE_TIERS: LeagueDefinition[] = [
     defaultRating: 7.5,
   },
   {
+    id: "nal",
+    name: "NAL",
+    displayLabel: "NAL",
+    defaultRating: 5.5,
+  },
+  {
+    id: "dpl",
+    name: "DPL",
+    displayLabel: "DPL",
+    defaultRating: 5.5,
+  },
+  {
     id: "regional",
     name: "Regional",
     displayLabel: "Regional",

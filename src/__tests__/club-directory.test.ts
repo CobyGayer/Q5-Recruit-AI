@@ -33,9 +33,9 @@ describe("Club Directory - Gender-Aware Lookup", () => {
       expect(lookupClubLevel("Arlington Soccer", true)).toBe("ecnl");
     });
 
-    it("finds NAL clubs mapped to regional", () => {
-      // NAL is the third tier in boys directory, mapped to 'regional'
-      expect(lookupClubLevel("Fort Wayne United", true)).toBe("regional");
+    it("finds NAL clubs", () => {
+      // NAL is the third tier in boys directory
+      expect(lookupClubLevel("Fort Wayne United", true)).toBe("nal");
     });
 
     it("returns unknown for unknown clubs", () => {
@@ -67,9 +67,9 @@ describe("Club Directory - Gender-Aware Lookup", () => {
       expect(lookupClubLevel("beach fc (va)", false)).toBe("ecnl");
     });
 
-    it("finds DPL clubs mapped to regional", () => {
-      // DPL is a tier in girls directory, mapped to 'regional'
-      expect(lookupClubLevel("Charleston Soccer Club", false)).toBe("regional");
+    it("finds DPL clubs", () => {
+      // DPL is a tier in girls directory
+      expect(lookupClubLevel("Charleston Soccer Club", false)).toBe("dpl");
     });
 
     it("finds GA clubs", () => {

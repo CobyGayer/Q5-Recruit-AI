@@ -5,7 +5,7 @@
  *   - Boys: MLS NEXT, ECNL, NAL (updated JSON lists in src/lib/data/)
  *   - Girls: MLS NEXT, ECNL, DPL, GA (updated JSON lists in src/lib/data/)
  *
- * Each gender has its own curated directory. New tiers (NAL, DPL) map to 'regional'.
+ * Each gender has its own curated directory. New tiers (NAL, DPL) map to their own club levels.
  * Priority chain within each list: highest tier > lower tiers
  */
 import type { ClubLevel } from "@/types/database";
@@ -29,8 +29,6 @@ function normalizeClubNameInternal(name: string): string {
 
 /**
  * Map JSON league tier to ClubLevel enum value.
- * New tiers (NAL for boys, DPL for girls) map to 'regional' since they
- * don't have corresponding enum values yet.
  */
 function mapTierToClubLevel(tier: string): ClubLevel {
   switch (tier.toLowerCase()) {
@@ -41,9 +39,9 @@ function mapTierToClubLevel(tier: string): ClubLevel {
     case "ga":
       return "ga";
     case "nal":
+      return "nal";
     case "dpl":
-      // Map new tiers to regional until enum expands
-      return "regional";
+      return "dpl";
     default:
       return "unknown";
   }
@@ -64,6 +62,8 @@ function buildClubLevelSets(
     ecrl: new Set(),
     ga: new Set(),
     ga_aspire: new Set(),
+    nal: new Set(),
+    dpl: new Set(),
     regional: new Set(),
     other: new Set(),
     unknown: new Set(),
@@ -200,7 +200,7 @@ export function normalizeClubName(name: string): string {
  *
  * @param clubTeam Club name to look up (e.g., "NYCFC Academy")
  * @param isBoys true for boys directory, false for girls directory; defaults to true
- * @returns The club level (e.g., "mls_next", "ecnl", "ga", "regional") or "unknown" if not found
+ * @returns The club level (e.g., "mls_next", "ecnl", "ga", "nal") or "unknown" if not found
  */
 export function lookupClubLevel(
   clubTeam: string | null | undefined,
@@ -222,9 +222,11 @@ export function lookupClubLevel(
   const sets = isBoys ? boysSets : girlsSets;
 
   // Check tiers in priority order: highest tier first
-  // Priority chain: mls_next > ecnl > regional > ga > other
+  // Priority chain: mls_next > ecnl > nal > dpl > regional > ga > other
   const inMls = sets.mls_next.has(normalized);
   const inEcnl = sets.ecnl.has(normalized);
+  const inNal = sets.nal.has(normalized);
+  const inDpl = sets.dpl.has(normalized);
   const inRegional = sets.regional.has(normalized);
   const inGa = sets.ga.has(normalized);
   const inOther = sets.other.has(normalized);
@@ -234,6 +236,8 @@ export function lookupClubLevel(
 
   if (inMls) return "mls_next";
   if (inEcnl) return "ecnl";
+  if (inNal) return "nal";
+  if (inDpl) return "dpl";
   if (inRegional) return "regional";
   if (inGa) return "ga";
   if (inOther) return "other";

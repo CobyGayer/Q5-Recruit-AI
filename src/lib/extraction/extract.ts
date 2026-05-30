@@ -214,7 +214,7 @@ const EXTRACT_RECRUIT_TOOL: Anthropic.Tool = {
       club_level: {
         type: "object",
         properties: {
-          value: { type: ["string", "null"], enum: ["mls_next", "mls_next_homegrown", "mls_next_academy", "ecnl", "ecrl", "ga", "ga_aspire", "regional", "other", "unknown", null] },
+          value: { type: ["string", "null"], enum: ["mls_next", "mls_next_homegrown", "mls_next_academy", "ecnl", "ecrl", "ga", "ga_aspire", "nal", "dpl", "regional", "other", "unknown", null] },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
         },
         required: ["value", "confidence"],

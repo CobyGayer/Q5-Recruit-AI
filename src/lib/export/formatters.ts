@@ -10,6 +10,8 @@ export const CLUB_LEVEL_LABELS: Record<string, string> = {
   ecrl: "ECRL",
   ga: "GA",
   ga_aspire: "GA Aspire",
+  nal: "NAL",
+  dpl: "DPL",
   regional: "Regional",
   other: "Other",
   unknown: "Unknown",

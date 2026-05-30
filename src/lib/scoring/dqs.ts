@@ -96,7 +96,7 @@ export function calculateDQS(
       disqualificationReasons: thresholdResult.reasons,
       componentScores: {
         academic: scoreAcademic(recruit, transcriptAnalysis),
-        competition: scoreCompetition(recruit, isBoys),
+        competition: scoreCompetition(recruit, config, isBoys),
         physical: scorePhysical(recruit, config),
         positionFit: scorePositionFit(recruit, config),
         gradYear: scoreGradYearFit(recruit, config),
@@ -111,7 +111,7 @@ export function calculateDQS(
   // Step 2: Calculate component scores
   const componentScores = {
     academic: scoreAcademic(recruit, transcriptAnalysis),
-    competition: scoreCompetition(recruit, isBoys),
+    competition: scoreCompetition(recruit, config, isBoys),
     physical: scorePhysical(recruit, config),
     positionFit: scorePositionFit(recruit, config),
     gradYear: scoreGradYearFit(recruit, config),
