@@ -1,3 +1,5 @@
+import type { HeightRange } from "@/types/database";
+
 /** Form data for onboarding threshold step */
 export interface ThresholdFormData {
   min_gpa: number | null;
@@ -6,7 +8,11 @@ export interface ThresholdFormData {
   min_height_by_position: Record<string, number>;
   accepted_grad_years: number[];
   accepted_positions: string[];
+  preferred_foot_by_position: Record<string, string>;
+  preferred_height_range_by_position: Record<string, HeightRange>;
 }
+
+export const FOOT_OPTIONS = ["Either", "Right", "Left"] as const;
 
 /** Form data for onboarding weight step (0-100 sliders) */
 export interface WeightFormData {

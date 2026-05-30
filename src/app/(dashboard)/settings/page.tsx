@@ -40,6 +40,8 @@ export default function SettingsPage() {
     min_height_by_position: {},
     accepted_grad_years: [],
     accepted_positions: [],
+    preferred_foot_by_position: {},
+    preferred_height_range_by_position: {},
   });
 
   const [weights, setWeights] = useState<WeightFormData>({
@@ -70,6 +72,8 @@ export default function SettingsPage() {
             min_height_by_position: data.min_height_by_position || {},
             accepted_grad_years: data.accepted_grad_years || [],
             accepted_positions: data.accepted_positions || [],
+            preferred_foot_by_position: data.preferred_foot_by_position || {},
+            preferred_height_range_by_position: data.preferred_height_range_by_position || {},
           });
           setWeights({
             weight_academic: data.weight_academic ?? 70,

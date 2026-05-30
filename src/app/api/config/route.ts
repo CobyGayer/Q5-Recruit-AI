@@ -6,6 +6,16 @@ import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { getEffectiveProgramContext } from "@/lib/program-context";
 import { z } from "zod";
 
+const HeightRangeSchema = z
+  .object({
+    min: z.number().int().min(60).max(84).optional(),
+    max: z.number().int().min(60).max(84).optional(),
+  })
+  .refine(
+    ({ min, max }) => min === undefined || max === undefined || min <= max,
+    { message: "min must be ≤ max" }
+  );
+
 const ProgramConfigUpdateSchema = z.object({
   min_gpa: z.number().min(0).max(5).nullable().optional(),
   min_sat: z.number().int().min(400).max(1600).nullable().optional(),
@@ -13,6 +23,8 @@ const ProgramConfigUpdateSchema = z.object({
   min_height_by_position: z.record(z.string(), z.number()).optional(),
   accepted_grad_years: z.array(z.number().int()).optional(),
   accepted_positions: z.array(z.string()).optional(),
+  preferred_foot_by_position: z.record(z.string(), z.enum(["Either", "Right", "Left"])).optional(),
+  preferred_height_range_by_position: z.record(z.string(), HeightRangeSchema).optional(),
   weight_academic: z.number().int().min(0).max(100).optional(),
   weight_competition: z.number().int().min(0).max(100).optional(),
   weight_physical: z.number().int().min(0).max(100).optional(),

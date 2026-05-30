@@ -20,6 +20,11 @@ export type GradeTrend = "improving" | "declining" | "stable" | "inconsistent";
 export type EmailMethod = "gmail" | "outlook" | "mailto" | "clipboard";
 export type EmailPipelineStatus = "not_started" | "pending_setup" | "active";
 
+export interface HeightRange {
+  min?: number;
+  max?: number;
+}
+
 export interface Program {
   id: string;
   name: string;
@@ -58,6 +63,8 @@ export interface ProgramConfig {
   min_height_by_position: Record<string, number>;
   accepted_grad_years: number[];
   accepted_positions: string[];
+  preferred_foot_by_position: Record<string, string>;
+  preferred_height_range_by_position: Record<string, HeightRange>;
   // Section B: Priority Weights (0-100 sliders)
   weight_academic: number;
   weight_competition: number;

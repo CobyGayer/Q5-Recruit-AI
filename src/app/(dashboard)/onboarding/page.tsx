@@ -41,6 +41,8 @@ const DEFAULT_THRESHOLDS: ThresholdFormData = {
   min_height_by_position: {},
   accepted_grad_years: [],
   accepted_positions: [],
+  preferred_foot_by_position: {},
+  preferred_height_range_by_position: {},
 };
 
 const DEFAULT_WEIGHTS: WeightFormData = {
@@ -126,6 +128,8 @@ export default function OnboardingPage() {
         min_height_by_position: existingConfig.min_height_by_position ?? {},
         accepted_grad_years: existingConfig.accepted_grad_years ?? [],
         accepted_positions: existingConfig.accepted_positions ?? [],
+        preferred_foot_by_position: existingConfig.preferred_foot_by_position ?? {},
+        preferred_height_range_by_position: existingConfig.preferred_height_range_by_position ?? {},
       });
 
       setWeights({

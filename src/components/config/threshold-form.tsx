@@ -3,7 +3,14 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { POSITIONS, GRAD_YEARS } from "@/types/config";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { POSITIONS, GRAD_YEARS, FOOT_OPTIONS } from "@/types/config";
 import type { ThresholdFormData } from "@/types/config";
 
 interface ThresholdFormProps {
@@ -20,10 +27,30 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
   }
 
   function togglePosition(pos: string) {
-    const positions = data.accepted_positions.includes(pos)
+    const removing = data.accepted_positions.includes(pos);
+    const positions = removing
       ? data.accepted_positions.filter((p) => p !== pos)
       : [...data.accepted_positions, pos];
-    onChange({ ...data, accepted_positions: positions });
+
+    if (!removing) {
+      onChange({ ...data, accepted_positions: positions });
+      return;
+    }
+
+    const minHeight = { ...data.min_height_by_position };
+    delete minHeight[pos];
+    const foot = { ...data.preferred_foot_by_position };
+    delete foot[pos];
+    const range = { ...data.preferred_height_range_by_position };
+    delete range[pos];
+
+    onChange({
+      ...data,
+      accepted_positions: positions,
+      min_height_by_position: minHeight,
+      preferred_foot_by_position: foot,
+      preferred_height_range_by_position: range,
+    });
   }
 
   function updateHeightForPosition(position: string, height: string) {
@@ -35,6 +62,29 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
       delete updated[position];
     }
     onChange({ ...data, min_height_by_position: updated });
+  }
+
+  function updatePreferredFoot(position: string, foot: string) {
+    const updated = { ...data.preferred_foot_by_position };
+    if (foot) {
+      updated[position] = foot;
+    } else {
+      delete updated[position];
+    }
+    onChange({ ...data, preferred_foot_by_position: updated });
+  }
+
+  function updateHeightRange(position: string, bound: "min" | "max", value: string) {
+    const parsed = value ? parseInt(value, 10) : undefined;
+    const existing = data.preferred_height_range_by_position[position] ?? {};
+    const updated = { ...data.preferred_height_range_by_position };
+    const next = { ...existing, [bound]: parsed };
+    if (next.min === undefined && next.max === undefined) {
+      delete updated[position];
+    } else {
+      updated[position] = next;
+    }
+    onChange({ ...data, preferred_height_range_by_position: updated });
   }
 
   return (
@@ -160,6 +210,91 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
           {data.accepted_positions.length === 0 && (
             <p className="text-sm text-muted-foreground col-span-full">
               Select positions above to set height minimums.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Preferred Foot by Position (optional)</Label>
+        <p className="text-xs text-muted-foreground">
+          Set a foot preference per position. Recruits that don&apos;t match won&apos;t be disqualified — this is a soft preference.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {data.accepted_positions.map((pos) => (
+            <div key={pos} className="space-y-1">
+              <Label className="text-xs">{pos}</Label>
+              <Select
+                value={data.preferred_foot_by_position[pos] ?? ""}
+                onValueChange={(val) => updatePreferredFoot(pos, val === "__clear__" ? "" : val)}
+              >
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="No pref." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__clear__">No preference</SelectItem>
+                  {FOOT_OPTIONS.map((foot) => (
+                    <SelectItem key={foot} value={foot}>{foot}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+          {data.accepted_positions.length === 0 && (
+            <p className="text-sm text-muted-foreground col-span-full">
+              Select positions above to set foot preferences.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Preferred Height Range by Position (optional, in inches)</Label>
+        <p className="text-xs text-muted-foreground">
+          Set a preferred height range per position. This is a soft preference and won&apos;t disqualify recruits.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {data.accepted_positions.map((pos) => {
+            const range = data.preferred_height_range_by_position[pos] ?? {};
+            const rangeInvalid =
+              range.min !== undefined &&
+              range.max !== undefined &&
+              range.min > range.max;
+            return (
+              <div key={pos} className="space-y-1">
+                <Label className="text-xs">{pos}</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="60"
+                    max="84"
+                    placeholder="Min"
+                    value={range.min ?? ""}
+                    onChange={(e) => updateHeightRange(pos, "min", e.target.value)}
+                    className="text-xs"
+                    aria-label={`Minimum height for ${pos}`}
+                  />
+                  <span className="text-xs text-muted-foreground shrink-0">to</span>
+                  <Input
+                    type="number"
+                    min="60"
+                    max="84"
+                    placeholder="Max"
+                    value={range.max ?? ""}
+                    onChange={(e) => updateHeightRange(pos, "max", e.target.value)}
+                    className="text-xs"
+                    aria-label={`Maximum height for ${pos}`}
+                  />
+                </div>
+                {rangeInvalid && (
+                  <p className="text-xs text-destructive">Min must be ≤ max.</p>
+                )}
+              </div>
+            );
+          })}
+          {data.accepted_positions.length === 0 && (
+            <p className="text-sm text-muted-foreground col-span-full">
+              Select positions above to set height ranges.
             </p>
           )}
         </div>
