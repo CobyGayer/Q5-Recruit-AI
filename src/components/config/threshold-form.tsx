@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { POSITIONS, GRAD_YEARS, FOOT_OPTIONS } from "@/types/config";
-import type { ThresholdFormData } from "@/types/config";
+import type { PreferredFoot, ThresholdFormData } from "@/types/config";
 
 interface ThresholdFormProps {
   data: ThresholdFormData;
@@ -53,18 +53,7 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
     });
   }
 
-  function updateHeightForPosition(position: string, height: string) {
-    const value = height ? parseInt(height, 10) : undefined;
-    const updated = { ...data.min_height_by_position };
-    if (value) {
-      updated[position] = value;
-    } else {
-      delete updated[position];
-    }
-    onChange({ ...data, min_height_by_position: updated });
-  }
-
-  function updatePreferredFoot(position: string, foot: string) {
+  function updatePreferredFoot(position: string, foot: PreferredFoot | null) {
     const updated = { ...data.preferred_foot_by_position };
     if (foot) {
       updated[position] = foot;
@@ -75,7 +64,10 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
   }
 
   function updateHeightRange(position: string, bound: "min" | "max", value: string) {
-    const parsed = value ? parseInt(value, 10) : undefined;
+    const parsed = value === "" ? undefined : Number(value);
+    if (parsed !== undefined && !Number.isInteger(parsed)) {
+      return;
+    }
     const existing = data.preferred_height_range_by_position[position] ?? {};
     const updated = { ...data.preferred_height_range_by_position };
     const next = { ...existing, [bound]: parsed };
@@ -86,7 +78,6 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
     }
     onChange({ ...data, preferred_height_range_by_position: updated });
   }
-
   return (
     <div className="space-y-6">
       <div>
@@ -189,36 +180,9 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label>Minimum Height by Position (optional, in inches)</Label>
-        <p className="text-xs text-muted-foreground">
-          Only set heights for positions where it matters (e.g., GK, CB).
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {data.accepted_positions.map((pos) => (
-            <div key={pos} className="space-y-1">
-              <Label className="text-xs">{pos}</Label>
-              <Input
-                type="number"
-                min="60"
-                max="84"
-                placeholder='e.g., 72'
-                value={data.min_height_by_position[pos] ?? ""}
-                onChange={(e) => updateHeightForPosition(pos, e.target.value)}
-              />
-            </div>
-          ))}
-          {data.accepted_positions.length === 0 && (
-            <p className="text-sm text-muted-foreground col-span-full">
-              Select positions above to set height minimums.
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2">
         <Label>Preferred Foot by Position (optional)</Label>
         <p className="text-xs text-muted-foreground">
-          Set a foot preference per position. Recruits that don&apos;t match won&apos;t be disqualified — this is a soft preference.
+          This is a soft preference and won&apos;t disqualify recruits.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {data.accepted_positions.map((pos) => (
@@ -226,7 +190,10 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
               <Label className="text-xs">{pos}</Label>
               <Select
                 value={data.preferred_foot_by_position[pos] ?? ""}
-                onValueChange={(val) => updatePreferredFoot(pos, val === "__clear__" ? "" : val)}
+                onValueChange={(val) => {
+                  const foot = FOOT_OPTIONS.find((option) => option === val);
+                  updatePreferredFoot(pos, foot ?? null);
+                }}
               >
                 <SelectTrigger className="h-9 text-xs">
                   <SelectValue placeholder="No pref." />

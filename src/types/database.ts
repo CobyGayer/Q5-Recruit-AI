@@ -63,7 +63,7 @@ export interface ProgramConfig {
   min_height_by_position: Record<string, number>;
   accepted_grad_years: number[];
   accepted_positions: string[];
-  preferred_foot_by_position: Record<string, string>;
+  preferred_foot_by_position: Record<string, "Either" | "Right" | "Left">;
   preferred_height_range_by_position: Record<string, HeightRange>;
   // Section B: Priority Weights (0-100 sliders)
   weight_academic: number;
