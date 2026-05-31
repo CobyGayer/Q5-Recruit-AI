@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 import type { ClubLevel } from "@/types/database";
+import { appendMlsSubleagueMissing } from "@/lib/recruits/missing-fields";
 
 /**
  * Attempt to add a recruit to the missing-fields request queue.
@@ -41,7 +42,12 @@ export async function maybeQueueMissingFieldsRequest(
     (recruit.club_level as ClubLevel | null) ?? null
   );
 
-  if (adjusted.missing.length === 0) return false;
+  const requestableMissing = appendMlsSubleagueMissing(
+    adjusted.missing,
+    (recruit.club_level as ClubLevel | null) ?? null
+  );
+
+  if (requestableMissing.length === 0) return false;
 
   const { data: inserted, error } = await db
     .from("recruit_missing_fields_queue")
@@ -50,7 +56,7 @@ export async function maybeQueueMissingFieldsRequest(
         recruit_id: recruitId,
         program_id: programId,
         coach_id: coachId,
-        missing_fields_snapshot: adjusted.missing,
+        missing_fields_snapshot: requestableMissing,
       },
       // ignoreDuplicates: one-time-ask rule — if recruit already queued, do nothing.
       // missing_fields_snapshot is intentionally stale after initial insert; effective_missing_fields

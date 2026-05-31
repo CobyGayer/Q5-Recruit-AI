@@ -4,6 +4,7 @@ import { getEffectiveProgramContext } from "@/lib/program-context";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 import { buildMissingFieldsRequestTemplate } from "@/lib/email/draft";
 import type { ClubLevel } from "@/types/database";
+import { appendMlsSubleagueMissing } from "@/lib/recruits/missing-fields";
 
 /**
  * GET /api/recruits/missing-fields-queue
@@ -115,8 +116,13 @@ export async function GET(request: NextRequest) {
       (recruit.club_level as ClubLevel | null) ?? null
     );
 
+    const requestableMissing = appendMlsSubleagueMissing(
+      adjusted.missing,
+      (recruit.club_level as ClubLevel | null) ?? null
+    );
+
     // Skip recruits where all missing fields are excluded by current weights
-    if (adjusted.missing.length === 0) continue;
+    if (requestableMissing.length === 0) continue;
 
     const firstName = recruit.full_name
       ? (recruit.full_name as string).trim().split(/\s+/)[0]
@@ -129,7 +135,7 @@ export async function GET(request: NextRequest) {
       coachName,
       programName,
       institution,
-      missingFields: adjusted.missing,
+      missingFields: requestableMissing,
       customSubjectTemplate: customSubject,
       customBodyTemplate:    customBody,
     });
@@ -153,7 +159,7 @@ export async function GET(request: NextRequest) {
         fields_total: (recruit.fields_total as number) ?? 0,
         club_level: recruit.club_level ?? null,
       },
-      effective_missing_fields: adjusted.missing,
+      effective_missing_fields: requestableMissing,
       pre_filled_subject: subject,
       pre_filled_body: body,
     });

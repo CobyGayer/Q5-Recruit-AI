@@ -162,5 +162,43 @@ describe("GET /api/recruits/missing-fields-queue", () => {
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual([]);
     });
+
+    it("returns MLS subleague when club level is mls_next", async () => {
+      const queueRow = { id: "qrow-mls", recruit_id: "r2", queued_at: "2024-01-02T00:00:00Z", missing_fields_snapshot: [] };
+      const recruitData = {
+        id: "r2",
+        full_name: "Sam",
+        email: "sam@example.com",
+        graduation_year: 2026,
+        positions: [],
+        current_school: null,
+        club_team: null,
+        gpa: null,
+        fields_missing: [],
+        fields_extracted: 5,
+        fields_total: 5,
+        club_level: "mls_next",
+      };
+
+      const fromFn = vi.fn()
+        .mockReturnValueOnce(makeChain({ data: [queueRow] }))
+        .mockReturnValueOnce(makeChain({ data: [recruitData] }))
+        .mockReturnValueOnce(makeChain({ data: null }))
+        .mockReturnValueOnce(makeChain({ data: { full_name: "Coach Joe", program_id: "prog-1" } }))
+        .mockReturnValueOnce(makeChain({ data: { name: "State U", institution: "State University" } }));
+
+      setupAuth({ from: fromFn });
+      mockAdjust.mockReturnValue({ missing: [], extracted: 5, total: 5, percentage: 100 });
+      mockTemplate.mockReturnValue({ subject: "Missing info", body: "Please reply" });
+
+      const res = await GET(makeReq());
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body).toHaveLength(1);
+      expect(body[0].effective_missing_fields).toEqual(["mls_subleague"]);
+      expect(mockTemplate).toHaveBeenCalledWith(
+        expect.objectContaining({ missingFields: ["mls_subleague"] })
+      );
+    });
   });
 });

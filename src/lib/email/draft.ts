@@ -176,14 +176,23 @@ export const MISSING_FIELD_LABELS: Record<string, string> = {
   act_score: "SAT or ACT score",
   club_team: "club team name",
   club_level: "club level",
+  mls_subleague: "MLS Subleague",
   high_school_team: "high school team name",
   video_url: "highlight video link",
   transcript: "transcript",
 };
 
+function getMissingFieldEmailLabel(field: string): string {
+  if (field === "mls_subleague") {
+    return "MLS Subleague — do you play homegrown or academy?";
+  }
+
+  return MISSING_FIELD_LABELS[field] ?? field;
+}
+
 function buildRequestInfoPrompt(ctx: RequestInfoContext): string {
   const recruitSummary = buildRecruitSummary(ctx.recruit, ctx.dqsScore);
-  const fieldNames = [...new Set(ctx.missingFields.map((f) => MISSING_FIELD_LABELS[f] ?? f))].join(", ");
+  const fieldNames = [...new Set(ctx.missingFields.map((f) => getMissingFieldEmailLabel(f)))].join(", ");
 
   return `You are a college soccer coach writing a short, friendly email to a prospective student-athlete asking them to provide some missing information from their recruiting profile.
 
@@ -255,7 +264,7 @@ function renderTemplate(template: string, ctx: MissingFieldsTemplateContext, bul
 
 /** Build a pre-filled missing-info request email from a static template (no AI call) */
 export function buildMissingFieldsRequestTemplate(ctx: MissingFieldsTemplateContext): EmailDraft {
-  const bulletList = [...new Set(ctx.missingFields.map((f) => MISSING_FIELD_LABELS[f] ?? f))]
+  const bulletList = [...new Set(ctx.missingFields.map((f) => getMissingFieldEmailLabel(f)))]
     .map((label) => `• ${label}`)
     .join("\n");
 
