@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LEAGUE_TIERS } from "@/lib/data/leagues";
+import { getLeagueRating, isLeagueSelected, LEAGUE_TIERS } from "@/lib/data/leagues";
 import type { ClubLevel } from "@/types/database";
 
 interface LeagueRaterProps {
@@ -53,8 +53,9 @@ export function LeagueRater({
       </p>
       <div className="space-y-4">
         {LEAGUE_TIERS.map((league) => {
-          const isSelected = !selectedLeagues || selectedLeagues.includes(league.id);
-          const rating = ratings[league.id] ?? 5;
+          const isSelected =
+            !selectedLeagues || isLeagueSelected(league.id, selectedLeagues as ClubLevel[]);
+          const rating = getLeagueRating(league.id, ratings as Record<ClubLevel, number>);
 
           return (
             <div

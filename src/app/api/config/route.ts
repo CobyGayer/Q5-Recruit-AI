@@ -5,13 +5,18 @@ import { generateApiKey, hashApiKey } from "@/lib/utils/api-key";
 import { getAdminProgramOverride } from "@/lib/admin-cookies";
 import { getEffectiveProgramContext } from "@/lib/program-context";
 import { z } from "zod";
-import { LEAGUE_TIERS } from "@/lib/data/leagues";
+import { LEAGUE_TIERS, SELECTABLE_LEAGUE_TIERS } from "@/lib/data/leagues";
 
 const LEAGUE_IDS = LEAGUE_TIERS.map((tier) => tier.id) as [
   (typeof LEAGUE_TIERS)[number]["id"],
   ...(typeof LEAGUE_TIERS)[number]["id"][]
 ];
+const SELECTABLE_LEAGUE_IDS = SELECTABLE_LEAGUE_TIERS.map((tier) => tier.id) as [
+  (typeof SELECTABLE_LEAGUE_TIERS)[number]["id"],
+  ...(typeof SELECTABLE_LEAGUE_TIERS)[number]["id"][]
+];
 const LeagueIdSchema = z.enum(LEAGUE_IDS);
+const SelectableLeagueIdSchema = z.enum(SELECTABLE_LEAGUE_IDS);
 const LeagueRatingsSchema = z.record(LeagueIdSchema, z.number().min(0).max(10));
 
 const ProgramConfigUpdateSchema = z.object({
@@ -30,7 +35,7 @@ const ProgramConfigUpdateSchema = z.object({
   high_need_positions: z.record(z.string(), z.array(z.object({ position: z.string(), rank: z.number().int() }))).optional(),
   priority_grad_years: z.array(z.object({ year: z.number().int(), rank: z.number().int() })).optional(),
   roster_spots: z.record(z.string(), z.number().int()).optional(),
-  league_preferences: z.array(LeagueIdSchema).optional(),
+  league_preferences: z.array(SelectableLeagueIdSchema).optional(),
   league_ratings: LeagueRatingsSchema.optional(),
 }).strict();
 

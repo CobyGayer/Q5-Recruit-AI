@@ -58,7 +58,7 @@ const FIELD_LABELS: Record<string, string> = {
   preferred_foot: "Preferred Foot",
   height_inches: "Height (inches)",
   weight_lbs: "Weight (lbs)",
-  gpa: "GPA",
+  gpa: "Unweighted GPA",
   sat_score: "SAT Score",
   act_score: "ACT Score",
   club_team: "Club Team",
@@ -74,11 +74,14 @@ const REQUEST_INFO_FIELD_LABELS: Record<string, string> = {
 
 const CLUB_LEVEL_LABELS: Record<string, string> = {
   mls_next: "MLS Next",
+  mls_next_homegrown: "MLS Next - Homegrown",
+  mls_next_academy: "MLS Next - Academy",
   ecnl: "ECNL",
   ecrl: "ECRL",
   ga: "GA",
   ga_aspire: "GA Aspire",
-  regional: "Regional",
+  nal: "NAL",
+  dpl: "DPL",
   other: "Other",
   unknown: "Unknown",
 };
@@ -161,17 +164,17 @@ export default function RecruitDetailPage() {
       return num;
     };
 
-    // Helper to parse GPA
+    // Helper to parse unweighted GPA
     const parseGpa = (value: unknown): number | null => {
       if (value === null || value === "" || value === undefined) return null;
       const strValue = String(value).trim();
       if (strValue === "") return null;
       if (!/^\d+(\.\d+)?$/.test(strValue)) {
-        throw new Error("GPA must be a number (e.g., 3.8)");
+        throw new Error("Unweighted GPA must be a number (e.g., 3.8)");
       }
       const num = parseFloat(strValue);
       if (num < 0 || num > 4.0) {
-        throw new Error("GPA must be between 0.0 and 4.0");
+        throw new Error("Unweighted GPA must be between 0.0 and 4.0");
       }
       return num;
     };

@@ -61,7 +61,7 @@ function getActiveChips(
   if (filters.min_gpa != null) {
     chips.push({
       key: "min_gpa",
-      label: `GPA \u2265 ${filters.min_gpa}`,
+      label: `Unweighted GPA \u2265 ${filters.min_gpa}`,
     });
   }
 
@@ -99,7 +99,6 @@ function getActiveChips(
       ga_aspire: "GA Aspire",
       nal: "NAL",
       dpl: "DPL",
-      regional: "Regional",
       other: "Other",
       unknown: "Unknown",
     };

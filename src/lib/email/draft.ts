@@ -25,7 +25,7 @@ function buildRecruitSummary(recruit: Recruit, dqsScore: RecruitDqsScore | null)
   if (recruit.full_name) lines.push(`Name: ${recruit.full_name}`);
   if (recruit.graduation_year) lines.push(`Graduation Year: ${recruit.graduation_year}`);
   if (recruit.positions.length > 0) lines.push(`Position(s): ${recruit.positions.join(", ")}`);
-  if (recruit.gpa) lines.push(`GPA: ${recruit.gpa}`);
+  if (recruit.gpa) lines.push(`Unweighted GPA: ${recruit.gpa}`);
   if (recruit.sat_score) lines.push(`SAT: ${recruit.sat_score}`);
   if (recruit.act_score) lines.push(`ACT: ${recruit.act_score}`);
   if (recruit.club_team) lines.push(`Club Team: ${recruit.club_team}`);
@@ -171,7 +171,7 @@ export const MISSING_FIELD_LABELS: Record<string, string> = {
   preferred_foot: "preferred foot",
   height_inches: "height",
   weight_lbs: "weight",
-  gpa: "GPA",
+  gpa: "Unweighted GPA",
   sat_score: "SAT or ACT score",
   act_score: "SAT or ACT score",
   club_team: "club team name",

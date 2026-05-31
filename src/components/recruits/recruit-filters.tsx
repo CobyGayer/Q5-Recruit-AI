@@ -30,7 +30,6 @@ const CLUB_LEVELS = [
   { value: "ga", label: "GA" },
   { value: "nal", label: "NAL" },
   { value: "dpl", label: "DPL" },
-  { value: "regional", label: "Regional" },
   { value: "other", label: "Other" },
   { value: "unknown", label: "Unknown" },
 ];
@@ -128,7 +127,7 @@ export function RecruitFilterPanel({
       {/* Numeric filters */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label className="text-xs">Min GPA</Label>
+          <Label className="text-xs">Min Unweighted GPA</Label>
           <Input
             type="number"
             step="0.1"

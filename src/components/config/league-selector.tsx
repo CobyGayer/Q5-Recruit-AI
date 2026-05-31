@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { LEAGUE_TIERS } from "@/lib/data/leagues";
+import { SELECTABLE_LEAGUE_TIERS } from "@/lib/data/leagues";
 import type { ClubLevel } from "@/types/database";
 
 const ALWAYS_SELECTED_LEAGUES: ClubLevel[] = ["other", "unknown"];
-const EDITABLE_LEAGUES = LEAGUE_TIERS.filter(
+const EDITABLE_LEAGUES = SELECTABLE_LEAGUE_TIERS.filter(
   (league) => !ALWAYS_SELECTED_LEAGUES.includes(league.id)
 );
 

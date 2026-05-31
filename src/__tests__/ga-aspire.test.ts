@@ -8,16 +8,18 @@ describe("GA Aspire handling", () => {
     expect(isLeagueSelected("ga_aspire", [])).toBe(false);
   });
 
-  it("uses GA Aspire label and GA rating fallback", () => {
+  it("uses GA Aspire label and GA Aspire rating", () => {
     expect(getLeagueLabel("ga_aspire")).toBe("GA Aspire");
-    expect(getLeagueRating("ga_aspire", { ga: 7.5 } as never)).toBe(7.5);
+    expect(getLeagueRating("ga_aspire", { ga_aspire: 6.5 } as never)).toBe(6.5);
+    expect(getLeagueRating("ga_aspire", {} as never)).toBe(7);
   });
 
-  it("treats ECRL as an ECNL sublevel for selection and rating fallback", () => {
+  it("treats ECRL as an ECNL sublevel for selection", () => {
     expect(isLeagueSelected("ecrl", ["ecnl"])).toBe(true);
     expect(isLeagueSelected("ecrl", [])).toBe(false);
     expect(getLeagueLabel("ecrl")).toBe("ECRL");
-    expect(getLeagueRating("ecrl", { ecnl: 9 } as never)).toBe(9);
+    expect(getLeagueRating("ecrl", { ecrl: 8 } as never)).toBe(8);
+    expect(getLeagueRating("ecrl", {} as never)).toBe(8.5);
   });
 
   it("only promotes Aspire when the recruit context is girls and the email mentions Aspire", () => {

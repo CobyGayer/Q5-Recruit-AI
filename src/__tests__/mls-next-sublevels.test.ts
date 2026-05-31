@@ -14,12 +14,13 @@ describe("MLS Next Sublevels", () => {
   });
 
   it("getLeagueRating returns mls_next rating for sublevels", () => {
-    const ratings: any = { mls_next: 8 };
+    const ratings: any = { mls_next_homegrown: 8, mls_next_academy: 7.5 };
     expect(getLeagueRating("mls_next_homegrown", ratings)).toBe(8);
-    expect(getLeagueRating("mls_next_academy", ratings)).toBe(8);
+    expect(getLeagueRating("mls_next_academy", ratings)).toBe(7.5);
 
-    // missing ratings should default to 5
-    expect(getLeagueRating("mls_next_homegrown", {} as any)).toBe(5);
+    // missing ratings should default to sublevel defaults
+    expect(getLeagueRating("mls_next_homegrown", {} as any)).toBe(10);
+    expect(getLeagueRating("mls_next_academy", {} as any)).toBe(9);
   });
 
   it("createDefaultLeagueRatings includes the new sublevels with expected defaults", () => {
@@ -28,8 +29,8 @@ describe("MLS Next Sublevels", () => {
     expect(defaults.mls_next_academy).toBeDefined();
   });
 
-  it("validateLeaguePreferences accepts sublevel ids", () => {
+  it("validateLeaguePreferences rejects sublevel ids", () => {
     const result = validateLeaguePreferences(["mls_next_homegrown", "mls_next_academy"] as any);
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
   });
 });

@@ -53,7 +53,7 @@ const COLUMN_GROUPS = {
   academic: {
     label: "Academic Scores",
     columns: {
-      gpa: { label: "GPA" },
+      gpa: { label: "Unweighted GPA" },
       satScore: { label: "SAT Score" },
       actScore: { label: "ACT Score" },
     },

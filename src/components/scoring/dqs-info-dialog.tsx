@@ -25,12 +25,12 @@ const COMPONENTS = [
   {
     name: "Academic",
     description:
-      "Evaluates GPA on a calibrated scale and normalizes standardized test scores (SAT/ACT) to produce a composite academic readiness index.",
+      "Evaluates unweighted GPA on a calibrated scale and normalizes standardized test scores (SAT/ACT) to produce a composite academic readiness index.",
   },
   {
     name: "Competition Level",
     description:
-      "Classifies competitive environment by verified league tier (MLS Next, ECNL, GA, regional, and more) using our proprietary club directory.",
+      "Classifies competitive environment by verified league tier (MLS Next, ECNL, GA, NAL, DPL, and more) using our proprietary club directory.",
   },
   {
     name: "Physical",
@@ -167,7 +167,7 @@ export function DqsInfoDialog({ trigger }: DqsInfoDialogProps) {
             </h3>
             <p className="text-muted-foreground leading-relaxed">
               Before scoring begins, each recruit passes through your
-              configured minimum requirements: GPA, test scores, physical
+              configured minimum requirements: unweighted GPA, test scores, physical
               benchmarks, position needs, and graduation timeline. Any recruit
               that falls below a hard minimum is flagged as{" "}
               <span className="inline-flex items-center gap-1 font-medium text-rose-600">

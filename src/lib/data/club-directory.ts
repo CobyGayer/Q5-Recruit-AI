@@ -64,7 +64,6 @@ function buildClubLevelSets(
     ga_aspire: new Set(),
     nal: new Set(),
     dpl: new Set(),
-    regional: new Set(),
     other: new Set(),
     unknown: new Set(),
   };
@@ -222,12 +221,11 @@ export function lookupClubLevel(
   const sets = isBoys ? boysSets : girlsSets;
 
   // Check tiers in priority order: highest tier first
-  // Priority chain: mls_next > ecnl > nal > dpl > regional > ga > other
+  // Priority chain: mls_next > ecnl > nal > dpl > ga > other
   const inMls = sets.mls_next.has(normalized);
   const inEcnl = sets.ecnl.has(normalized);
   const inNal = sets.nal.has(normalized);
   const inDpl = sets.dpl.has(normalized);
-  const inRegional = sets.regional.has(normalized);
   const inGa = sets.ga.has(normalized);
   const inOther = sets.other.has(normalized);
 
@@ -238,7 +236,6 @@ export function lookupClubLevel(
   if (inEcnl) return "ecnl";
   if (inNal) return "nal";
   if (inDpl) return "dpl";
-  if (inRegional) return "regional";
   if (inGa) return "ga";
   if (inOther) return "other";
 

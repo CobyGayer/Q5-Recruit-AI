@@ -16,7 +16,6 @@ export type ClubLevel =
   | "ga_aspire"
   | "nal"
   | "dpl"
-  | "regional"
   | "other"
   | "unknown";
 export type ConfidenceLevel = "high" | "medium" | "low";

@@ -12,7 +12,6 @@ const ClubLevelEnum = z.enum([
   "ga_aspire",
   "nal",
   "dpl",
-  "regional",
   "other",
   "unknown",
 ]);

@@ -111,7 +111,7 @@ function RecruitSummaryCard({
             )}
           </div>
           <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 mt-2 text-xs text-muted-foreground">
-            {recruit.gpa != null && <span>GPA {recruit.gpa}</span>}
+            {recruit.gpa != null && <span>Unweighted GPA {recruit.gpa}</span>}
             {recruit.sat_score != null && <span>SAT {recruit.sat_score}</span>}
             {recruit.act_score != null && <span>ACT {recruit.act_score}</span>}
             {recruit.city && recruit.state && <span>{recruit.city}, {recruit.state}</span>}
@@ -306,7 +306,7 @@ function ReviewGroupCard({
                 )}
               </div>
               <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                {mergePreview.gpa != null && <span>GPA {mergePreview.gpa}</span>}
+                {mergePreview.gpa != null && <span>Unweighted GPA {mergePreview.gpa}</span>}
                 {mergePreview.sat_score != null && <span>SAT {mergePreview.sat_score}</span>}
                 {mergePreview.act_score != null && <span>ACT {mergePreview.act_score}</span>}
                 {mergePreview.city && mergePreview.state && (

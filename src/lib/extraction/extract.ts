@@ -214,7 +214,7 @@ const EXTRACT_RECRUIT_TOOL: Anthropic.Tool = {
       club_level: {
         type: "object",
         properties: {
-          value: { type: ["string", "null"], enum: ["mls_next", "mls_next_homegrown", "mls_next_academy", "ecnl", "ecrl", "ga", "ga_aspire", "nal", "dpl", "regional", "other", "unknown", null] },
+          value: { type: ["string", "null"], enum: ["mls_next", "mls_next_homegrown", "mls_next_academy", "ecnl", "ecrl", "ga", "ga_aspire", "nal", "dpl", "other", "unknown", null] },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
         },
         required: ["value", "confidence"],
@@ -342,6 +342,14 @@ export async function extractRecruitData(
       (POSITIONS as readonly string[]).includes(pos)
     );
     parsed.positions.value = recognized.length > 0 ? recognized : null;
+  }
+
+  if (parsed.gpa.value != null) {
+    const gpaValue = parsed.gpa.value;
+    if (gpaValue < 0 || gpaValue > 4) {
+      parsed.gpa.value = null;
+      parsed.gpa.confidence = "low";
+    }
   }
 
   // Process extraction results
