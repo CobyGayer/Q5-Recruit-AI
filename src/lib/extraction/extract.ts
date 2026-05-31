@@ -19,6 +19,70 @@ interface ExtractionOutput {
   fieldsExtracted: number;
 }
 
+export function shouldInferGaAspireClubLevel(params: {
+  subject?: string;
+  bodyPlain: string;
+  isBoys?: boolean;
+  directoryLevel: ClubLevel;
+}): boolean {
+  if (params.isBoys !== false) {
+    return false;
+  }
+
+  const emailText = [params.subject ?? "", params.bodyPlain].join(" ").toLowerCase();
+  if (!/\baspire\b/.test(emailText)) {
+    return false;
+  }
+
+  return params.directoryLevel === "ga" || params.directoryLevel === "unknown";
+}
+
+export function shouldInferEcrlClubLevel(params: {
+  subject?: string;
+  bodyPlain: string;
+  isBoys?: boolean;
+  directoryLevel: ClubLevel;
+}): boolean {
+  if (params.isBoys !== false) {
+    return false;
+  }
+
+  const emailText = [params.subject ?? "", params.bodyPlain].join(" ").toLowerCase();
+  if (!/\b(?:ecrl|ecnl[-\s]?rl|ecnl\s+regional)\b/.test(emailText)) {
+    return false;
+  }
+
+  return params.directoryLevel === "ecnl";
+}
+
+export function shouldInferMlsNextSublevel(params: {
+  subject?: string;
+  bodyPlain: string;
+  isBoys?: boolean;
+  directoryLevel: ClubLevel;
+  originalClubLevel?: ClubLevel | null;
+}): boolean {
+  // Only consider for boys or when isBoys omitted (MLS NEXT is primarily boys data)
+  // but allow checks regardless — caller can pass isBoys as needed
+  const emailText = [params.subject ?? "", params.bodyPlain].join(" ").toLowerCase();
+
+  // Explicit cues we accept for sublevel inference
+  const explicitCue = /\bhome-?grown\b|\bmls\s*next\s*academy\b|\bhomegrown academy\b/;
+
+  const hasCue = explicitCue.test(emailText);
+
+  // Feature flag to allow permissive acceptance of LLM sublevels even without explicit cue
+  const permissive = process.env.ENABLE_MLS_NEXT_SUBLEVEL_INFERENCE === "true";
+
+  // Only consider when the model returned a MLS Next sublevel
+  if (params.originalClubLevel !== "mls_next_homegrown" && params.originalClubLevel !== "mls_next_academy") {
+    return false;
+  }
+
+  // Accept the sublevel if we have an explicit cue or the feature-flag is enabled
+  return hasCue || permissive;
+}
+
 /** All extractable field keys */
 export const EXTRACTABLE_FIELDS = [
   "full_name",
@@ -150,7 +214,7 @@ const EXTRACT_RECRUIT_TOOL: Anthropic.Tool = {
       club_level: {
         type: "object",
         properties: {
-          value: { type: ["string", "null"], enum: ["mls_next", "ecnl", "ga", "regional", "other", "unknown", null] },
+          value: { type: ["string", "null"], enum: ["mls_next", "mls_next_homegrown", "mls_next_academy", "ecnl", "ecrl", "ga", "ga_aspire", "nal", "dpl", "other", "unknown", null] },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
         },
         required: ["value", "confidence"],
@@ -181,13 +245,21 @@ const EXTRACT_RECRUIT_TOOL: Anthropic.Tool = {
 
 /**
  * Extract structured recruit data from an email using Claude API.
+ * 
+ * @param subject Email subject line
+ * @param senderName Email sender name
+ * @param senderEmail Email sender address
+ * @param bodyPlain Plain text email body
+ * @param isForwarded Whether the email was forwarded
+ * @param isBoys Optional: true for boys club directory, false for girls; defaults to true
  */
 export async function extractRecruitData(
   subject: string | undefined,
   senderName: string | undefined,
   senderEmail: string | undefined,
   bodyPlain: string,
-  isForwarded?: boolean
+  isForwarded?: boolean,
+  isBoys?: boolean
 ): Promise<ExtractionOutput> {
   const prompt = buildExtractionPrompt(subject, senderName, senderEmail, bodyPlain, isForwarded);
 
@@ -206,14 +278,61 @@ export async function extractRecruitData(
 
   // Validate with Zod schema
   const parsed = ExtractionResultSchema.parse(toolBlock.input);
+  const originalClubLevel = parsed.club_level.value as ClubLevel | null;
 
-  // Override club_level from authoritative directory when club_team is known
+  // Override club_level from authoritative directory when club_team is known.
+  // Use gender-specific lookup if isBoys flag is provided.
+  const directoryLevel = parsed.club_team.value
+    ? lookupClubLevel(
+        parsed.club_team.value,
+        isBoys !== undefined ? isBoys : true
+      )
+    : "unknown";
+
   if (parsed.club_team.value) {
-    const directoryLevel = lookupClubLevel(parsed.club_team.value);
-    if (directoryLevel) {
-      parsed.club_level.value = directoryLevel;
-      parsed.club_level.confidence = "high";
+    if (directoryLevel !== "unknown") {
+      // If the directory maps to MLS Next and the LLM originally returned
+      // a MLS Next sublevel, only accept the more specific LLM result when
+      // explicit cues are present or the permissive feature-flag is enabled.
+      if (
+        directoryLevel === "mls_next" &&
+        (originalClubLevel === "mls_next_homegrown" || originalClubLevel === "mls_next_academy")
+      ) {
+        if (shouldInferMlsNextSublevel({ subject, bodyPlain, isBoys, directoryLevel, originalClubLevel })) {
+          parsed.club_level.value = originalClubLevel;
+          // keep the model-provided confidence
+        } else {
+          parsed.club_level.value = directoryLevel;
+          parsed.club_level.confidence = "high";
+        }
+      } else {
+        parsed.club_level.value = directoryLevel;
+        parsed.club_level.confidence = "high";
+      }
+    } else {
+      parsed.club_level.value = "unknown";
+      parsed.club_level.confidence = "low";
     }
+  }
+
+  if (shouldInferGaAspireClubLevel({
+    subject,
+    bodyPlain,
+    isBoys,
+    directoryLevel,
+  })) {
+    parsed.club_level.value = "ga_aspire";
+    parsed.club_level.confidence = "high";
+  }
+
+  if (shouldInferEcrlClubLevel({
+    subject,
+    bodyPlain,
+    isBoys,
+    directoryLevel,
+  })) {
+    parsed.club_level.value = "ecrl";
+    parsed.club_level.confidence = "high";
   }
 
   // Filter positions to recognized values only — unrecognized strings (e.g. "forward")
@@ -223,6 +342,14 @@ export async function extractRecruitData(
       (POSITIONS as readonly string[]).includes(pos)
     );
     parsed.positions.value = recognized.length > 0 ? recognized : null;
+  }
+
+  if (parsed.gpa.value != null) {
+    const gpaValue = parsed.gpa.value;
+    if (gpaValue < 0 || gpaValue > 4) {
+      parsed.gpa.value = null;
+      parsed.gpa.confidence = "low";
+    }
   }
 
   // Process extraction results

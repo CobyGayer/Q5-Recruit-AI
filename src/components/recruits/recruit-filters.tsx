@@ -23,10 +23,16 @@ interface RecruitFiltersProps {
 
 const CLUB_LEVELS = [
   { value: "mls_next", label: "MLS Next" },
+  { value: "mls_next_homegrown", label: "MLS Next - Homegrown" },
+  { value: "mls_next_academy", label: "MLS Next - Academy" },
   { value: "ecnl", label: "ECNL" },
+  { value: "ecrl", label: "ECRL" },
   { value: "ga", label: "GA" },
-  { value: "regional", label: "Regional" },
+  { value: "ga_aspire", label: "GA Aspire" },
+  { value: "nal", label: "NAL" },
+  { value: "dpl", label: "DPL" },
   { value: "other", label: "Other" },
+  { value: "unknown", label: "Unknown" },
 ];
 
 export function RecruitFilterPanel({
@@ -122,7 +128,7 @@ export function RecruitFilterPanel({
       {/* Numeric filters */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label className="text-xs">Min GPA</Label>
+          <Label className="text-xs">Min Unweighted GPA</Label>
           <Input
             type="number"
             step="0.1"

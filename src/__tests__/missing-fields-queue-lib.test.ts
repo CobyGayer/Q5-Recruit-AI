@@ -54,6 +54,25 @@ describe("maybeQueueMissingFieldsRequest", () => {
     expect(db.from as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(2);
   });
 
+  it("queues MLS subleague when club level is mls_next", async () => {
+    const recruit = { ...RECRUIT_DATA, club_level: "mls_next" };
+    const recruitChain = makeChain({ data: recruit });
+    const configChain = makeChain({ data: null });
+    const upsertChain = makeChain({ data: [{ id: "queue-row-mls" }], error: null });
+    const fromFn = vi.fn()
+      .mockReturnValueOnce(recruitChain)
+      .mockReturnValueOnce(configChain)
+      .mockReturnValueOnce(upsertChain);
+    const db = { from: fromFn } as unknown as SupabaseClient;
+
+    mockAdjust.mockReturnValue({ missing: [], extracted: 3, total: 5, percentage: 60 });
+    const result = await maybeQueueMissingFieldsRequest(db, RECRUIT_ID, PROGRAM_ID, COACH_ID);
+    expect(result).toBe(true);
+    expect(upsertChain.upsert).toHaveBeenCalled();
+    const payload = (upsertChain.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(payload.missing_fields_snapshot).toEqual(["mls_subleague"]);
+  });
+
   it("returns false when upsert errors", async () => {
     const db = makeDb([
       { data: RECRUIT_DATA },

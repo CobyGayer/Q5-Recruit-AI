@@ -50,19 +50,32 @@ export async function POST(request: NextRequest) {
   // Mark as requested (idempotent — DB filter ensures no double-write under race)
   let didUpdate = false;
   if (!entry.info_requested_at) {
-    const { error: updateError, count } = await db
+    const updateRes: any = await db
       .from("recruit_missing_fields_queue")
       .update({
         info_requested_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", queueId)
-      .is("info_requested_at", null);
+      .is("info_requested_at", null)
+      .select("id");
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (updateRes?.error) {
+      return NextResponse.json({ error: updateRes.error.message }, { status: 500 });
     }
-    didUpdate = (count ?? 0) > 0;
+
+    // Determine whether an update occurred. Support multiple client shapes used in
+    // runtime and in tests: prefer `count`, fall back to returned `data` length,
+    // and finally assume success if no error was reported.
+    if (typeof updateRes.count === "number") {
+      didUpdate = (updateRes.count ?? 0) > 0;
+    } else if (Array.isArray(updateRes?.data)) {
+      didUpdate = updateRes.data.length > 0;
+    } else if (Array.isArray(updateRes)) {
+      didUpdate = updateRes.length > 0;
+    } else {
+      didUpdate = true;
+    }
   }
 
   // Write to email_log only when this request won the race (or was first)

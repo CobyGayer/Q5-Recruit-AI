@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useConfig } from "@/hooks/use-config";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
+import { appendMlsSubleagueMissing } from "@/lib/recruits/missing-fields";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -69,14 +70,20 @@ const FIELD_LABELS: Record<string, string> = {
 
 const REQUEST_INFO_FIELD_LABELS: Record<string, string> = {
   ...FIELD_LABELS,
+  mls_subleague: "MLS Subleague",
   transcript: "Transcript",
 };
 
 const CLUB_LEVEL_LABELS: Record<string, string> = {
   mls_next: "MLS Next",
+  mls_next_homegrown: "MLS Next - Homegrown",
+  mls_next_academy: "MLS Next - Academy",
   ecnl: "ECNL",
+  ecrl: "ECRL",
   ga: "GA",
-  regional: "Regional",
+  ga_aspire: "GA Aspire",
+  nal: "NAL",
+  dpl: "DPL",
   other: "Other",
   unknown: "Unknown",
 };
@@ -159,17 +166,17 @@ export default function RecruitDetailPage() {
       return num;
     };
 
-    // Helper to parse GPA
+    // Helper to parse unweighted GPA
     const parseGpa = (value: unknown): number | null => {
       if (value === null || value === "" || value === undefined) return null;
       const strValue = String(value).trim();
       if (strValue === "") return null;
       if (!/^\d+(\.\d+)?$/.test(strValue)) {
-        throw new Error("GPA must be a number (e.g., 3.8)");
+        throw new Error("Unweighted GPA must be a number (e.g., 3.8)");
       }
       const num = parseFloat(strValue);
       if (num < 0 || num > 4.0) {
-        throw new Error("GPA must be between 0.0 and 4.0");
+        throw new Error("Unweighted GPA must be between 0.0 and 4.0");
       }
       return num;
     };
@@ -249,41 +256,44 @@ export default function RecruitDetailPage() {
     if (!recruit) return;
     setSaving(true);
 
-    // Validate all fields
-    const validation = validateAndParseEditData();
-    if (!validation.valid) {
-      setSaveError(validation.error);
+    try {
+      // Validate all fields
+      const validation = validateAndParseEditData();
+      if (!validation.valid) {
+        setSaveError(validation.error);
+        setSaving(false);
+        return;
+      }
+
+      const saveRes = await fetch(`/api/recruits/${recruit.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validation.data),
+      });
+
+      if (!saveRes.ok) {
+        const errJson = await saveRes.json().catch(() => ({}));
+        setSaveError(errJson.error ?? "Failed to save changes. Please try again.");
+        setSaving(false);
+        return;
+      }
+
+      setSaveError(null);
+
+      // Reload data via the API route so override is respected
+      const detailRes = await fetch(`/api/recruits/${recruit.id}`);
+      if (detailRes.ok) {
+        const detail = await detailRes.json();
+        setRecruit(detail.recruit ?? null);
+        setDqsScore(detail.dqs_score ?? null);
+      } else {
+        console.warn("Failed to reload recruit details:", detailRes.statusText);
+      }
+
+      setEditing(false);
+    } finally {
       setSaving(false);
-      return;
     }
-
-    const saveRes = await fetch(`/api/recruits/${recruit.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(validation.data),
-    });
-
-    if (!saveRes.ok) {
-      const errJson = await saveRes.json().catch(() => ({}));
-      setSaveError(errJson.error ?? "Failed to save changes. Please try again.");
-      setSaving(false);
-      return;
-    }
-
-    setSaveError(null);
-
-    await fetch("/api/config/recalculate", { method: "POST" });
-
-    // Reload data via the API route so override is respected
-    const detailRes = await fetch(`/api/recruits/${recruit.id}`);
-    if (detailRes.ok) {
-      const detail = await detailRes.json();
-      setRecruit(detail.recruit ?? null);
-      setDqsScore(detail.dqs_score ?? null);
-    }
-
-    setEditing(false);
-    setSaving(false);
   }
 
   function startEditing() {
@@ -335,13 +345,16 @@ export default function RecruitDetailPage() {
     () =>
       recruit
         ? [
-            ...adjustCompletenessForWeights(
-              recruit.fields_missing,
-              recruit.fields_extracted,
-              recruit.fields_total,
-              config,
+            ...appendMlsSubleagueMissing(
+              adjustCompletenessForWeights(
+                recruit.fields_missing,
+                recruit.fields_extracted,
+                recruit.fields_total,
+                config,
+                recruit.club_level
+              ).missing,
               recruit.club_level
-            ).missing,
+            ),
             ...(transcriptAnalysis?.transcript_readable ? [] : ["transcript"]),
           ]
         : [],

@@ -16,6 +16,7 @@ import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit"
 import { DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import type { RecruitWithScore, ProgramConfig } from "@/types/database";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
+import { getDisplayLeagueId } from "@/lib/data/league-preferences";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -113,7 +114,7 @@ function applyFilters(
     // Club level filter
     if (
       filters.club_levels.length > 0 &&
-      !filters.club_levels.includes(r.club_level)
+      !filters.club_levels.includes(getDisplayLeagueId(r))
     ) {
       return false;
     }

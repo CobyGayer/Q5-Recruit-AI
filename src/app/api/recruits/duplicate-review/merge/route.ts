@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
   // Recompute DQS for the survivor after the merge
   try {
-    const [configResult, survivorResult, transcriptResult] = await Promise.all([
+    const [configResult, survivorResult, transcriptResult, programResult] = await Promise.all([
       adminDb
         .from("program_config")
         .select("*")
@@ -144,13 +144,20 @@ export async function POST(request: NextRequest) {
         .single(),
       adminDb.from("recruits").select("*").eq("id", survivor.id).single(),
       adminDb.from("transcript_analyses").select("*").eq("recruit_id", survivor.id).maybeSingle(),
+      adminDb
+        .from("programs")
+        .select("is_boys_team")
+        .eq("id", effectiveProgramId)
+        .single(),
     ]);
 
     if (configResult.data && survivorResult.data) {
+      const isBoys = programResult.data?.is_boys_team ?? true;
       const dqsResult = calculateDQS(
         survivorResult.data as Recruit,
         configResult.data as ProgramConfig,
-        transcriptResult.data as TranscriptAnalysis | null
+        transcriptResult.data as TranscriptAnalysis | null,
+        isBoys
       );
       const aiSummary = await generateDQSSummary(
         survivorResult.data as Recruit,

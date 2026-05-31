@@ -17,7 +17,7 @@ export const SORT_LABELS: Record<SortOption, string> = {
   date: "Date Added",
   name: "Name",
   grad_year: "Grad Year",
-  gpa: "GPA",
+  gpa: "Unweighted GPA",
   height: "Height",
   completeness: "Completeness",
 };

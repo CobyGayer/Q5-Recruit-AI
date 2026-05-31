@@ -4,9 +4,14 @@ const ConfidenceEnum = z.enum(["high", "medium", "low"]);
 
 const ClubLevelEnum = z.enum([
   "mls_next",
+  "mls_next_homegrown",
+  "mls_next_academy",
   "ecnl",
+  "ecrl",
   "ga",
-  "regional",
+  "ga_aspire",
+  "nal",
+  "dpl",
   "other",
   "unknown",
 ]);

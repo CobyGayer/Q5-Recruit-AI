@@ -59,6 +59,15 @@ export async function POST(
     );
   }
 
+  // Fetch program to get gender flag for club directory lookup
+  const { data: program } = await adminSupabase
+    .from("programs")
+    .select("is_boys_team")
+    .eq("id", effectiveProgramId)
+    .single();
+
+  const isBoys = program?.is_boys_team ?? true; // Default to boys if not set
+
   // Mark as processing
   await adminSupabase
     .from("ingested_emails")
@@ -77,7 +86,8 @@ export async function POST(
       email.sender_name,
       email.sender_email,
       email.body_plain,
-      isForwarded
+      isForwarded,
+      isBoys
     );
 
     // Normalize emails (same two-pass dedup as main ingest)
@@ -268,7 +278,7 @@ export async function POST(
         .single();
 
       if (recruit) {
-        const dqsResult = calculateDQS(recruit as Recruit, config as ProgramConfig, transcriptAnalysis);
+        const dqsResult = calculateDQS(recruit as Recruit, config as ProgramConfig, transcriptAnalysis, isBoys);
         const aiSummary = await generateDQSSummary(
           recruit as Recruit,
           config as ProgramConfig,

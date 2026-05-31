@@ -61,7 +61,7 @@ function getActiveChips(
   if (filters.min_gpa != null) {
     chips.push({
       key: "min_gpa",
-      label: `GPA \u2265 ${filters.min_gpa}`,
+      label: `Unweighted GPA \u2265 ${filters.min_gpa}`,
     });
   }
 
@@ -91,10 +91,16 @@ function getActiveChips(
   if (filters.club_levels.length > 0) {
     const CLUB_LABELS: Record<string, string> = {
       mls_next: "MLS Next",
+      mls_next_homegrown: "MLS Next - Homegrown",
+      mls_next_academy: "MLS Next - Academy",
       ecnl: "ECNL",
+      ecrl: "ECRL",
       ga: "GA",
-      regional: "Regional",
+      ga_aspire: "GA Aspire",
+      nal: "NAL",
+      dpl: "DPL",
       other: "Other",
+      unknown: "Unknown",
     };
     chips.push({
       key: "club_levels",

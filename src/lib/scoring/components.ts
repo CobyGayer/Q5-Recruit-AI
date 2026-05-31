@@ -1,16 +1,7 @@
 import type { Recruit, ProgramConfig, ClubLevel, TranscriptAnalysis } from "@/types/database";
 import { lookupClubLevel } from "@/lib/data/club-directory";
+import { getLeagueRating } from "@/lib/data/leagues";
 import { POSITIONS } from "@/types/config";
-
-/** Club level tier scores */
-const CLUB_LEVEL_SCORES: Record<ClubLevel, number> = {
-  mls_next: 100,
-  ecnl: 90,
-  ga: 75,
-  regional: 55,
-  other: 35,
-  unknown: 50,
-};
 
 /**
  * Score academic strength (0-100).
@@ -74,20 +65,29 @@ export function scoreAcademic(
 
 /**
  * Score competition level (0-100).
- * Direct lookup based on club tier.
+ * Uses the program's league ratings, scaled 0-10 → 0-100.
+ *
+ * @param recruit The recruit record
+ * @param config The program configuration (league ratings)
+ * @param isBoys Optional: true for boys club directory, false for girls; defaults to true
  */
-export function scoreCompetition(recruit: Recruit): number | null {
+export function scoreCompetition(
+  recruit: Recruit,
+  config: ProgramConfig,
+  isBoys: boolean = true
+): number | null {
   if (recruit.club_level === "unknown" && !recruit.club_team) {
     return null; // No competition data
   }
 
-  // Fallback: if club_level is unknown but club_team exists, try directory lookup
+  // Fallback: if club_level is unknown but club_team exists, try gender-aware directory lookup
   let level: ClubLevel = recruit.club_level;
   if (level === "unknown" && recruit.club_team) {
-    level = lookupClubLevel(recruit.club_team) ?? "unknown";
+    level = lookupClubLevel(recruit.club_team, isBoys);
   }
 
-  return CLUB_LEVEL_SCORES[level] ?? 50;
+  const rating = getLeagueRating(level, config.league_ratings ?? ({} as any));
+  return rating * 10;
 }
 
 /**

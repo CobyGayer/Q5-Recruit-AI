@@ -4,9 +4,14 @@
 
 export const CLUB_LEVEL_LABELS: Record<string, string> = {
   mls_next: "MLS Next",
+  mls_next_homegrown: "MLS Next - Homegrown",
+  mls_next_academy: "MLS Next - Academy",
   ecnl: "ECNL",
+  ecrl: "ECRL",
   ga: "GA",
-  regional: "Regional",
+  ga_aspire: "GA Aspire",
+  nal: "NAL",
+  dpl: "DPL",
   other: "Other",
   unknown: "Unknown",
 };

@@ -82,6 +82,7 @@ describe("PUT /api/recruits/[id] unknown confidence guard", () => {
         makeChain({ data: makePersistedRecruit() }, { onUpdate: (data) => (capturedUpdate = data) })
       )
       .mockReturnValueOnce(makeChain({ data: null }))
+      .mockReturnValueOnce(makeChain({ data: null }))
       .mockReturnValueOnce(makeChain({ data: null }));
 
     vi.mocked(createClient).mockResolvedValue({

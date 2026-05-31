@@ -9,11 +9,12 @@ import { computeCompletenessMetadata } from "@/lib/recruits/completeness-metadat
 import { calculateDQS } from "@/lib/scoring/dqs";
 import type { ConfidenceLevel } from "@/types/database";
 import type { ProgramConfig, Recruit, TranscriptAnalysis } from "@/types/database";
+import { shouldMarkOutsideSelection } from "@/lib/data/league-preferences";
 
 const ClubLevelUpdateSchema = z.preprocess((value) => {
   if (value === null || value === "") return "unknown";
   return value;
-}, z.enum(["mls_next", "ecnl", "ga", "regional", "other", "unknown"]));
+}, z.enum(["mls_next", "mls_next_homegrown", "mls_next_academy", "ecnl", "ecrl", "ga", "ga_aspire", "nal", "dpl", "other", "unknown"]));
 
 const VALID_POSITIONS = ["GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "LM", "RM", "LW", "RW", "ST", "CF"] as const;
 
@@ -258,7 +259,7 @@ export async function PUT(
     ).catch((err) => console.error("[recruits/PUT] duplicate-review queue failed:", err));
   }
 
-  const [configResult, transcriptResult] = await Promise.all([
+  const [configResult, transcriptResult, programResult] = await Promise.all([
     db
       .from("program_config")
       .select("*")
@@ -269,13 +270,20 @@ export async function PUT(
       .select("*")
       .eq("recruit_id", id)
       .maybeSingle(),
+    db
+      .from("programs")
+      .select("is_boys_team")
+      .eq("id", persistedRecruit.program_id)
+      .maybeSingle(),
   ]);
 
   if (configResult.data) {
+    const isBoys = programResult.data?.is_boys_team ?? true;
     const dqsResult = calculateDQS(
       persistedRecruit as Recruit,
       configResult.data as ProgramConfig,
-      (transcriptResult.data as TranscriptAnalysis | null) ?? null
+      (transcriptResult.data as TranscriptAnalysis | null) ?? null,
+      isBoys
     );
 
     const { error: dqsError } = await db.from("recruit_dqs_scores").upsert(
@@ -302,6 +310,28 @@ export async function PUT(
 
     if (dqsError) {
       return NextResponse.json({ error: dqsError.message }, { status: 500 });
+    }
+
+    // Update is_outside_selected_leagues flag based on league preferences.
+    if (configResult.data) {
+      const leaguePreferences = (configResult.data as ProgramConfig).league_preferences || [];
+      const isOutside = shouldMarkOutsideSelection(persistedRecruit.club_level, leaguePreferences);
+
+      if (persistedRecruit.is_outside_selected_leagues !== isOutside) {
+        let flagUpdateQuery = db
+          .from("recruits")
+          .update({ is_outside_selected_leagues: isOutside })
+          .eq("id", id);
+        if (overrideProgramId) {
+          flagUpdateQuery = flagUpdateQuery.eq("program_id", overrideProgramId);
+        }
+
+        const { data: updatedWithFlag, error: flagError } = await flagUpdateQuery.select().single();
+
+        if (!flagError && updatedWithFlag) {
+          persistedRecruit = updatedWithFlag;
+        }
+      }
     }
   }
 

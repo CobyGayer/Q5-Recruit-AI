@@ -85,6 +85,7 @@ describe("PUT /api/recruits/[id] - field deletion/clearing confidence handling",
         makeChain({ data: updatedRecruitData }, { onUpdate: (data) => (capturedUpdate = data) })
       )
       .mockReturnValueOnce(makeChain({ data: null }))
+      .mockReturnValueOnce(makeChain({ data: null }))
       .mockReturnValueOnce(makeChain({ data: null }));
 
     vi.mocked(createClient).mockResolvedValue({
@@ -154,6 +155,7 @@ describe("PUT /api/recruits/[id] - field deletion/clearing confidence handling",
         makeChain({ data: updatedRecruitData }, { onUpdate: (data) => (capturedUpdate = data) })
       )
       .mockReturnValueOnce(makeChain({ data: null }))
+      .mockReturnValueOnce(makeChain({ data: null }))
       .mockReturnValueOnce(makeChain({ data: null }));
 
     vi.mocked(createClient).mockResolvedValue({
@@ -216,6 +218,7 @@ describe("PUT /api/recruits/[id] - field deletion/clearing confidence handling",
       .mockReturnValueOnce(
         makeChain({ data: updatedRecruitData }, { onUpdate: (data) => (capturedUpdate = data) })
       )
+      .mockReturnValueOnce(makeChain({ data: null }))
       .mockReturnValueOnce(makeChain({ data: null }))
       .mockReturnValueOnce(makeChain({ data: null }));
 

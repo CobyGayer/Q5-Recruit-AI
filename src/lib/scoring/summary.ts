@@ -40,7 +40,17 @@ export async function generateDQSSummary(
     }
 
     return textBlock.text.trim();
-  } catch (err) {
+  } catch (err: any) {
+    // Check for rate limit error (429) and don't log as hard error
+    const status = err?.status;
+    const isRateLimit = status === 429;
+    
+    if (isRateLimit) {
+      console.warn("[AI Summary] Rate limit hit (429), skipping summary generation");
+      // Return null for rate limits — don't retry, just skip
+      return null;
+    }
+    
     console.error("[AI Summary] Generation failed:", err);
     return null;
   }
@@ -70,6 +80,15 @@ function buildSummaryPrompt(
     .map((w) => w.name)
     .join(", ");
 
+  const clubLevelLabel =
+    recruit.club_level === "unknown"
+      ? "not provided"
+      : recruit.club_level === "ga_aspire"
+      ? "GA Aspire"
+      : recruit.club_level === "ecrl"
+      ? "ECRL"
+      : recruit.club_level.replace("_", " ").toUpperCase();
+
   return `You are a college soccer scout writing a brief scouting note. Write 1-2 short sentences max. Be specific — reference actual data points. Mention the most important strength, the biggest concern or gap, and nothing else.
 
 RULES:
@@ -87,7 +106,7 @@ RECRUIT PROFILE:
 - ACT: ${recruit.act_score ?? "not provided"}
 - Height: ${heightStr}
 - Club Team: ${recruit.club_team ?? "not provided"}
-- Club Level: ${recruit.club_level !== "unknown" ? recruit.club_level.replace("_", " ").toUpperCase() : "not provided"}
+- Club Level: ${clubLevelLabel}
 - Location: ${[recruit.city, recruit.state].filter(Boolean).join(", ") || "not provided"}
 - Video: ${recruit.video_url ? "provided" : "not provided"}
 - Missing Fields: ${recruit.fields_missing.length > 0 ? recruit.fields_missing.join(", ") : "none"}

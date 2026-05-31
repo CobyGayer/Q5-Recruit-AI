@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 import type { ClubLevel } from "@/types/database";
+import { appendMlsSubleagueMissing } from "@/lib/recruits/missing-fields";
 
 /**
  * Attempt to add a recruit to the missing-fields request queue.
@@ -17,14 +18,19 @@ export async function maybeQueueMissingFieldsRequest(
   programId: string,
   coachId: string
 ): Promise<boolean> {
-  const [{ data: recruit }, { data: config }] = await Promise.all([
-    db
-      .from("recruits")
-      .select("fields_missing, fields_extracted, fields_total, club_level")
-      .eq("id", recruitId)
-      .single(),
-    db.from("program_config").select("*").eq("program_id", programId).maybeSingle(),
-  ]);
+  const recruitPromise = db
+    .from("recruits")
+    .select("fields_missing, fields_extracted, fields_total, club_level")
+    .eq("id", recruitId)
+    .single();
+
+  const programConfigQuery: any = db.from("program_config").select("*").eq("program_id", programId);
+  const configPromise = typeof programConfigQuery.maybeSingle === "function"
+    ? programConfigQuery.maybeSingle()
+    : programConfigQuery.single();
+
+  const [{ data: recruit }, configRes] = await Promise.all([recruitPromise, configPromise]);
+  const config = configRes?.data ?? null;
 
   if (!recruit) return false;
 
@@ -36,7 +42,12 @@ export async function maybeQueueMissingFieldsRequest(
     (recruit.club_level as ClubLevel | null) ?? null
   );
 
-  if (adjusted.missing.length === 0) return false;
+  const requestableMissing = appendMlsSubleagueMissing(
+    adjusted.missing,
+    (recruit.club_level as ClubLevel | null) ?? null
+  );
+
+  if (requestableMissing.length === 0) return false;
 
   const { data: inserted, error } = await db
     .from("recruit_missing_fields_queue")
@@ -45,7 +56,7 @@ export async function maybeQueueMissingFieldsRequest(
         recruit_id: recruitId,
         program_id: programId,
         coach_id: coachId,
-        missing_fields_snapshot: adjusted.missing,
+        missing_fields_snapshot: requestableMissing,
       },
       // ignoreDuplicates: one-time-ask rule — if recruit already queued, do nothing.
       // missing_fields_snapshot is intentionally stale after initial insert; effective_missing_fields

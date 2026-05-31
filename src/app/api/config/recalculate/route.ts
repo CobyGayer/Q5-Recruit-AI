@@ -41,6 +41,14 @@ export async function POST() {
     return NextResponse.json({ error: "No configuration found" }, { status: 404 });
   }
 
+  const { data: program } = await adminSupabase
+    .from("programs")
+    .select("is_boys_team")
+    .eq("id", effectiveProgramId)
+    .single();
+
+  const isBoys = program?.is_boys_team ?? true;
+
   const { data: recruits } = await adminSupabase
     .from("recruits")
     .select("*")
@@ -82,7 +90,7 @@ export async function POST() {
       recruit.extraction_confidence = updatedConfidence;
     }
 
-    const dqsResult = calculateDQS(recruit as Recruit, config as ProgramConfig);
+    const dqsResult = calculateDQS(recruit as Recruit, config as ProgramConfig, undefined, isBoys);
 
     const aiSummary = await generateDQSSummary(
       recruit as Recruit,

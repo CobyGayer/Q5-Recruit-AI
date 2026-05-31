@@ -1,482 +1,92 @@
 /**
- * Hardcoded club-to-league lookup directory.
+ * Gender-aware club-to-league lookup directory.
  *
  * Sources:
- *   - MLS NEXT Master Club List 2025-26 (273 clubs)
- *   - US Youth Soccer Club Directory (ECNL Boys 2021, ECNL Girls 2021-22, Girls Academy)
+ *   - Boys: MLS NEXT, ECNL, NAL (updated JSON lists in src/lib/data/)
+ *   - Girls: MLS NEXT, ECNL, DPL, GA (updated JSON lists in src/lib/data/)
  *
- * Priority chain: mls_next > ecnl > ga
- * Each tier's array is deduplicated against higher tiers.
+ * Each gender has its own curated directory. New tiers (NAL, DPL) map to their own club levels.
+ * Priority chain within each list: highest tier > lower tiers
  */
 import type { ClubLevel } from "@/types/database";
+import boysData from "./updated-boys-club-list.json";
+import girlsData from "./updated-girls-club-list.json";
 
 // ---------------------------------------------------------------------------
-// MLS NEXT — all 273 clubs from the 2025-26 master list (pre-normalized)
+// Helper: Normalize and map JSON leagues to ClubLevel enum
 // ---------------------------------------------------------------------------
-const MLS_NEXT_CLUBS = [
-  "956 united",
-  "a.c. river",
-  "achilles fc",
-  "afc lightning",
-  "albion sc boulder county",
-  "albion sc colorado",
-  "albion sc denver",
-  "albion sc las vegas",
-  "albion sc los angeles",
-  "albion sc merced",
-  "albion sc riverside",
-  "albion sc san diego",
-  "alexandria sa",
-  "almaden fc",
-  "asg",
-  "aspire fc",
-  "athletum fc academy",
-  "atlanta united fc",
-  "atlantic united",
-  "atletico fc",
-  "atletico santa rosa",
-  "austin fc",
-  "ballistic united",
-  "baltimore armour",
-  "barca residency academy",
-  "bavarian united sc",
-  "bayside fc",
-  "beachside soccer club connecticut",
-  "beadling sc",
-  "bethesda sc",
-  "blau weiss gottschee",
-  "broomfield soccer club",
-  "burlingame soccer club",
-  "capital city sc",
-  "capital city south",
-  "carolina core fc",
-  "carolina velocity fc",
-  "cedar stars academy - bergen",
-  "cedar stars academy - monmouth",
-  "cedar stars academy newark",
-  "celtic storm",
-  "cf montreal",
-  "chargers soccer club",
-  "charleston sc",
-  "charlotte fc",
-  "charlotte independence soccer club",
-  "chattanooga fc",
-  "chicago fc united",
-  "chicago fire fc",
-  "chula vista fc",
-  "cincinnati united premier soccer club",
-  "city sc san diego",
-  "city sc southwest",
-  "city sc utah",
-  "classic fc",
-  "club ohio",
-  "colorado rapids",
-  "colorado united sc",
-  "columbus crew sc",
-  "connecticut rush",
-  "connecticut united fc",
-  "coppermine sc",
-  "dallas hornets",
-  "dallas hornets north",
-  "dc united",
-  "de anza force",
-  "diablo valley futbol club",
-  "downtown las vegas soccer club",
-  "downtown united soccer club",
-  "elk grove soccer",
-  "elmbrook united",
-  "fa euro new york",
-  "fc bay area surf",
-  "fc cincinnati",
-  "fc dallas",
-  "fc delco",
-  "fc golden state force",
-  "fc greater boston bolts",
-  "fc harlem",
-  "fc hudson valley",
-  "fc richmond",
-  "fc tucson youth soccer club",
-  "fc westchester new york",
-  "forward madison fc",
-  "fox soccer academy carolinas",
-  "galacticos soccer academy",
-  "galaxy soccer club",
-  "gfi academy south",
-  "ginga fc",
-  "global football innovation academy",
-  "grand junction soccer club",
-  "hillsboro rush",
-  "hoosier premier",
-  "hoover-vestavia soccer",
-  "houston dynamo",
-  "houston futsal club",
-  "houston rangers",
-  "huntsville city sc",
-  "idea toros futbol academy",
-  "ideasport soccer academy",
-  "ifa west",
-  "img academy",
-  "indy eleven",
-  "inter atlanta fc",
-  "inter miami cf",
-  "intercontinental football academy of new england",
-  "ironbound soccer club",
-  "jacksonville fc",
-  "javanon fc",
-  "keystone fc",
-  "kings hammer cincinnati",
-  "kings hammer nashville",
-  "ksa",
-  "la galaxy",
-  "la youth",
-  "laguna united fc",
-  "lakeville sc",
-  "lamorinda sc",
-  "lanier soccer association",
-  "las vegas sports academy",
-  "lexington sporting club",
-  "long island slammers",
-  "long island soccer club",
-  "los angeles bulls soccer club",
-  "los angeles football club",
-  "los angeles sports club",
-  "los angeles surf",
-  "lou fusz athletic",
-  "lou fusz athletic 2",
-  "loudoun soccer club",
-  "louisiana elite sp",
-  "lowcountry united",
-  "manitou f.c.",
-  "mclean youth soccer",
-  "metropolitan oval",
-  "miami futbol academy rush",
-  "michigan bucks academy",
-  "michigan futbol academy",
-  "michigan jaguars",
-  "michigan jaguars united fc",
-  "michigan stars elite",
-  "michigan tigers fc",
-  "michigan wolves",
-  "midwest united",
-  "minneapolis united sc",
-  "minnesota united fc",
-  "modesto ajax united",
-  "monarchs az",
-  "mt. rainier futbol club",
-  "napa united",
-  "nashville sc",
-  "nashville united soccer academy",
-  "nefc",
-  "nefc south",
-  "new england revolution",
-  "new england surf sc",
-  "new mexico soccer academy",
-  "new york city fc",
-  "new york elite alleycats fc",
-  "new york red bulls",
-  "new york rush",
-  "new york soccer club",
-  "nona soccer academy",
-  "northern virginia alliance",
-  "oaks fc",
-  "oakwood soccer club",
-  "one fc",
-  "one knoxville sc",
-  "oregon surf sc",
-  "orlando city sc",
-  "orlando city soccer school south",
-  "orlando city youth sc",
-  "ozark united fc academy",
-  "pa classics",
-  "pa classics harrisburg",
-  "pda hibernian",
-  "philadelphia union",
-  "phoenix premier fc",
-  "phoenix rising fc",
-  "plantation fc rush",
-  "players development academy",
-  "players sc",
-  "portland timbers",
-  "queen city mutiny fc",
-  "real futbol academy",
-  "real salt lake",
-  "rhode island surf sc",
-  "rochester ny fc academy",
-  "roswell soccer club",
-  "rsl arizona",
-  "rsl arizona mesa",
-  "sa united sc",
-  "sacramento republic",
-  "sacramento united",
-  "saint paul blackhawks",
-  "saints academy",
-  "san diego fc",
-  "san francisco glens",
-  "san francisco seals",
-  "san jose earthquakes",
-  "santa barbara soccer club",
-  "sc del sol",
-  "sc wave",
-  "seacoast united",
-  "seacoast united mass",
-  "seattle celtic",
-  "seattle sounders fc",
-  "sga",
-  "shattuck-st. mary's",
-  "silicon valley sa",
-  "silicon valley soccer academy",
-  "skyline soccer association",
-  "socal reds fc",
-  "soccer chance academy",
-  "sockers fc",
-  "sockers fc chicago",
-  "sol sc florida",
-  "sol sports club",
-  "sound fc",
-  "south florida football academy",
-  "southern soccer academy",
-  "southern states soccer",
-  "sozo fc",
-  "sparta united soccer club",
-  "sporting athletic club",
-  "sporting blue valley",
-  "sporting city",
-  "sporting kansas city",
-  "sporting oklahoma",
-  "sporting san diego",
-  "sporting springfield",
-  "sporting wichita",
-  "springfield syc",
-  "st. louis city sc",
-  "st. louis development academy",
-  "st. louis scott gallagher",
-  "sting nebraska",
-  "strikers fc",
-  "syracuse development academy",
-  "tampa bay united",
-  "the football academy",
-  "the st. james",
-  "the towne fc academy",
-  "tonka fusion elite",
-  "tormenta fc academy",
-  "toronto fc academy",
-  "total futbol academy",
-  "trenton city soccer club",
-  "triangle united soccer association",
-  "tsf academy - nj",
-  "tulsa greenwood sc",
-  "united soccer alliance",
-  "valeo fc",
-  "valor soccer",
-  "vancouver whitecaps fc",
-  "vardar soccer club",
-  "ventura county fusion",
-  "virginia revolution sc",
-  "virginia rush",
-  "wake fc",
-  "wasatch sc",
-  "washington east surf sc",
-  "washington rush",
-  "west florida flames",
-  "west virginia soccer",
-  "western washington surf sc",
-  "weston fc",
-  "westside metros fc",
-  "westside metros fc south",
-  "whatcom rangers",
-  "wisconsin united fc",
-  "woodside soccer club crush",
-  "wsc crush",
-];
 
-// ---------------------------------------------------------------------------
-// ECNL — deduplicated ECNL Boys + Girls, excluding clubs already in MLS NEXT
-// ---------------------------------------------------------------------------
-const ECNL_CLUBS = [
-  "alabama fc",
-  "albertson susa",
-  "albion hurricanes fc",
-  "arizona arsenal",
-  "arlington soccer",
-  "arsenal colorado",
-  "arsenal fc",
-  "atlanta fire",
-  "baltimore celtic union",
-  "beach futbol club",
-  "boise thorns fc",
-  "bryc elite academy",
-  "bvb ia texas",
-  "carolina elite soccer academy",
-  "challenge sc",
-  "charlotte independence south",
-  "charlotte sa",
-  "charlotte sa national",
-  "chattanooga red wolves sc",
-  "classics elite",
-  "cleveland force",
-  "concorde fire",
-  "concorde fire platinum",
-  "concorde fire premier",
-  "connecticut fc",
-  "crossfire premier",
-  "crossfire premier 2",
-  "crossfire united",
-  "dallas texans academy",
-  "davis legacy",
-  "del mar sharks",
-  "eagles soccer club",
-  "east meadow sc",
-  "eastside fc",
-  "eclipse select sc",
-  "fc bucks",
-  "fc elite soccer academy",
-  "fc golden state",
-  "fc golden state east",
-  "fc oregon",
-  "fc portland",
-  "fc pride",
-  "fc stars",
-  "fc wisconsin",
-  "florida elite soccer academy",
-  "florida kraze krush",
-  "florida premier fc",
-  "florida west fc",
-  "fsa fc",
-  "gretna elite academy",
-  "gsa",
-  "gwinnett soccer academy",
-  "heat fc",
-  "indiana fire",
-  "internationals sc",
-  "kansas city athletics",
-  "la breakers fc",
-  "la roca",
-  "lafc slammers fc",
-  "legends fc",
-  "liverpool fc michigan",
-  "lonestar soccer club south",
-  "louisville city academy",
-  "manhattan soccer club",
-  "maryland united fc",
-  "match fit academy",
-  "michigan hawks",
-  "minnesota thunder academy",
-  "miramar united elite fc",
-  "mustang sc",
-  "mvla soccer club",
-  "nc courage",
-  "nc fusion",
-  "ncfc youth",
-  "ncfc youth academy",
-  "new mexico rush soccer club",
-  "nth nasa",
-  "ohio elite soccer academy",
-  "ohio premier",
-  "oklahoma celtic",
-  "oklahoma energy fc",
-  "pacific northwest soccer club",
-  "palm beach united",
-  "pateadores",
-  "pda",
-  "penn fusion sa",
-  "pipeline sc",
-  "pittsburgh riverhounds",
-  "pleasanton rage",
-  "portland thorns academy",
-  "pride soccer club",
-  "racing louisville academy",
-  "real colorado",
-  "real so cal",
-  "rebels sc",
-  "richmond united",
-  "rise sc",
-  "rockford raptors fc",
-  "san diego soccer club",
-  "san diego surf soccer club",
-  "san juan sc",
-  "santa rosa united",
-  "seattle united",
-  "slammers fc",
-  "so cal blues sc",
-  "solar soccer club",
-  "south carolina united",
-  "space coast united",
-  "sporting delaware fc",
-  "sporting iowa",
-  "sta",
-  "sting austin",
-  "sting dallas",
-  "sting north texas",
-  "sunrise prime fc",
-  "susa fc",
-  "tennessee soccer club",
-  "tulsa soccer club",
-  "united futbol academy",
-  "utah avalanche",
-  "utah royals fc - arizona",
-  "virginia development academy",
-  "washington premier",
-  "west coast fc",
-  "western new york flash",
-  "wilmington hammerheads youth fc",
-  "world class fc",
-];
+/**
+ * Convert raw club name from JSON to normalized form (lowercase, etc.)
+ */
+function normalizeClubNameInternal(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[\u2013\u2014]/g, "-") // en-dash / em-dash → hyphen
+    .trim()
+    .replace(/\s+/g, " ");
+}
 
-// ---------------------------------------------------------------------------
-// Girls Academy (GA) — excluding clubs already in MLS NEXT or ECNL
-// ---------------------------------------------------------------------------
-const GA_CLUBS = [
-  "1974 newark fc",
-  "ajax united",
-  "atletico dallas youth",
-  "baltimore celtic",
-  "blues fc",
-  "bvb international academy",
-  "capital fc",
-  "central illinois united",
-  "century united",
-  "charlotte da",
-  "city sc blue",
-  "city sc white",
-  "clovis crossfire",
-  "columbia premier sc",
-  "columbus united",
-  "dallas surf",
-  "eugene metro fc",
-  "florida united",
-  "fram soccer club",
-  "htx soccer",
-  "indy premier united",
-  "kansas rush sc",
-  "lvu rush",
-  "madison 56ers",
-  "nm rapids",
-  "north shore united",
-  "oregon premier",
-  "pinecrest premier",
-  "rangers fc",
-  "salvo sc",
-  "san antonio city sc",
-  "santa clara sporting",
-  "sda",
-  "sdsc surf",
-  "seattle reign academy",
-  "sjeb fc",
-  "skyline elite sc",
-  "south valley surf",
-  "spokane shadow",
-  "sporting nebraska fc",
-  "tophat gold",
-  "tophat navy",
-  "tulsa sc",
-  "union kc soccer club",
-  "united pdx",
-  "utah celtic fc",
-  "vsa rush",
-];
+/**
+ * Map JSON league tier to ClubLevel enum value.
+ */
+function mapTierToClubLevel(tier: string): ClubLevel {
+  switch (tier.toLowerCase()) {
+    case "mls_next":
+      return "mls_next";
+    case "ecnl":
+      return "ecnl";
+    case "ga":
+      return "ga";
+    case "nal":
+      return "nal";
+    case "dpl":
+      return "dpl";
+    default:
+      return "unknown";
+  }
+}
+
+/**
+ * Build lookup sets from JSON club lists for a given gender.
+ * Returns an object mapping ClubLevel → Set of normalized club names.
+ */
+function buildClubLevelSets(
+  data: typeof boysData | typeof girlsData
+): Record<ClubLevel, Set<string>> {
+  const sets: Record<ClubLevel, Set<string>> = {
+    mls_next: new Set(),
+    mls_next_academy: new Set(),
+    mls_next_homegrown: new Set(),
+    ecnl: new Set(),
+    ecrl: new Set(),
+    ga: new Set(),
+    ga_aspire: new Set(),
+    nal: new Set(),
+    dpl: new Set(),
+    other: new Set(),
+    unknown: new Set(),
+  };
+
+  for (const [tier, clubs] of Object.entries(data)) {
+    const clubLevel = mapTierToClubLevel(tier);
+    if (Array.isArray(clubs)) {
+      for (const club of clubs) {
+        sets[clubLevel].add(normalizeClubNameInternal(club));
+      }
+    }
+  }
+
+  return sets;
+}
+
+// Build lookup sets once at module load time for both genders
+const boysSets = buildClubLevelSets(boysData);
+const girlsSets = buildClubLevelSets(girlsData);
 
 // ---------------------------------------------------------------------------
 // Alias map — common abbreviations and name variants → canonical name
+// Keep this consistent across both boys and girls directories
 // ---------------------------------------------------------------------------
 const CLUB_ALIASES: Record<string, string> = {
   // Common abbreviations
@@ -575,43 +185,59 @@ const CLUB_ALIASES: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Sets built at module load time for O(1) lookups
-// ---------------------------------------------------------------------------
-const mlsNextSet = new Set(MLS_NEXT_CLUBS);
-const ecnlSet = new Set(ECNL_CLUBS);
-const gaSet = new Set(GA_CLUBS);
-
-// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /** Normalize a club name: lowercase, trim, collapse whitespace, normalize dashes. */
 export function normalizeClubName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[\u2013\u2014]/g, "-") // en-dash / em-dash → hyphen
-    .trim()
-    .replace(/\s+/g, " ");
+  return normalizeClubNameInternal(name);
 }
 
 /**
- * Look up the league tier for a club by name.
- * Returns the highest-priority match (mls_next > ecnl > ga) or null if unknown.
+ * Look up the league tier for a club by name, using the directory for a specific gender.
+ * Returns the highest-priority match within the gender's list, or "unknown" if not found.
+ *
+ * @param clubTeam Club name to look up (e.g., "NYCFC Academy")
+ * @param isBoys true for boys directory, false for girls directory; defaults to true
+ * @returns The club level (e.g., "mls_next", "ecnl", "ga", "nal") or "unknown" if not found
  */
-export function lookupClubLevel(clubTeam: string | null | undefined): ClubLevel | null {
-  if (!clubTeam || !clubTeam.trim()) return null;
+export function lookupClubLevel(
+  clubTeam: string | null | undefined,
+  isBoys: boolean = true
+): ClubLevel {
+  if (!clubTeam || !clubTeam.trim()) return "unknown";
 
-  let normalized = normalizeClubName(clubTeam);
+  let normalized = normalizeClubNameInternal(clubTeam);
 
   // Resolve alias if one exists
   if (CLUB_ALIASES[normalized]) {
     normalized = CLUB_ALIASES[normalized];
   }
 
-  // Check tiers in priority order
-  if (mlsNextSet.has(normalized)) return "mls_next";
-  if (ecnlSet.has(normalized)) return "ecnl";
-  if (gaSet.has(normalized)) return "ga";
+  // Debugging hooks for failing lookups
+  // (No debug logging) lookups should be quiet in tests
 
-  return null;
+  // Select the appropriate directory based on gender
+  const sets = isBoys ? boysSets : girlsSets;
+
+  // Check tiers in priority order: highest tier first
+  // Priority chain: mls_next > ecnl > nal > dpl > ga > other
+  const inMls = sets.mls_next.has(normalized);
+  const inEcnl = sets.ecnl.has(normalized);
+  const inNal = sets.nal.has(normalized);
+  const inDpl = sets.dpl.has(normalized);
+  const inGa = sets.ga.has(normalized);
+  const inOther = sets.other.has(normalized);
+
+  // Debug specific case logging
+  // No debug logging in normal operation
+
+  if (inMls) return "mls_next";
+  if (inEcnl) return "ecnl";
+  if (inNal) return "nal";
+  if (inDpl) return "dpl";
+  if (inGa) return "ga";
+  if (inOther) return "other";
+
+  return "unknown";
 }

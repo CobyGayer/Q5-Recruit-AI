@@ -66,11 +66,17 @@ function normalizeWeights(
 /**
  * Calculate the Dynamic Qualification Score (DQS) for a recruit
  * against a coach's program configuration.
+ *
+ * @param recruit The recruit record
+ * @param config The program configuration
+ * @param transcriptAnalysis Optional transcript analysis data
+ * @param isBoys Optional: true for boys club directory, false for girls; defaults to true
  */
 export function calculateDQS(
   recruit: Recruit,
   config: ProgramConfig,
-  transcriptAnalysis?: TranscriptAnalysis | null
+  transcriptAnalysis?: TranscriptAnalysis | null,
+  isBoys: boolean = true
 ): DQSResult {
   const adjustedCompleteness = adjustCompletenessForWeights(
     recruit.fields_missing,
@@ -90,7 +96,7 @@ export function calculateDQS(
       disqualificationReasons: thresholdResult.reasons,
       componentScores: {
         academic: scoreAcademic(recruit, transcriptAnalysis),
-        competition: scoreCompetition(recruit),
+        competition: scoreCompetition(recruit, config, isBoys),
         physical: scorePhysical(recruit, config),
         positionFit: scorePositionFit(recruit, config),
         gradYear: scoreGradYearFit(recruit, config),
@@ -105,7 +111,7 @@ export function calculateDQS(
   // Step 2: Calculate component scores
   const componentScores = {
     academic: scoreAcademic(recruit, transcriptAnalysis),
-    competition: scoreCompetition(recruit),
+    competition: scoreCompetition(recruit, config, isBoys),
     physical: scorePhysical(recruit, config),
     positionFit: scorePositionFit(recruit, config),
     gradYear: scoreGradYearFit(recruit, config),
