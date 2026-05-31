@@ -19,12 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThresholdForm } from "@/components/config/threshold-form";
 import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
-import { LeagueSelector } from "@/components/config/league-selector";
-import { LeagueRater } from "@/components/config/league-rater";
 import { LeagueSelectorTabs } from "@/components/config/league-selector-tabs";
 import {
   createDefaultLeaguePreferences,
