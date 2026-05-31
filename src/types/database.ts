@@ -65,6 +65,9 @@ export interface ProgramConfig {
   accepted_positions: string[];
   preferred_foot_by_position: Record<string, "Either" | "Right" | "Left">;
   preferred_height_range_by_position: Record<string, HeightRange>;
+  // Fit boost magnitudes (points awarded when a soft preference matches)
+  boost_preferred_foot: number;
+  boost_preferred_height: number;
   // Section B: Priority Weights (0-100 sliders)
   weight_academic: number;
   weight_competition: number;

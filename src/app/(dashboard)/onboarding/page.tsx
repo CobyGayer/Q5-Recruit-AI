@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ThresholdForm } from "@/components/config/threshold-form";
+import { SoftPreferencesForm } from "@/components/config/soft-preferences-form";
 import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
 import type { ThresholdFormData, WeightFormData, RosterContextFormData } from "@/types/config";
@@ -30,7 +31,7 @@ const STEPS = [
   "Program Setup",
   "Minimum Thresholds",
   "Priority Weights",
-  "Roster Context",
+  "Fit Boosts",
   "Complete",
 ];
 
@@ -43,6 +44,8 @@ const DEFAULT_THRESHOLDS: ThresholdFormData = {
   accepted_positions: [],
   preferred_foot_by_position: {},
   preferred_height_range_by_position: {},
+  boost_preferred_foot: 2,
+  boost_preferred_height: 3,
 };
 
 const DEFAULT_WEIGHTS: WeightFormData = {
@@ -130,6 +133,8 @@ export default function OnboardingPage() {
         accepted_positions: existingConfig.accepted_positions ?? [],
         preferred_foot_by_position: existingConfig.preferred_foot_by_position ?? {},
         preferred_height_range_by_position: existingConfig.preferred_height_range_by_position ?? {},
+        boost_preferred_foot: existingConfig.boost_preferred_foot ?? 2,
+        boost_preferred_height: existingConfig.boost_preferred_height ?? 3,
       });
 
       setWeights({
@@ -282,7 +287,7 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* Step 1: Thresholds */}
+            {/* Step 1: Hard thresholds */}
             {step === 1 && (
               <ThresholdForm data={thresholds} onChange={setThresholds} />
             )}
@@ -292,9 +297,14 @@ export default function OnboardingPage() {
               <WeightSelector data={weights} onChange={setWeights} />
             )}
 
-            {/* Step 3: Roster Context */}
+            {/* Step 3: Fit Boosts — roster needs + soft foot/height preferences */}
             {step === 3 && (
-              <RosterContextForm data={roster} onChange={setRoster} />
+              <div className="space-y-8">
+                <RosterContextForm data={roster} onChange={setRoster} />
+                <div className="border-t pt-8">
+                  <SoftPreferencesForm data={thresholds} onChange={setThresholds} />
+                </div>
+              </div>
             )}
 
             {/* Step 4: Complete */}

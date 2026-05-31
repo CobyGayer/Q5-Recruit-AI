@@ -81,10 +81,10 @@ export function RosterContextForm({ data, onChange }: RosterContextFormProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-1">Roster Context</h3>
+        <h3 className="text-lg font-semibold mb-1">Roster Needs</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Optional: This information helps boost scores for recruits who match
-          your most urgent needs.
+          Optional: rank your most urgent positions and graduation years.
+          Recruits who match earn a fit boost (higher rank = bigger boost).
         </p>
       </div>
 

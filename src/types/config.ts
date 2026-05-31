@@ -13,7 +13,13 @@ export interface ThresholdFormData {
   accepted_positions: string[];
   preferred_foot_by_position: Record<string, PreferredFoot>;
   preferred_height_range_by_position: Record<string, HeightRange>;
+  boost_preferred_foot: number;
+  boost_preferred_height: number;
 }
+
+/** Bounds for a single configurable fit boost magnitude. */
+export const FIT_BOOST_MIN = 0;
+export const FIT_BOOST_MAX = 10;
 
 /** Form data for onboarding weight step (0-100 sliders) */
 export interface WeightFormData {

@@ -50,6 +50,8 @@ function makeConfig(overrides: Partial<ProgramConfig> = {}): ProgramConfig {
     accepted_positions: [],
     preferred_foot_by_position: {},
     preferred_height_range_by_position: {},
+    boost_preferred_foot: 2,
+    boost_preferred_height: 3,
     weight_academic: 100,
     weight_competition: 0,
     weight_physical: 0,

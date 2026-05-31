@@ -186,8 +186,56 @@ export function scoreCompleteness(recruit: Recruit): number {
 }
 
 /**
- * Calculate bonus points for high-need positions and priority grad years.
- * Returns 0-10 bonus points.
+ * Maximum total fit boost a recruit can earn. This is a structural guardrail
+ * (defense against logic bugs), not a value judgment — it equals the sum of
+ * every boost source at its configured ceiling, so a fully-configured coach
+ * setup is never silently clipped:
+ *   high-need position (max 5) + priority grad year (max 5)
+ *   + preferred foot (max FIT_BOOST_MAX) + preferred height (max FIT_BOOST_MAX)
+ *   = 5 + 5 + 10 + 10 = 30
+ * Boosts are additive and bypass the data-confidence weight normalization, so
+ * they remain bounded to avoid overwhelming the core weighted score.
+ */
+const MAX_FIT_BOOST = 30;
+
+/** Fallback magnitudes when a config predates the configurable-boost columns. */
+const DEFAULT_FOOT_BOOST = 2;
+const DEFAULT_HEIGHT_BOOST = 3;
+
+/**
+ * Whether a recruit's foot satisfies a position's preferred foot.
+ * A specific preference ("Right"/"Left") is satisfied by a matching foot or a
+ * two-footed player. "Either" expresses no preference, so it never boosts.
+ */
+function footSatisfiesPreference(
+  recruitFoot: string | null,
+  preference: string
+): boolean {
+  if (preference === "Either") return false;
+  if (!recruitFoot) return false;
+  const foot = recruitFoot.trim().toLowerCase();
+  if (foot === "both" || foot === "either" || foot.includes("two")) {
+    return true; // two-footed players satisfy any specific preference
+  }
+  return foot === preference.toLowerCase();
+}
+
+/** Whether a height falls within a preferred range (requires at least one bound). */
+function heightWithinPreferredRange(
+  heightInches: number,
+  range: { min?: number; max?: number }
+): boolean {
+  if (range.min === undefined && range.max === undefined) return false;
+  if (range.min !== undefined && heightInches < range.min) return false;
+  if (range.max !== undefined && heightInches > range.max) return false;
+  return true;
+}
+
+/**
+ * Calculate "fit boost" points — soft, additive bonuses that surface the most
+ * relevant recruits but NEVER disqualify. Sources: high-need positions,
+ * priority graduation years, preferred foot, and preferred height range.
+ * Returns 0-MAX_FIT_BOOST points plus an itemized list of reasons.
  */
 export function calculateBonus(
   recruit: Recruit,
@@ -232,5 +280,33 @@ export function calculateBonus(
     }
   }
 
-  return { points: Math.min(10, points), reasons };
+  // Preferred foot match — soft preference, never disqualifies. Magnitude is
+  // coach-configured; defaults preserve the prior +2 behavior.
+  const footBoost = config.boost_preferred_foot ?? DEFAULT_FOOT_BOOST;
+  if (footBoost > 0 && recruit.preferred_foot && config.preferred_foot_by_position) {
+    for (const position of recruit.positions) {
+      const preference = config.preferred_foot_by_position[position];
+      if (preference && footSatisfiesPreference(recruit.preferred_foot, preference)) {
+        points += footBoost;
+        reasons.push(`+${footBoost} for preferred ${preference.toLowerCase()} foot at ${position}`);
+        break; // Only count once
+      }
+    }
+  }
+
+  // Preferred height range match — soft preference, never disqualifies.
+  // Magnitude is coach-configured; defaults preserve the prior +3 behavior.
+  const heightBoost = config.boost_preferred_height ?? DEFAULT_HEIGHT_BOOST;
+  if (heightBoost > 0 && recruit.height_inches != null && config.preferred_height_range_by_position) {
+    for (const position of recruit.positions) {
+      const range = config.preferred_height_range_by_position[position];
+      if (range && heightWithinPreferredRange(recruit.height_inches, range)) {
+        points += heightBoost;
+        reasons.push(`+${heightBoost} for height within preferred range at ${position}`);
+        break; // Only count once
+      }
+    }
+  }
+
+  return { points: Math.min(MAX_FIT_BOOST, points), reasons };
 }

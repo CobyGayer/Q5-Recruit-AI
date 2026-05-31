@@ -102,7 +102,7 @@ ${!dqsResult.isQualified ? `- Disqualification Reasons: ${dqsResult.disqualifica
 - Position Fit Score: ${formatSummaryScore(dqsResult.componentScores.positionFit, config.weight_position_fit)}
 - Grad Year Score: ${formatSummaryScore(dqsResult.componentScores.gradYear, config.weight_grad_year)}
 - Completeness Score: ${formatSummaryScore(dqsResult.componentScores.completeness, config.weight_completeness)}
-- Bonus Points: ${dqsResult.bonusPoints}
+- Fit Boost Points: ${dqsResult.bonusPoints}
 - Completeness Penalty: ${dqsResult.completenessPenalty}%
 
 COACH PRIORITIES (highest to lowest weight): ${topPriorities}

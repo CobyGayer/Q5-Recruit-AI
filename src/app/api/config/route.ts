@@ -25,6 +25,8 @@ const ProgramConfigUpdateSchema = z.object({
   accepted_positions: z.array(z.string()).optional(),
   preferred_foot_by_position: z.record(z.string(), z.enum(["Either", "Right", "Left"])).optional(),
   preferred_height_range_by_position: z.record(z.string(), HeightRangeSchema).optional(),
+  boost_preferred_foot: z.number().int().min(0).max(10).optional(),
+  boost_preferred_height: z.number().int().min(0).max(10).optional(),
   weight_academic: z.number().int().min(0).max(100).optional(),
   weight_competition: z.number().int().min(0).max(100).optional(),
   weight_physical: z.number().int().min(0).max(100).optional(),

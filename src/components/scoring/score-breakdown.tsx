@@ -125,6 +125,11 @@ export function ScoreBreakdown({ score, rigorGrade, programConfig }: ScoreBreakd
     { key: "completeness", score: score.completeness_score },
   ];
 
+  const rawBoostReasons = (score.score_breakdown as Record<string, unknown> | null)?.bonus;
+  const boostReasons = Array.isArray(rawBoostReasons)
+    ? (rawBoostReasons.filter((r): r is string => typeof r === "string"))
+    : [];
+
   return (
     <div className="space-y-4">
       <div className="space-y-3">
@@ -154,11 +159,20 @@ export function ScoreBreakdown({ score, rigorGrade, programConfig }: ScoreBreakd
 
       <div className="border-t pt-3 space-y-1 text-sm">
         {score.bonus_points > 0 && (
-          <div className="flex justify-between">
-            <span className="text-primary">Bonus Points</span>
-            <span className="font-medium text-primary">
-              +{score.bonus_points}
-            </span>
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span className="text-primary">Fit Boosts</span>
+              <span className="font-medium text-primary">
+                +{score.bonus_points}
+              </span>
+            </div>
+            {boostReasons.length > 0 && (
+              <ul className="text-[11px] leading-snug text-muted-foreground space-y-0.5 pl-0.5">
+                {boostReasons.map((reason, i) => (
+                  <li key={i}>{reason}</li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
         {score.completeness_penalty > 0 && (

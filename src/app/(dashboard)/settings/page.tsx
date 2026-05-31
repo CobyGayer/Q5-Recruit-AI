@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThresholdForm } from "@/components/config/threshold-form";
+import { SoftPreferencesForm } from "@/components/config/soft-preferences-form";
 import { WeightSelector } from "@/components/config/weight-selector";
 import { RosterContextForm } from "@/components/config/roster-context-form";
 import type {
@@ -42,6 +43,8 @@ export default function SettingsPage() {
     accepted_positions: [],
     preferred_foot_by_position: {},
     preferred_height_range_by_position: {},
+    boost_preferred_foot: 2,
+    boost_preferred_height: 3,
   });
 
   const [weights, setWeights] = useState<WeightFormData>({
@@ -74,6 +77,8 @@ export default function SettingsPage() {
             accepted_positions: data.accepted_positions || [],
             preferred_foot_by_position: data.preferred_foot_by_position || {},
             preferred_height_range_by_position: data.preferred_height_range_by_position || {},
+            boost_preferred_foot: data.boost_preferred_foot ?? 2,
+            boost_preferred_height: data.boost_preferred_height ?? 3,
           });
           setWeights({
             weight_academic: data.weight_academic ?? 70,
@@ -190,8 +195,8 @@ export default function SettingsPage() {
       <Tabs defaultValue="thresholds">
         <TabsList className="mb-6">
           <TabsTrigger value="thresholds">Thresholds</TabsTrigger>
+          <TabsTrigger value="fit-boosts">Fit Boosts</TabsTrigger>
           <TabsTrigger value="weights">Weights</TabsTrigger>
-          <TabsTrigger value="roster">Roster Context</TabsTrigger>
           <TabsTrigger value="api">API Key</TabsTrigger>
         </TabsList>
 
@@ -203,18 +208,26 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="weights">
+        <TabsContent value="fit-boosts">
           <Card className="border-primary/10">
-            <CardContent className="pt-6">
-              <WeightSelector data={weights} onChange={setWeights} />
+            <CardContent className="pt-6 space-y-10">
+              <p className="text-sm text-muted-foreground">
+                Fit boosts are small, additive points that surface the recruits
+                who match your priorities. They raise a recruit&apos;s DQS but
+                never disqualify anyone.
+              </p>
+              <RosterContextForm data={roster} onChange={setRoster} />
+              <div className="border-t pt-8">
+                <SoftPreferencesForm data={thresholds} onChange={setThresholds} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="roster">
+        <TabsContent value="weights">
           <Card className="border-primary/10">
             <CardContent className="pt-6">
-              <RosterContextForm data={roster} onChange={setRoster} />
+              <WeightSelector data={weights} onChange={setWeights} />
             </CardContent>
           </Card>
         </TabsContent>

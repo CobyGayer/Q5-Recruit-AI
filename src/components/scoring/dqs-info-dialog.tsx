@@ -142,11 +142,14 @@ export function DqsInfoDialog({ trigger }: DqsInfoDialogProps) {
               </p>
               <p>
                 <span className="font-medium text-foreground">
-                  Priority bonuses.
+                  Fit boosts.
                 </span>{" "}
-                Recruits who play high-need positions or fall within your
-                priority graduation years receive targeted bonus points,
-                surfacing the prospects that matter most to your program.
+                Recruits earn small additive boosts when they match your soft
+                preferences — high-need positions, priority graduation years,
+                preferred foot, and preferred height range. Boosts surface the
+                prospects that matter most to your program but{" "}
+                <span className="font-medium text-foreground">never</span>{" "}
+                disqualify a recruit for a mismatch.
               </p>
               <p>
                 <span className="font-medium text-foreground">

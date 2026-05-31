@@ -3,15 +3,8 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { POSITIONS, GRAD_YEARS, FOOT_OPTIONS } from "@/types/config";
-import type { PreferredFoot, ThresholdFormData } from "@/types/config";
+import { POSITIONS, GRAD_YEARS } from "@/types/config";
+import type { ThresholdFormData } from "@/types/config";
 
 interface ThresholdFormProps {
   data: ThresholdFormData;
@@ -53,38 +46,29 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
     });
   }
 
-  function updatePreferredFoot(position: string, foot: PreferredFoot | null) {
-    const updated = { ...data.preferred_foot_by_position };
-    if (foot) {
-      updated[position] = foot;
-    } else {
-      delete updated[position];
-    }
-    onChange({ ...data, preferred_foot_by_position: updated });
-  }
-
-  function updateHeightRange(position: string, bound: "min" | "max", value: string) {
+  function updateMinHeight(position: string, value: string) {
     const parsed = value === "" ? undefined : Number(value);
     if (parsed !== undefined && !Number.isInteger(parsed)) {
       return;
     }
-    const existing = data.preferred_height_range_by_position[position] ?? {};
-    const updated = { ...data.preferred_height_range_by_position };
-    const next = { ...existing, [bound]: parsed };
-    if (next.min === undefined && next.max === undefined) {
+    const updated = { ...data.min_height_by_position };
+    if (parsed === undefined) {
       delete updated[position];
     } else {
-      updated[position] = next;
+      updated[position] = parsed;
     }
-    onChange({ ...data, preferred_height_range_by_position: updated });
+    onChange({ ...data, min_height_by_position: updated });
   }
+
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-1">Minimum Thresholds</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Athletes who don&apos;t meet these requirements will be marked as
-          &quot;Not Qualified&quot; and hidden from your default dashboard view.
+          Hard requirements. Athletes who don&apos;t meet these will be marked
+          as &quot;Not Qualified&quot; and hidden from your default dashboard
+          view. (Soft preferences like foot and preferred height live under the
+          Fit Boosts tab.)
         </p>
       </div>
 
@@ -180,88 +164,30 @@ export function ThresholdForm({ data, onChange }: ThresholdFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label>Preferred Foot by Position (optional)</Label>
+        <Label>Minimum Height by Position (optional, in inches)</Label>
         <p className="text-xs text-muted-foreground">
-          This is a soft preference and won&apos;t disqualify recruits.
+          Hard floor per position. Recruits confirmed below this height for the
+          position are marked &quot;Not Qualified.&quot; Leave blank for no minimum.
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {data.accepted_positions.map((pos) => (
             <div key={pos} className="space-y-1">
               <Label className="text-xs">{pos}</Label>
-              <Select
-                value={data.preferred_foot_by_position[pos] ?? ""}
-                onValueChange={(val) => {
-                  const foot = FOOT_OPTIONS.find((option) => option === val);
-                  updatePreferredFoot(pos, foot ?? null);
-                }}
-              >
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="No pref." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__clear__">No preference</SelectItem>
-                  {FOOT_OPTIONS.map((foot) => (
-                    <SelectItem key={foot} value={foot}>{foot}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input
+                type="number"
+                min="60"
+                max="84"
+                placeholder="Min in."
+                value={data.min_height_by_position[pos] ?? ""}
+                onChange={(e) => updateMinHeight(pos, e.target.value)}
+                className="text-xs"
+                aria-label={`Minimum height for ${pos}`}
+              />
             </div>
           ))}
           {data.accepted_positions.length === 0 && (
             <p className="text-sm text-muted-foreground col-span-full">
-              Select positions above to set foot preferences.
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Preferred Height Range by Position (optional, in inches)</Label>
-        <p className="text-xs text-muted-foreground">
-          Set a preferred height range per position. This is a soft preference and won&apos;t disqualify recruits.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {data.accepted_positions.map((pos) => {
-            const range = data.preferred_height_range_by_position[pos] ?? {};
-            const rangeInvalid =
-              range.min !== undefined &&
-              range.max !== undefined &&
-              range.min > range.max;
-            return (
-              <div key={pos} className="space-y-1">
-                <Label className="text-xs">{pos}</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="60"
-                    max="84"
-                    placeholder="Min"
-                    value={range.min ?? ""}
-                    onChange={(e) => updateHeightRange(pos, "min", e.target.value)}
-                    className="text-xs"
-                    aria-label={`Minimum height for ${pos}`}
-                  />
-                  <span className="text-xs text-muted-foreground shrink-0">to</span>
-                  <Input
-                    type="number"
-                    min="60"
-                    max="84"
-                    placeholder="Max"
-                    value={range.max ?? ""}
-                    onChange={(e) => updateHeightRange(pos, "max", e.target.value)}
-                    className="text-xs"
-                    aria-label={`Maximum height for ${pos}`}
-                  />
-                </div>
-                {rangeInvalid && (
-                  <p className="text-xs text-destructive">Min must be ≤ max.</p>
-                )}
-              </div>
-            );
-          })}
-          {data.accepted_positions.length === 0 && (
-            <p className="text-sm text-muted-foreground col-span-full">
-              Select positions above to set height ranges.
+              Select positions above to set minimum heights.
             </p>
           )}
         </div>
