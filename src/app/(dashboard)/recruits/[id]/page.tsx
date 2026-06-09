@@ -16,6 +16,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 import { DqsBadge } from "@/components/scoring/dqs-badge";
 import { ScoreBreakdown } from "@/components/scoring/score-breakdown";
 import { DqsInfoDialog } from "@/components/scoring/dqs-info-dialog";
@@ -552,6 +559,33 @@ export default function RecruitDetailPage() {
                 <div className="space-y-4">
                   {Object.entries(FIELD_LABELS).map(([key, label]) => {
                     if (key === "positions") return null; // Handle separately
+
+                    // Render a dropdown for club_level
+                    if (key === "club_level") {
+                      return (
+                        <div key={key} className="grid grid-cols-3 gap-2 items-center">
+                          <Label className="text-sm">{label}</Label>
+                          <Select
+                            value={String(editData[key] ?? "")}
+                            onValueChange={(val) =>
+                              setEditData({ ...editData, [key]: val === "" ? null : val })
+                            }
+                          >
+                            <SelectTrigger className="col-span-2">
+                              <SelectValue placeholder="Select club level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(CLUB_LEVEL_LABELS).map(([val, lbl]) => (
+                                <SelectItem key={val} value={val}>
+                                  {lbl}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={key} className="grid grid-cols-3 gap-2 items-center">
                         <Label className="text-sm">{label}</Label>
