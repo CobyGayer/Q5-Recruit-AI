@@ -33,17 +33,41 @@ describe("Regional league inference edge cases", () => {
   describe("GA Aspire inference", () => {
     it("infers GA Aspire for girls when directory is GA and body contains 'Aspire'", () => {
       const body = "I play for the Aspire program in GA and we're looking for exposure.";
-      expect(shouldInferGaAspireClubLevel({ subject: "", bodyPlain: body, isBoys: false, directoryLevel: "ga" as const })).toBe(true);
+      expect(
+        shouldInferGaAspireClubLevel({
+          subject: "",
+          bodyPlain: body,
+          isBoys: false,
+          directoryLevel: "ga" as const,
+          originalClubLevel: "ga",
+        })
+      ).toBe(true);
     });
 
     it("infers GA Aspire for girls when directory unknown but body contains 'Aspire'", () => {
       const body = "Aspire program player here.";
-      expect(shouldInferGaAspireClubLevel({ subject: "", bodyPlain: body, isBoys: false, directoryLevel: "unknown" as const })).toBe(true);
+      expect(
+        shouldInferGaAspireClubLevel({
+          subject: "",
+          bodyPlain: body,
+          isBoys: false,
+          directoryLevel: "unknown" as const,
+          originalClubLevel: "unknown",
+        })
+      ).toBe(true);
     });
 
     it("does not infer for boys even if Aspire is mentioned", () => {
       const body = "I am part of the aspire program in GA.";
-      expect(shouldInferGaAspireClubLevel({ subject: "", bodyPlain: body, isBoys: true, directoryLevel: "ga" as const })).toBe(false);
+      expect(
+        shouldInferGaAspireClubLevel({
+          subject: "",
+          bodyPlain: body,
+          isBoys: true,
+          directoryLevel: "ga" as const,
+          originalClubLevel: "ga",
+        })
+      ).toBe(false);
     });
 
     it("currently infers when 'aspire' appears as a verb (edge case)", () => {
@@ -51,7 +75,14 @@ describe("Regional league inference edge cases", () => {
       // Note: the current implementation matches the token 'aspire' without
       // requiring program context, so this returns true. The test documents
       // this edge-case behavior.
-      expect(shouldInferGaAspireClubLevel({ subject: "", bodyPlain: body, isBoys: false, directoryLevel: "ga" as const })).toBe(true);
+      expect(
+        shouldInferGaAspireClubLevel({
+          subject: "",
+          bodyPlain: body,
+          isBoys: false,
+          directoryLevel: "ga" as const,
+        })
+      ).toBe(true);
     });
   });
 

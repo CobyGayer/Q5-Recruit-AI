@@ -4,7 +4,7 @@ import { getEffectiveProgramContext } from "@/lib/program-context";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 import { buildMissingFieldsRequestTemplate } from "@/lib/email/draft";
 import type { ClubLevel } from "@/types/database";
-import { appendMlsSubleagueMissing } from "@/lib/recruits/missing-fields";
+import { appendMlsDivisionMissing } from "@/lib/recruits/missing-fields";
 
 /**
  * GET /api/recruits/missing-fields-queue
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       (recruit.club_level as ClubLevel | null) ?? null
     );
 
-    const requestableMissing = appendMlsSubleagueMissing(
+    const requestableMissing = appendMlsDivisionMissing(
       adjusted.missing,
       (recruit.club_level as ClubLevel | null) ?? null
     );

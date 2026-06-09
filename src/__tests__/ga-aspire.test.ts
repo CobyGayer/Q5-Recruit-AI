@@ -29,6 +29,7 @@ describe("GA Aspire handling", () => {
         bodyPlain: "I play for the Aspire program in GA.",
         isBoys: false,
         directoryLevel: "ga",
+        originalClubLevel: "ga",
       })
     ).toBe(true);
 
@@ -38,6 +39,7 @@ describe("GA Aspire handling", () => {
         bodyPlain: "I play for the Aspire program in GA.",
         isBoys: true,
         directoryLevel: "ga",
+        originalClubLevel: "ga",
       })
     ).toBe(false);
 
@@ -47,6 +49,7 @@ describe("GA Aspire handling", () => {
         bodyPlain: "Please see my profile below.",
         isBoys: false,
         directoryLevel: "unknown",
+        originalClubLevel: "unknown",
       })
     ).toBe(true);
   });

@@ -1,14 +1,23 @@
 "use client";
 
+import { useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { RecruitFilters, SortOption, SortDirection } from "@/types/recruit";
+import type {
+  RecruitFilters,
+  SortOption,
+  SortDirection,
+} from "@/types/recruit";
 import { SORT_LABELS, DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
+import { useConfig } from "@/hooks/use-config";
+import { LEAGUE_TIERS } from "@/lib/data/leagues";
 import { ChevronUp, ChevronDown } from "lucide-react";
+
+
 
 interface RecruitFiltersProps {
   filters: RecruitFilters;
@@ -21,20 +30,6 @@ interface RecruitFiltersProps {
   onSortDirChange: (dir: SortDirection) => void;
 }
 
-const CLUB_LEVELS = [
-  { value: "mls_next", label: "MLS Next" },
-  { value: "mls_next_homegrown", label: "MLS Next - Homegrown" },
-  { value: "mls_next_academy", label: "MLS Next - Academy" },
-  { value: "ecnl", label: "ECNL" },
-  { value: "ecrl", label: "ECRL" },
-  { value: "ga", label: "GA" },
-  { value: "ga_aspire", label: "GA Aspire" },
-  { value: "nal", label: "NAL" },
-  { value: "dpl", label: "DPL" },
-  { value: "other", label: "Other" },
-  { value: "unknown", label: "Unknown" },
-];
-
 export function RecruitFilterPanel({
   filters,
   onChange,
@@ -44,12 +39,66 @@ export function RecruitFilterPanel({
   onSortChange,
   onSortDirChange,
 }: RecruitFiltersProps) {
+  const { config } = useConfig();
+
+  const clubLevels = useMemo(() => {
+    if (!config?.league_preferences) {
+      return [];
+    }
+
+    const trackedLeagues = new Set(config.league_preferences);
+
+    if (trackedLeagues.has("ecnl")) {
+      trackedLeagues.add("ecrl");
+    }
+    if (trackedLeagues.has("ga")) {
+      trackedLeagues.add("ga_aspire");
+    }
+    if (trackedLeagues.has("mls_next")) {
+      trackedLeagues.add("mls_next_homegrown");
+      trackedLeagues.add("mls_next_academy");
+    }
+
+    return LEAGUE_TIERS.filter((tier) => trackedLeagues.has(tier.id));
+  }, [config?.league_preferences]);
+
   function toggleClubLevel(value: string) {
-    const arr = filters.club_levels;
-    const updated = arr.includes(value)
-      ? arr.filter((v) => v !== value)
-      : [...arr, value];
-    onChange({ club_levels: updated });
+    const currentFilters = new Set(filters.club_levels);
+    const isAdding = !currentFilters.has(value);
+
+    const mlsAll = ["mls_next", "mls_next_homegrown", "mls_next_academy"];
+    const isSubdivision =
+      value === "mls_next_homegrown" || value === "mls_next_academy";
+
+    if (value === "mls_next") {
+      if (isAdding) {
+        mlsAll.forEach((v) => currentFilters.add(v));
+      } else {
+        mlsAll.forEach((v) => currentFilters.delete(v));
+      }
+    } else if (isSubdivision) {
+      if (isAdding) {
+        currentFilters.add(value);
+      } else {
+        // If deselecting a subdivision
+        if (currentFilters.has("mls_next")) {
+          // and mls_next is selected, deselect all
+          mlsAll.forEach((v) => currentFilters.delete(v));
+        } else {
+          // otherwise, just deselect the one
+          currentFilters.delete(value);
+        }
+      }
+    } else {
+      // Standard toggle for non-MLS leagues
+      if (isAdding) {
+        currentFilters.add(value);
+      } else {
+        currentFilters.delete(value);
+      }
+    }
+
+    onChange({ club_levels: Array.from(currentFilters) });
   }
 
   function handleSortClick(option: SortOption) {
@@ -198,18 +247,16 @@ export function RecruitFilterPanel({
       <div className="space-y-2">
         <Label className="text-xs">Club Level</Label>
         <div className="flex flex-wrap gap-1.5">
-          {CLUB_LEVELS.map((level) => (
+          {clubLevels.map((level) => (
             <Badge
-              key={level.value}
+              key={level.id}
               variant={
-                filters.club_levels.includes(level.value)
-                  ? "default"
-                  : "outline"
+                filters.club_levels.includes(level.id) ? "default" : "outline"
               }
               className="cursor-pointer text-xs"
-              onClick={() => toggleClubLevel(level.value)}
+              onClick={() => toggleClubLevel(level.id)}
             >
-              {level.label}
+              {level.displayLabel}
             </Badge>
           ))}
         </div>

@@ -1,4 +1,4 @@
--- Normalize subleague defaults and remove subleagues from league preference selections
+-- Normalize division defaults and remove divisions from league preference selections
 ALTER TABLE public.program_config
   ALTER COLUMN league_preferences SET DEFAULT '["mls_next", "ecnl", "ga", "nal", "dpl", "other", "unknown"]'::jsonb,
   ALTER COLUMN league_ratings SET DEFAULT '{"mls_next": 10, "mls_next_homegrown": 10, "mls_next_academy": 9, "ecnl": 9, "ecrl": 8.5, "ga": 7.5, "ga_aspire": 7, "nal": 5.5, "dpl": 5.5, "other": 3.5, "unknown": 5}'::jsonb;

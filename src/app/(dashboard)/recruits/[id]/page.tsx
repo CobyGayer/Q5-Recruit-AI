@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useConfig } from "@/hooks/use-config";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
-import { appendMlsSubleagueMissing } from "@/lib/recruits/missing-fields";
+import { appendMlsDivisionMissing } from "@/lib/recruits/missing-fields";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -70,14 +70,14 @@ const FIELD_LABELS: Record<string, string> = {
 
 const REQUEST_INFO_FIELD_LABELS: Record<string, string> = {
   ...FIELD_LABELS,
-  mls_subleague: "MLS Subleague",
+  mls_division: "MLS Division",
   transcript: "Transcript",
 };
 
 const CLUB_LEVEL_LABELS: Record<string, string> = {
-  mls_next: "MLS Next",
-  mls_next_homegrown: "MLS Next - Homegrown",
-  mls_next_academy: "MLS Next - Academy",
+  mls_next: "MLS NEXT",
+  mls_next_homegrown: "MLS NEXT - Homegrown",
+  mls_next_academy: "MLS NEXT - Academy",
   ecnl: "ECNL",
   ecrl: "ECRL",
   ga: "GA",
@@ -345,7 +345,7 @@ export default function RecruitDetailPage() {
     () =>
       recruit
         ? [
-            ...appendMlsSubleagueMissing(
+            ...appendMlsDivisionMissing(
               adjustCompletenessForWeights(
                 recruit.fields_missing,
                 recruit.fields_extracted,

@@ -30,7 +30,7 @@ const COMPONENTS = [
   {
     name: "Competition Level",
     description:
-      "Classifies competitive environment by verified league tier (MLS Next, ECNL, GA, NAL, DPL, and more) using our proprietary club directory.",
+      "Classifies competitive environment by verified league tier (MLS NEXT, ECNL, GA, NAL, DPL, and more) using our proprietary club directory.",
   },
   {
     name: "Physical",

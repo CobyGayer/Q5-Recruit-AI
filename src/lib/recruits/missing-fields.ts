@@ -1,6 +1,6 @@
 import type { ClubLevel } from "@/types/database";
 
-export function appendMlsSubleagueMissing(
+export function appendMlsDivisionMissing(
   fields: string[],
   clubLevel?: ClubLevel | null
 ): string[] {
@@ -8,9 +8,9 @@ export function appendMlsSubleagueMissing(
     return fields;
   }
 
-  if (fields.includes("mls_subleague")) {
+  if (fields.includes("mls_division")) {
     return fields;
   }
 
-  return [...fields, "mls_subleague"];
+  return [...fields, "mls_division"];
 }

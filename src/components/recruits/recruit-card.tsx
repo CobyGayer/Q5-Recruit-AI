@@ -38,8 +38,8 @@ function getAvailableStats(recruit: RecruitWithScore): Stat[] {
     recruit.gpa != null
       ? { label: "GPA", value: recruit.gpa.toFixed(1) }
       : null,
-    recruit.height_inches != null
-      ? { label: "Height", value: formatHeight(recruit.height_inches) }
+    recruit.club_team
+      ? { label: "Club", value: recruit.club_team, truncate: true }
       : null,
     recruit.club_level
       ? { label: "League", value: getDisplayLeagueLabel(recruit) }
