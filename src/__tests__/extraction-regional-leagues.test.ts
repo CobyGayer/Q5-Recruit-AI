@@ -70,7 +70,7 @@ describe("Regional league inference edge cases", () => {
       ).toBe(false);
     });
 
-    it("does not infer when 'aspire' appears as a verb (edge case)", () => {
+    it("currently infers when 'aspire' appears as a verb (edge case)", () => {
       const body = "I aspire to play at the next level.";
       // Note: the current implementation matches the token 'aspire' without
       // requiring program context, so this returns true. The test documents
