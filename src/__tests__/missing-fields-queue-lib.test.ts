@@ -54,7 +54,7 @@ describe("maybeQueueMissingFieldsRequest", () => {
     expect(db.from as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(2);
   });
 
-  it("queues MLS subleague when club level is mls_next", async () => {
+  it("queues MLS division when club level is mls_next", async () => {
     const recruit = { ...RECRUIT_DATA, club_level: "mls_next" };
     const recruitChain = makeChain({ data: recruit });
     const configChain = makeChain({ data: null });
@@ -70,7 +70,7 @@ describe("maybeQueueMissingFieldsRequest", () => {
     expect(result).toBe(true);
     expect(upsertChain.upsert).toHaveBeenCalled();
     const payload = (upsertChain.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(payload.missing_fields_snapshot).toEqual(["mls_subleague"]);
+    expect(payload.missing_fields_snapshot).toEqual(["mls_division"]);
   });
 
   it("returns false when upsert errors", async () => {

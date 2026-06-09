@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adjustCompletenessForWeights } from "@/lib/scoring/completeness";
 import type { ClubLevel } from "@/types/database";
-import { appendMlsSubleagueMissing } from "@/lib/recruits/missing-fields";
+import { appendMlsDivisionMissing } from "@/lib/recruits/missing-fields";
 
 /**
  * Attempt to add a recruit to the missing-fields request queue.
@@ -42,7 +42,7 @@ export async function maybeQueueMissingFieldsRequest(
     (recruit.club_level as ClubLevel | null) ?? null
   );
 
-  const requestableMissing = appendMlsSubleagueMissing(
+  const requestableMissing = appendMlsDivisionMissing(
     adjusted.missing,
     (recruit.club_level as ClubLevel | null) ?? null
   );

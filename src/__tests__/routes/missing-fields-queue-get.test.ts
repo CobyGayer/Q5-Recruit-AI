@@ -163,7 +163,7 @@ describe("GET /api/recruits/missing-fields-queue", () => {
       expect(await res.json()).toEqual([]);
     });
 
-    it("returns MLS subleague when club level is mls_next", async () => {
+    it("returns MLS division when club level is mls_next", async () => {
       const queueRow = { id: "qrow-mls", recruit_id: "r2", queued_at: "2024-01-02T00:00:00Z", missing_fields_snapshot: [] };
       const recruitData = {
         id: "r2",
@@ -195,9 +195,9 @@ describe("GET /api/recruits/missing-fields-queue", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body).toHaveLength(1);
-      expect(body[0].effective_missing_fields).toEqual(["mls_subleague"]);
+      expect(body[0].effective_missing_fields).toEqual(["mls_division"]);
       expect(mockTemplate).toHaveBeenCalledWith(
-        expect.objectContaining({ missingFields: ["mls_subleague"] })
+        expect.objectContaining({ missingFields: ["mls_division"] })
       );
     });
   });

@@ -24,13 +24,22 @@ export function shouldInferGaAspireClubLevel(params: {
   bodyPlain: string;
   isBoys?: boolean;
   directoryLevel: ClubLevel;
+  originalClubLevel?: ClubLevel | null;
 }): boolean {
   if (params.isBoys !== false) {
     return false;
   }
 
   const emailText = [params.subject ?? "", params.bodyPlain].join(" ").toLowerCase();
-  if (!/\baspire\b/.test(emailText)) {
+  const hasCue = /\baspire\b/.test(emailText);
+
+  // Only trust the LLM if the email explicitly mentions "Aspire"
+  if (params.originalClubLevel === "ga_aspire") {
+    return hasCue;
+  }
+
+  // Fallback for regex-based inference when LLM doesn't suggest ga_aspire
+  if (!hasCue) {
     return false;
   }
 
@@ -320,6 +329,7 @@ export async function extractRecruitData(
     bodyPlain,
     isBoys,
     directoryLevel,
+    originalClubLevel,
   })) {
     parsed.club_level.value = "ga_aspire";
     parsed.club_level.confidence = "high";

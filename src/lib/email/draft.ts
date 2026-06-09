@@ -176,15 +176,15 @@ export const MISSING_FIELD_LABELS: Record<string, string> = {
   act_score: "SAT or ACT score",
   club_team: "club team name",
   club_level: "club level",
-  mls_subleague: "MLS Subleague",
+  mls_division: "MLS Division",
   high_school_team: "high school team name",
   video_url: "highlight video link",
   transcript: "transcript",
 };
 
 function getMissingFieldEmailLabel(field: string): string {
-  if (field === "mls_subleague") {
-    return "MLS Subleague — do you play homegrown or academy?";
+  if (field === "mls_division") {
+    return "MLS Division — do you play homegrown or academy?";
   }
 
   return MISSING_FIELD_LABELS[field] ?? field;

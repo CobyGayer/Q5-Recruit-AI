@@ -16,7 +16,7 @@ const COMPONENT_LABELS: Record<keyof WeightFormData, { label: string; descriptio
   },
   weight_competition: {
     label: "Competition Level",
-    description: "Club league tier (MLS Next, ECNL, etc.)",
+    description: "Club league tier (MLS NEXT, ECNL, etc.)",
   },
   weight_physical: {
     label: "Physical Attributes",

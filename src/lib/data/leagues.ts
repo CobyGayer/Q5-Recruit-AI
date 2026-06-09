@@ -27,15 +27,15 @@ const ECRL_LEAGUE: LeagueDefinition = {
 
 const MLS_NEXT_HOMEGROWN_LEAGUE: LeagueDefinition = {
   id: "mls_next_homegrown",
-  name: "MLS Next - Homegrown",
-  displayLabel: "MLS Next - Homegrown",
+  name: "MLS NEXT - Homegrown",
+  displayLabel: "MLS NEXT - Homegrown",
   defaultRating: 10,
 };
 
 const MLS_NEXT_ACADEMY_LEAGUE: LeagueDefinition = {
   id: "mls_next_academy",
-  name: "MLS Next - Academy",
-  displayLabel: "MLS Next - Academy",
+  name: "MLS NEXT - Academy",
+  displayLabel: "MLS NEXT - Academy",
   defaultRating: 9,
 };
 
@@ -89,7 +89,7 @@ export const LEAGUE_TIERS: LeagueDefinition[] = [
   },
 ];
 
-const SUBLEAGUE_IDS: ClubLevel[] = [
+const DIVISION_IDS: ClubLevel[] = [
   "mls_next_homegrown",
   "mls_next_academy",
   "ga_aspire",
@@ -97,7 +97,7 @@ const SUBLEAGUE_IDS: ClubLevel[] = [
 ];
 
 export const SELECTABLE_LEAGUE_TIERS = LEAGUE_TIERS.filter(
-  (league) => !SUBLEAGUE_IDS.includes(league.id)
+  (league) => !DIVISION_IDS.includes(league.id)
 );
 
 /** Type for league preferences (array of selected league IDs) */
@@ -136,7 +136,7 @@ export function isLeagueSelected(
   leagueId: ClubLevel,
   preferences: LeaguePreferences
 ): boolean {
-  if (SUBLEAGUE_IDS.includes(leagueId)) {
+  if (DIVISION_IDS.includes(leagueId)) {
     if (leagueId === "ga_aspire") {
       return preferences.includes("ga");
     }
