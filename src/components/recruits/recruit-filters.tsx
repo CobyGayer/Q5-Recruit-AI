@@ -15,7 +15,7 @@ import type {
 import { SORT_LABELS, DEFAULT_SORT_DIRECTIONS } from "@/types/recruit";
 import { useConfig } from "@/hooks/use-config";
 import { LEAGUE_TIERS } from "@/lib/data/leagues";
-import { ChevronUp, ChevronDown } from "lucide-react"; "@/components/ui/input";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 
 
