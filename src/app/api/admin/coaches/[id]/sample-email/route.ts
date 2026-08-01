@@ -5,14 +5,31 @@ import { buildSampleEmailPayload } from "@/lib/sample-email";
 import { Resend } from "resend";
 import type { ProgramConfig } from "@/types/database";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL || "Q5 Recruit AI <onboarding@resend.dev>";
+
+function getResendClient() {
+  if (!RESEND_API_KEY) {
+    return null;
+  }
+
+  return new Resend(RESEND_API_KEY);
+}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const resend = getResendClient();
+
+  if (!resend) {
+    return NextResponse.json(
+      { error: "Email sending is not configured" },
+      { status: 500 }
+    );
+  }
+
   const { id: coachId } = await params;
 
   // Auth: session + admin role check

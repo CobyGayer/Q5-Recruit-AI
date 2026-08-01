@@ -47,6 +47,7 @@ export const POSITIONS = [
   "CDM",
   "CM",
   "CAM",
+  "AM",
   "LM",
   "RM",
   "LW",

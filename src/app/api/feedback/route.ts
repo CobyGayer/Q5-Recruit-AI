@@ -2,13 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL || "Q5 Recruit AI <onboarding@resend.dev>";
 const FEEDBACK_RECIPIENT = "coby.gayer@gmail.com";
 const MAX_MESSAGE_LENGTH = 2000;
 
+function getResendClient() {
+  if (!RESEND_API_KEY) {
+    return null;
+  }
+
+  return new Resend(RESEND_API_KEY);
+}
+
 export async function POST(request: NextRequest) {
+  const resend = getResendClient();
+
+  if (!resend) {
+    return NextResponse.json(
+      { error: "Feedback email is not configured" },
+      { status: 500 }
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
