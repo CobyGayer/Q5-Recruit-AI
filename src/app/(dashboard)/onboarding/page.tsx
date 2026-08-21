@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,7 +89,6 @@ export default function OnboardingPage() {
     useState<Record<ClubLevel, number>>(DEFAULT_LEAGUE_RATINGS);
 
   const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
 
   useEffect(() => {
     async function loadPrograms() {
@@ -178,70 +176,73 @@ export default function OnboardingPage() {
     setLoading(true);
     setSaveError(null);
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-    if (userError || !user) {
-      setLoading(false);
-      setSaveError("Unable to verify your session. Please refresh and try again.");
-      return;
-    }
+      if (userError || !user) {
+        setSaveError("Unable to verify your session. Please refresh and try again.");
+        return;
+      }
 
-    if (!selectedProgramId) {
-      setLoading(false);
-      setSaveError("Select a program before continuing.");
-      return;
-    }
+      if (!selectedProgramId) {
+        setSaveError("Select a program before continuing.");
+        return;
+      }
 
-    const { error: programUpdateError } = await supabase
-      .from("coaches")
-      .update({ program_id: selectedProgramId })
-      .eq("id", user.id);
+      const { error: programUpdateError } = await supabase
+        .from("coaches")
+        .update({ program_id: selectedProgramId })
+        .eq("id", user.id);
 
-    if (programUpdateError) {
-      setLoading(false);
-      setSaveError("Could not save your program selection. Please try again.");
-      return;
-    }
+      if (programUpdateError) {
+        setSaveError("Could not save your program selection. Please try again.");
+        return;
+      }
 
-    const configData = {
-      updated_by_coach_id: user.id,
-      program_id: selectedProgramId,
-      ...thresholds,
-      ...weights,
-      ...roster,
-      league_preferences: leaguePreferences,
-      league_ratings: leagueRatings,
-    };
+      const configData = {
+        updated_by_coach_id: user.id,
+        program_id: selectedProgramId,
+        ...thresholds,
+        ...weights,
+        ...roster,
+        league_preferences: leaguePreferences,
+        league_ratings: leagueRatings,
+      };
 
-    const { error: configError } = await supabase.from("program_config").upsert(configData, {
-      onConflict: "program_id",
-    });
+      const { error: configError } = await supabase
+        .from("program_config")
+        .upsert(configData, {
+          onConflict: "program_id",
+        });
 
-    if (configError) {
-      setLoading(false);
-      setSaveError("Could not save your onboarding settings. Please try again.");
-      return;
-    }
+      if (configError) {
+        setSaveError("Could not save your onboarding settings. Please try again.");
+        return;
+      }
 
-    const { error: onboardingError } = await supabase
-      .from("coaches")
-      .update({
-        onboarding_completed: true,
-        email_pipeline_status: "pending_setup",
-      })
-      .eq("id", user.id);
+      const { error: onboardingError } = await supabase
+        .from("coaches")
+        .update({
+          onboarding_completed: true,
+          email_pipeline_status: "pending_setup",
+        })
+        .eq("id", user.id);
 
-    if (onboardingError) {
-      setLoading(false);
+      if (onboardingError) {
+        setSaveError("Could not finish onboarding. Please try again.");
+        return;
+      }
+
+      window.location.assign("/dashboard");
+    } catch (error) {
+      console.error("Onboarding completion failed", error);
       setSaveError("Could not finish onboarding. Please try again.");
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-    router.replace("/dashboard");
   }
 
   return (
