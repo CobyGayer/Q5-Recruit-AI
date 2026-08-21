@@ -56,4 +56,4 @@ export const POSITIONS = [
 ] as const;
 
 /** Available graduation years for filtering */
-export const GRAD_YEARS = [2025, 2026, 2027, 2028, 2029, 2030] as const;
+export const GRAD_YEARS = [2027, 2028, 2029, 2030, 2031, 2032] as const;
