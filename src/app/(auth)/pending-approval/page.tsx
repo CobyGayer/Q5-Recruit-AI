@@ -45,12 +45,12 @@ export default function PendingApprovalPage() {
       .eq("id", user.id)
       .single();
 
-    if (!error && coach?.status === "approved") {
-      setCheckingStatus(false);
-      router.push("/dashboard");
-      router.refresh();
-      return;
-    }
+      // If status is approved, proceed even when Supabase also returns warning metadata.
+      if (coach?.status === "approved") {
+        // Use a full navigation so middleware and server state are re-evaluated fresh.
+        window.location.assign("/dashboard");
+        return;
+      }
 
     setCheckingStatus(false);
     router.refresh();
