@@ -86,7 +86,11 @@ export default function LoginPage() {
             Don&apos;t have an account?{" "}
             <Link href="/register" className="text-primary hover:underline">
               Register
-            </Link>
+            </Link> 
+            {" "} | {" "}
+            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                Forgot your password?
+              </Link>
           </p>
         </CardContent>
       </Card>

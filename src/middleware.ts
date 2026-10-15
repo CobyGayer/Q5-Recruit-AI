@@ -32,8 +32,9 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Public routes that don't require auth
-  const publicRoutes = ["/login", "/register", "/pending-approval"];
+  const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password", "/pending-approval"];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  const isAuthEntryRoute = pathname.startsWith("/login") || pathname.startsWith("/register");
   const isApiRoute = pathname.startsWith("/api/");
 
   // API routes handle their own auth (API key for ingestion, session for others)
@@ -93,7 +94,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Logged in user trying to access login/register → redirect to dashboard
-  if (user && isPublicRoute && !pathname.startsWith("/pending-approval")) {
+  if (user && isAuthEntryRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
