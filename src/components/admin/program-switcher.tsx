@@ -92,7 +92,7 @@ export function ProgramSwitcher() {
         <SelectContent>
           {programs.map((p) => (
             <SelectItem key={p.id} value={p.id}>
-              {p.name}
+              {p.name} ({p.institution})
             </SelectItem>
           ))}
         </SelectContent>
