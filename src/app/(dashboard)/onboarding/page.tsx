@@ -289,7 +289,7 @@ export default function OnboardingPage() {
                     <SelectContent>
                       {programs.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} ({p.institution})
+                          {p.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
